@@ -1,52 +1,54 @@
 package fr.liglab.lcm;
 
-import gnu.trove.map.hash.TIntLongHashMap;
-import gnu.trove.procedure.TIntProcedure;
-import gnu.trove.set.TIntSet;
-import gnu.trove.set.hash.TIntHashSet;
+import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.Itemset;
+import fr.liglab.lcm.io.PatternsCollector;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Scanner;
-import java.util.StringTokenizer;
-
-public class LCM {	
+public class LCM {
+	Long minsup;
+	PatternsCollector collector;
 	
-	public static void lcm(int minsup, TIntSet pattern, ArrayList<TIntSet> dataset) {
-		
-		for (int i = 0; i < dataset.size(); i++) {
-			System.out.println(dataset.get(i).toString());
-		}
-		
-		System.out.println("READING OK");
-		
+	public LCM(Long minimumSupport, PatternsCollector patternsCollector) {
+		minsup = minimumSupport;
+		collector = patternsCollector;
 	}
 	
-	public static TIntSet extractCandidates(ArrayList<TIntSet> dataset, int minsup, int max) {
-		TIntSet candidates = new TIntHashSet();
-		TIntLongHashMap supportPerItem = new TIntLongHashMap();
+	public void lcm (Dataset dataset) {
+		Itemset pattern = dataset.getClosureExtension(); // usually, it's empty
 		
-		/*TIntProcedure incrementItemSupport = new TIntProcedure() {
-			@Override
-			public boolean execute(int value) {
-				
-			}
+		if (!pattern.isEmpty()) {
+			collector.collect(dataset.transactionsCount(), pattern);
 		}
 		
-		for (TIntSet transaction : dataset) {
-			
-			transaction.forEach(incrementItemSupport);
-			
-			
-			for (TIntSet tIntSet : transaction) {
-				
-			}
-			
-			if (supportPerItem.increment(key))
-		}
+		lcm(pattern, dataset, Integer.MAX_VALUE);
+	}
+	
+	/**
+	 * Assumes the dataset has been recursively constructed according the given (closed) pattern
+	 * 
+	 * This method will recursively collect frequent closed extensions 
+	 * of the given pattern
+	 * In order to ensure uniqueness, no extension will involve items >= maxExtension
+	 */
+	public void lcm(Itemset pattern, Dataset dataset, int maxExtension) {
 		
-		*/
-		return candidates;
+		for (int item : dataset.getFrequentItems()) {
+			if (item < maxExtension) {
+				
+				Dataset projection = new Dataset(minsup, dataset, item);
+				if (!projection.isEmpty()) { // TODO : given than "item" is known to be frequent, is this check useless ?
+					
+					Itemset closureExtension = projection.getClosureExtension();
+					if (closureExtension.isEmpty() || closureExtension.max() < item) {
+						// TODO: something that won't trigger array allocations during the next two lines
+						Itemset extended = new Itemset(pattern, item);
+						extended.addAll(closureExtension);
+						collector.collect(projection.transactionsCount(), extended);
+						
+						lcm(extended, projection, item);
+					}
+				}
+			}
+		}
 	}
 }

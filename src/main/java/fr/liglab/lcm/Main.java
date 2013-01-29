@@ -1,6 +1,6 @@
 package fr.liglab.lcm;
 
-import fr.liglab.lcm.internals.Itemset;
+import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.Transactions;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
@@ -30,19 +30,10 @@ public class Main {
 		long minsup = Long.parseLong(args[1]);
 		PatternsCollector collector = new StdOutCollector();
 		
-		/**
-		 * TODO
-		Dataset dataset = new Dataset(transactions, minsup)
-		LCM miner = new LCM(minsup, collector)
-		miner.lcm(new Itemset(), dataset)
-		
-		 */
-		
-		for (Itemset transaction : transactions) {
-			collector.collect((long) 1, transaction);
-		}
+		Dataset dataset = new Dataset(minsup, transactions);
+		LCM miner = new LCM(minsup, collector);
+		miner.lcm(dataset);
 		
 		collector.close();
-		
 	}
 }
