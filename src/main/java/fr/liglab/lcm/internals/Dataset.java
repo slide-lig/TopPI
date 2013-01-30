@@ -6,10 +6,14 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntLongHashMap;
 
 /**
- * This class is intended to wrap (reduced) datasets
+ * Once an actual Dataset class is instanciated, it provides public accessors to 
+ * - transactions count
+ * - remaining frequent items
+ * - discovered items to be added in current pattern's closure
  * 
- * At load time it will try to reduce the dataset and extract some 
- * interesting data by the way
+ * Each dataset is _implicitely_ reduced for a pattern, which may be
+ *  - the empty pattern
+ *  - its parent's pattern (considering the Dataset provided at instanciation as its parent) + its extension + its discovered closure
  */
 public class Dataset {
 	/**
@@ -56,10 +60,7 @@ public class Dataset {
 	}
 	
 	/**
-	 * reduce the original dataset by :
-	 * - keeping only "extension" occurences
-	 * - removing items having a support outside [minsup, 100% [
-	 * 
+	 * Reduce the original dataset by keeping only "extension" occurences
 	 * Infrequent extension will yield an empty Dataset
 	 */
 	public Dataset(Long minsup, Dataset original, int extension) {
@@ -137,7 +138,7 @@ public class Dataset {
 		return data.isEmpty();
 	}
 	
-	public Long transactionsCount() {
+	public Long getTransactionsCount() {
 		return (long) data.size();
 	}
 	

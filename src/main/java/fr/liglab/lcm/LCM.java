@@ -17,7 +17,7 @@ public class LCM {
 		Itemset pattern = dataset.getClosureExtension(); // usually, it's empty
 		
 		if (!pattern.isEmpty()) {
-			collector.collect(dataset.transactionsCount(), pattern);
+			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
 		
 		lcm(pattern, dataset, Integer.MAX_VALUE);
@@ -36,17 +36,15 @@ public class LCM {
 			if (item < maxExtension) {
 				
 				Dataset projection = new Dataset(minsup, dataset, item);
-				if (!projection.isEmpty()) { // TODO : given than "item" is known to be frequent, is this check useless ?
+				Itemset closureExtension = projection.getClosureExtension();
+				
+				if (closureExtension.isEmpty() || closureExtension.max() < item) {
+					// TODO: something that won't trigger array allocations during the next two lines
+					Itemset extended = new Itemset(pattern, item);
+					extended.addAll(closureExtension);
+					collector.collect(projection.getTransactionsCount(), extended);
 					
-					Itemset closureExtension = projection.getClosureExtension();
-					if (closureExtension.isEmpty() || closureExtension.max() < item) {
-						// TODO: something that won't trigger array allocations during the next two lines
-						Itemset extended = new Itemset(pattern, item);
-						extended.addAll(closureExtension);
-						collector.collect(projection.transactionsCount(), extended);
-						
-						lcm(extended, projection, item);
-					}
+					lcm(extended, projection, item);
 				}
 			}
 		}
