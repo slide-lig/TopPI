@@ -2,7 +2,6 @@ package fr.liglab.lcm.internals;
 
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.iterator.TIntLongIterator;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntLongHashMap;
 
 /**
@@ -19,9 +18,9 @@ public class Dataset {
 	/**
 	 * Filtered dataset
 	 * 
-	 * Its transactions only contains items with support in [minsup, 100% [
+	 * Its transactions only contains items with (global) support in [minsup, 100% [
 	 */
-	private Transactions data = new Transactions();
+  	private Transactions data;
 	
 	/**
 	 * Map frequent items to their support count
@@ -38,11 +37,13 @@ public class Dataset {
 	 * Constructor for the initial dataset
 	 */
 	public Dataset(Long minsup, Transactions transactions) {
+		data = new Transactions();
+		
 		for (Itemset transaction : transactions) {
 			incrementItemSupports(transaction);
 		}
 		
-		postItemCounting(minsup, (long) data.size());
+		postItemCounting(minsup, (long) transactions.size());
 		
 		for (Itemset transaction : transactions) {
 			Itemset filtered_transaction = new Itemset();
@@ -61,43 +62,22 @@ public class Dataset {
 	
 	/**
 	 * Reduce the original dataset by keeping only "extension" occurences
-	 * Infrequent extension will yield an empty Dataset
+	 * We assume "extension" is a frequent item in the original dataset
 	 */
 	public Dataset(Long minsup, Dataset original, int extension) {
-		TIntArrayList tids = new TIntArrayList(); // extension's occurences list
+		data = new Transactions((int) original.frequents.get(extension));
 		
 		for (int tid = 0; tid < original.data.size(); tid++) {
 			Itemset transaction = original.data.get(tid);
 			
 			if (transaction.contains(extension)) {
-				tids.add(tid);
+				data.add(transaction);
 				incrementItemSupports(transaction);
 			}
 		}
 		
-		if (tids.size() < minsup) {
-			return;
-		}
-		
 		frequents.remove(extension);
-		postItemCounting(minsup, (long) tids.size());
-		
-		TIntIterator iterator = tids.iterator();
-		while (iterator.hasNext()) {
-			int tid = iterator.next();
-			
-			Itemset filtered_transaction = new Itemset();
-			TIntIterator items = original.data.get(tid).iterator();
-			
-			while(items.hasNext()) {
-				int item = items.next();
-				if (frequents.containsKey(item)) {
-					filtered_transaction.add(item);
-				}
-			}
-			
-			data.add(filtered_transaction);
-		}
+		postItemCounting(minsup, (long) data.size());
 	}
 	
 	/**

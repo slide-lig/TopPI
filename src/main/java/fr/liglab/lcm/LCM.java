@@ -38,6 +38,10 @@ public class LCM {
 				Dataset projection = new Dataset(minsup, dataset, item);
 				Itemset closureExtension = projection.getClosureExtension();
 				
+				// FIXME : now that we're not modifying transactions at all, 
+				// pattern's items are appearing in closureExtension
+				closureExtension.removeAll(pattern);
+				
 				if (closureExtension.isEmpty() || closureExtension.max() < item) {
 					// TODO: something that won't trigger array allocations during the next two lines
 					Itemset extended = new Itemset(pattern, item);
