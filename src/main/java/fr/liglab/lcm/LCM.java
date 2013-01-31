@@ -1,9 +1,16 @@
 package fr.liglab.lcm;
 
+import java.util.Collection;
+
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.Itemset;
 import fr.liglab.lcm.io.PatternsCollector;
 
+/**
+ * LCM implementation, based on 
+ * UnoAUA04 : "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
+ * by Takeaki Uno el. al.
+ */
 public class LCM {
 	Long minsup;
 	PatternsCollector collector;
@@ -22,6 +29,43 @@ public class LCM {
 		
 		lcm(pattern, dataset, Integer.MAX_VALUE);
 	}
+	
+	
+	/**
+	 * Items in patterns are written by increasing order.
+	 * 
+	 * This function will output clo(pattern U {extension}), and (in recursive calls) 
+	 * all closed frequent closed itemsets prefixed by "pattern U {extension}"
+	 * 
+	 * HEAVY ASSUMPTIONS :
+	 * @param pattern is a closed frequent itemset, freshly found out of :
+	 * @param parent_dataset - pattern's support
+	 * @param extension is an item known to yield a prefix-preserving extension of P 
+	 */
+	public void lcm2(Itemset pattern, Dataset parent_dataset, int extension) {
+		
+		// in other words, we know {P,{i}} is a frequent pattern. 
+		// its closure may involve items > i
+		// let's found them in {P,i}'s projected dataset
+		Dataset dataset = parent_dataset.getProjection(extension);
+		Itemset Q = new Itemset(pattern, extension, dataset.getDiscoveredClosureItems());
+		
+		collector.collect(dataset.getTransactionsCount(), Q);
+		
+		// from UnoAUA04-Lemma 3 : "extension" is Q's core index 
+		Collection<E> candidates= = dataset.getFrequentsAbove(extension);
+		candidates.removeAll(Q); // just in case
+		
+		foreach(int candidate : candidates) {
+			// Fast Prefix-Preservation Check :
+			// checks that no item in ] extension; candidate [ has the same support as candidate
+			if (dataset.fastPPC(extension, candidate)) {
+				// we've got a winner
+				lcm3(Q, dataset, candidate);
+			}
+		}
+	}
+	
 	
 	/**
 	 * Assumes the dataset has been recursively constructed according the given (closed) pattern
