@@ -1,11 +1,11 @@
 package fr.liglab.lcm.io;
 
-import fr.liglab.lcm.internals.Itemset;
+import java.util.Arrays;
 
 public class StdOutCollector implements PatternsCollector {
 
-	public void collect(Long support, Itemset pattern) {
-		System.out.println(support.toString() + "\t" + pattern.toString());
+	public void collect(Long support, int[] pattern) {
+		System.out.println(support.toString() + "\t" + Arrays.toString(pattern));
 	}
 	
 	public void close() {

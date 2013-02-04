@@ -1,132 +1,45 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.iterator.TIntIterator;
-import gnu.trove.iterator.TIntLongIterator;
-import gnu.trove.map.hash.TIntLongHashMap;
+import java.util.Iterator;
 
 /**
- * Once an actual Dataset class is instanciated, it provides public accessors to 
- * - transactions count
- * - remaining frequent items
- * - discovered items to be added in current pattern's closure
+ * a Dataset represents a transactions database
  * 
- * Each dataset is _implicitely_ reduced for a pattern, which may be
- *  - the empty pattern
- *  - its parent's pattern (considering the Dataset provided at instanciation as its parent) + its extension + its discovered closure
+ * Sub-classes are instanciated explicitely or by applying a projection.
+ * At instanciation time, internal (and interesting) information 
+ * about contained transactions are gathered and made available by the 
+ * following common methods 
  */
-public class Dataset {
+public abstract class Dataset {
+	
 	/**
-	 * Filtered dataset
+	 * @return how many transactions are represented by this dataset ?
+	 */
+	public abstract long getTransactionsCount();
+	
+	/**
+	 * Items in the array are unique and may be unordered
+	 * @return items found to have a 100% support count
+	 */
+	public abstract int[] getDiscoveredClosureItems();
+	
+	/**
+	 * Projects current dataset on the given item, implicitely extending current pattern
 	 * 
-	 * Its transactions only contains items with (global) support in [minsup, 100% [
+	 * Let P be a pattern. If this was P's projection, let 
+	 * Q = P U {i}
+	 * from UnoAUA04-Lemma 3 : "extension" is Q's core index
+	 * 
+	 * the projected dataset won't forget that !
 	 */
-  	private Transactions data;
+	public abstract Dataset getProjection(int extension);
 	
 	/**
-	 * Map frequent items to their support count
+	 * TODO
+	 *  maybe decorate another iterator with Fast Prefix-Preservation Check?
+		fpp-checks : no item in ] extension; candidate [ has the same support as candidate
+	 * 
+	 * @return
 	 */
-	private TIntLongHashMap frequents = new TIntLongHashMap();
-	
-	/**
-	 * Items found to have a 100% support
-	 * These will never appear in "frequents"
-	 */
-	private Itemset closure = new Itemset();
-	
-	/**
-	 * Constructor for the initial dataset
-	 */
-	public Dataset(Long minsup, Transactions transactions) {
-		data = new Transactions();
-		
-		for (Itemset transaction : transactions) {
-			incrementItemSupports(transaction);
-		}
-		
-		postItemCounting(minsup, (long) transactions.size());
-		
-		for (Itemset transaction : transactions) {
-			Itemset filtered_transaction = new Itemset();
-			TIntIterator iterator = transaction.iterator();
-			
-			while(iterator.hasNext()) {
-				int item = iterator.next();
-				if (frequents.containsKey(item)) {
-					filtered_transaction.add(item);
-				}
-			}
-			
-			data.add(filtered_transaction);
-		}
-	}
-	
-	/**
-	 * Reduce the original dataset by keeping only "extension" occurences
-	 * We assume "extension" is a frequent item in the original dataset
-	 */
-	public Dataset(Long minsup, Dataset original, int extension) {
-		data = new Transactions((int) original.frequents.get(extension));
-		
-		for (int tid = 0; tid < original.data.size(); tid++) {
-			Itemset transaction = original.data.get(tid);
-			
-			if (transaction.contains(extension)) {
-				data.add(transaction);
-				incrementItemSupports(transaction);
-			}
-		}
-		
-		frequents.remove(extension);
-		postItemCounting(minsup, (long) data.size());
-	}
-	
-	/**
-	 * For each item in the given transaction, increment their support count in frequents
-	 */
-	private void incrementItemSupports(Itemset transaction) {
-		TIntIterator iterator = transaction.iterator();
-		while(iterator.hasNext()) {
-			int item = iterator.next();
-			if (!frequents.increment(item)) {
-				frequents.put(item, 1);
-			}
-		}
-	}
-	
-	/**
-	 * Filter unfrequent items and move relevant items to closure by the way
-	 */
-	private void postItemCounting(Long minsup, Long closuressup) {
-		TIntLongIterator iterator = frequents.iterator();
-		while (iterator.hasNext()) {
-			iterator.advance();
-			
-			if (iterator.value() < minsup) {
-				iterator.remove();
-			} else if (iterator.value() == closuressup) {
-				closure.add(iterator.key());
-				iterator.remove();
-			}
-		}
-	}
-	
-	/**
-	 * May happen if not a single item is above the minimum support,
-	 * or if the pattern provided in the constructor is not frequent 
-	 */
-	public boolean isEmpty() {
-		return data.isEmpty();
-	}
-	
-	public Long getTransactionsCount() {
-		return (long) data.size();
-	}
-	
-	public Itemset getClosureExtension() {
-		return closure;
-	}
-	
-	public int[] getFrequentItems() {
-		return frequents.keys();
-	}
+	public abstract Iterator<int> getCandidatesIterator();
 }

@@ -1,7 +1,6 @@
 package fr.liglab.lcm;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.Transactions;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.StdOutCollector;

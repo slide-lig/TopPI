@@ -1,9 +1,7 @@
 package fr.liglab.lcm.io;
 
-import fr.liglab.lcm.internals.Itemset;
-
 public interface PatternsCollector {
-	public void collect(Long support, Itemset pattern);
+	public void collect(Long support, int[] pattern);
 	
 	/**
 	 * Call this once mining has terminated.
