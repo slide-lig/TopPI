@@ -12,13 +12,20 @@ import gnu.trove.iterator.TIntIterator;
  */
 public abstract class Dataset {
 	
-	protected long minsup;
+	// TODO : maybe a long would be a better fit here
+	// actually, all collections'size() return an integer
+	// (same applies for getTransactionsCount())
+	protected int minsup;
+	
+	public int getMinsup() {
+		return minsup;
+	}
 	
 	/**
 	 * This method could also have been named "getClosureSupportCount"
 	 * @return how many transactions are represented by this dataset
 	 */
-	public abstract long getTransactionsCount();
+	public abstract int getTransactionsCount();
 	
 	/**
 	 * Items in the array are unique and may be unordered

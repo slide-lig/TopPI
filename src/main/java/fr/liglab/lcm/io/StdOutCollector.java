@@ -4,8 +4,8 @@ import java.util.Arrays;
 
 public class StdOutCollector implements PatternsCollector {
 
-	public void collect(Long support, int[] pattern) {
-		System.out.println(support.toString() + "\t" + Arrays.toString(pattern));
+	public void collect(int support, int[] pattern) {
+		System.out.println(Integer.toString(support) + "\t" + Arrays.toString(pattern));
 	}
 	
 	public void close() {

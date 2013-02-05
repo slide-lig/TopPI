@@ -24,5 +24,14 @@ public abstract class Itemsets {
 	}
 	
 	
+	/**
+	 * TODO : itemsets factory
+	 * 
+	 * use TIntArrayList
+	 * .add()
+	 * .clear(capacity) => let's always keep the top capacity - call .size() on getBuilt()
+	 * .toArray() => getBuilt()
+	 */
+	
 	
 }
