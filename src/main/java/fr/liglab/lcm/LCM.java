@@ -1,10 +1,9 @@
 package fr.liglab.lcm;
 
-import java.util.Collection;
-
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.Itemsets;
 import fr.liglab.lcm.io.PatternsCollector;
+import gnu.trove.iterator.TIntIterator;
 
 /**
  * LCM implementation, based on 
@@ -12,14 +11,15 @@ import fr.liglab.lcm.io.PatternsCollector;
  * by Takeaki Uno el. al.
  */
 public class LCM {
-	Long minsup;
 	PatternsCollector collector;
 	
-	public LCM(Long minimumSupport, PatternsCollector patternsCollector) {
-		minsup = minimumSupport;
+	public LCM(PatternsCollector patternsCollector) {
 		collector = patternsCollector;
 	}
 	
+	/**
+	 * Initial invocation
+	 */
 	public void lcm (Dataset dataset) {
 		int[] pattern = dataset.getDiscoveredClosureItems(); // usually, it's empty
 		
@@ -27,7 +27,10 @@ public class LCM {
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
 		
-		lcm(pattern, dataset, Integer.MAX_VALUE);
+		TIntIterator iterator = dataset.getCandidatesIterator();
+		while (iterator.hasNext()) {
+			lcm(pattern, dataset, iterator.next());
+		}
 	}
 	
 	
@@ -40,23 +43,16 @@ public class LCM {
 	 * @param parent_dataset - pattern's support
 	 * @param extension is an item known to yield a prefix-preserving extension of P 
 	 */
-	public void lcm(Itemset pattern, Dataset parent_dataset, int extension) {
+	public void lcm(int[] pattern, Dataset parent_dataset, int extension) {
 		
 		Dataset dataset = parent_dataset.getProjection(extension);
 		int[] Q = Itemsets.extend(pattern, extension, dataset.getDiscoveredClosureItems());
 		
 		collector.collect(dataset.getTransactionsCount(), Q);
 		
-		Collection<Integer> candidates= = dataset.getFrequentsAbove(extension);
-		candidates.removeAll(Q); // just in case
-		
-		foreach(Integer candidate : candidates) {
-			// Fast Prefix-Preservation Check :
-			// checks that no item in ] extension; candidate [ has the same support as candidate
-			if (dataset.fastPPC(extension, candidate)) {
-				// we've got a winner
-				lcm(Q, dataset, candidate);
-			}
+		TIntIterator iterator = dataset.getCandidatesIterator();
+		while (iterator.hasNext()) {
+			lcm(Q, dataset, iterator.next());
 		}
 	}
 }

@@ -1,19 +1,22 @@
 package fr.liglab.lcm.internals;
 
-import java.util.Iterator;
+import gnu.trove.iterator.TIntIterator;
 
 /**
- * a Dataset represents a transactions database
+ * a Dataset represents a "smart" transactions database : the object 
+ * knows the required minimal support count and will gather some 
+ * statistics and indexes at instantation time, to ease future lattice 
+ * exploration.
  * 
  * Sub-classes are instanciated explicitely or by applying a projection.
- * At instanciation time, internal (and interesting) information 
- * about contained transactions are gathered and made available by the 
- * following common methods 
  */
 public abstract class Dataset {
 	
+	protected long minsup;
+	
 	/**
-	 * @return how many transactions are represented by this dataset ?
+	 * This method could also have been named "getClosureSupportCount"
+	 * @return how many transactions are represented by this dataset
 	 */
 	public abstract long getTransactionsCount();
 	
@@ -37,9 +40,11 @@ public abstract class Dataset {
 	/**
 	 * TODO
 	 *  maybe decorate another iterator with Fast Prefix-Preservation Check?
+	 *  + no item <= extension
+	 *  + no item in closure
 		fpp-checks : no item in ] extension; candidate [ has the same support as candidate
 	 * 
 	 * @return
 	 */
-	public abstract Iterator<int> getCandidatesIterator();
+	public abstract TIntIterator getCandidatesIterator();
 }

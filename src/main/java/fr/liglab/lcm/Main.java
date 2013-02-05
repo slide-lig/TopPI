@@ -30,7 +30,7 @@ public class Main {
 		PatternsCollector collector = new StdOutCollector();
 		
 		Dataset dataset = new Dataset(minsup, transactions);
-		LCM miner = new LCM(minsup, collector);
+		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
 		
 		collector.close();
