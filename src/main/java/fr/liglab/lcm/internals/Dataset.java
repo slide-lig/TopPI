@@ -45,13 +45,7 @@ public abstract class Dataset {
 	public abstract Dataset getProjection(int extension);
 	
 	/**
-	 * TODO
-	 *  maybe decorate another iterator with Fast Prefix-Preservation Check?
-	 *  + no item <= extension
-	 *  + no item in closure
-		fpp-checks : no item in ] extension; candidate [ has the same support as candidate
-	 * 
-	 * @return
+	 * @return candidates items known to be frequent, preserving prefix and not in closure's extension
 	 */
 	public abstract TIntIterator getCandidatesIterator();
 }

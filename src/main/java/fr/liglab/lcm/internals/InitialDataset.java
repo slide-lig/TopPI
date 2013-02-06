@@ -9,6 +9,8 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import org.apache.commons.lang.NotImplementedException;
+
 public class InitialDataset extends Dataset {
 	
 	protected int transactionsCount = 0;
@@ -121,5 +123,44 @@ public class InitialDataset extends Dataset {
 		// TODO Auto-generated method stub
 		return null;
 	}
+	
+	/**
+	 * This iterator will enumerate candidate items such that
+	 *  - candidate's support count is in [minsup, transactionsCount[
+	 *  - candidate > core_item
+	 *  - no item in ] core_item; candidate [ has the same support as candidate (aka fast-prefix-preservation test)
+	 * Typically, core_item = extension item
+	 */
+	protected class FastPPCheckDecorator implements TIntIterator {
+		
+		private TIntIterator decorated;
+		
+		/**
+		 * @param original an iterator on frequent items
+		 * @param min 
+		 */
+		public FastPPCheckDecorator(TIntIterator original, int core_item) {
+			decorated = original;
+		}
+		
+		
 
+		public boolean hasNext() {
+			// TODO Auto-generated method stub
+			return false;
+		}
+		
+		/**
+		 * NOT IMPLEMENTED
+		 */
+		public void remove() {
+			throw new NotImplementedException();
+		}
+
+		public int next() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+		
+	}
 }
