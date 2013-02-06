@@ -1,7 +1,7 @@
 package fr.liglab.lcm;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.Itemsets;
+import fr.liglab.lcm.internals.ItemsetsFactory;
 import fr.liglab.lcm.io.PatternsCollector;
 import gnu.trove.iterator.TIntIterator;
 
@@ -46,7 +46,7 @@ public class LCM {
 	public void lcm(int[] pattern, Dataset parent_dataset, int extension) {
 		
 		Dataset dataset = parent_dataset.getProjection(extension);
-		int[] Q = Itemsets.extend(pattern, extension, dataset.getDiscoveredClosureItems());
+		int[] Q = ItemsetsFactory.extend(pattern, extension, dataset.getDiscoveredClosureItems());
 		
 		collector.collect(dataset.getTransactionsCount(), Q);
 		

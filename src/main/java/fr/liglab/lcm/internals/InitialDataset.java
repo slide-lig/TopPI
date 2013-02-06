@@ -4,16 +4,26 @@ import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 
-/**
- * This class should be used for initial 
- */
 public class InitialDataset extends Dataset {
 	
-	private ArrayList<int[]> data = new ArrayList<int[]>();
+	protected int transactionsCount = 0;
+	protected int[] discoveredClosure;
+	
+	/**
+	 * Filtered transactions : they contain only items whose support count is in [minusp, 100% [
+	 */
+	protected ArrayList<int[]> data = new ArrayList<int[]>();
+	
+	/**
+	 * item => List<transactions containing item>
+	 * In other words, occurrences is projections' data field, pre-computed
+	 */
+	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
 	/**
 	 * "transactions" iterator will be traversed only once. Though, references 
@@ -26,6 +36,7 @@ public class InitialDataset extends Dataset {
 		ArrayList<int[]> copy = new ArrayList<int[]>();
 		TIntIntMap supportCounts = new TIntIntHashMap();
 		
+		// count
 		while (transactions.hasNext()) {
 			int[] transaction = transactions.next();
 			copy.add(transaction);
@@ -35,41 +46,68 @@ public class InitialDataset extends Dataset {
 			}
 		}
 		
+		// predict frequent-only-transactions count - aka future closure's support count
+		nextTransaction: for( Iterator<int[]> it = copy.iterator(); it.hasNext(); ) {
+			int[] transaction = it.next();
+			
+			for (int item : transaction) {
+				if (supportCounts.get(item) >= minsup) {
+					continue nextTransaction;
+				}
+			}
+			
+			it.remove();
+		}
+		
+		transactionsCount = copy.size();
+		
+		// filter unfrequent and closure
+		ItemsetsFactory builder = new ItemsetsFactory();
 		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
 			count.advance();
 			
 			if (count.value() < minsup) {
 				count.remove();
+			} else if (count.value() == transactionsCount) {
+				builder.add(count.key());
+				count.remove();
 			}
 		}
 		
-		/**
-		 * TODO : find closure
-		 * /!\ boring corner case : transactions containing only infrequent items should be removed
-		 * thus an item may have a support count == #finalTransactionCount < #inputTransactionCount
-		 */
+		discoveredClosure = builder.get();
 		
 		for (int[] inputTransaction : copy) {
-			Itemsets.startBuilder();
-			Itemsets.addToBuilder(frequent_item);
-			data.add(Itemsets.getBuilt());
+			for (int item : inputTransaction) {
+				if (supportCounts.containsKey(item)) {
+					builder.add(item);
+				}
+			}
 			
-			// and generate tid-list by the way
+			int [] filtered = builder.get();
+			
+			for (int item : filtered) {
+				ArrayList<int[]> tids = occurrences.get(item);
+				if (tids == null) {
+					tids = new ArrayList<int[]>();
+					tids.add(filtered);
+					occurrences.put(item, tids);
+				} else {
+					tids.add(filtered);
+				}
+			}
+			
+			data.add(filtered);
 		}
-		
-		
 	}
 
 	@Override
 	public int getTransactionsCount() {
-		// TODO Auto-generated method stub
-		return 0;
+		return transactionsCount;
 	}
 
 	@Override
 	public int[] getDiscoveredClosureItems() {
-		// TODO Auto-generated method stub
-		return null;
+		return discoveredClosure;
 	}
 
 	@Override

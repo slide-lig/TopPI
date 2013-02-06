@@ -26,11 +26,11 @@ public class Main {
 	}
 	
 	public static void standalone(String[] args) {
-		Transactions transactions = FileReader.fromClassicAscii(args[0]);
+		FileReader reader = new FileReader(args[0]);
 		int minsup = Integer.parseInt(args[1]);
 		PatternsCollector collector = new StdOutCollector();
 		
-		Dataset dataset = new InitialDataset(minsup, transactions);
+		Dataset dataset = new InitialDataset(minsup, reader);
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
 		
