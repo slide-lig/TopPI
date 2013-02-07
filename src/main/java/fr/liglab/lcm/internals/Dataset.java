@@ -12,9 +12,6 @@ import gnu.trove.iterator.TIntIterator;
  */
 public abstract class Dataset {
 	
-	// TODO : maybe a long would be a better fit here
-	// actually, all collections'size() return an integer
-	// (same applies for getTransactionsCount())
 	protected int minsup;
 	
 	public int getMinsup() {

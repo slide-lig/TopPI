@@ -12,19 +12,25 @@ import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
 
+/**
+ * This dataset internally performs
+ *  - item ordering and filtering, ie. transactions contain, in ascending order, items whose support count is in [minusp, 100% [
+ *  - occurence delivery
+ *  - fast prefix-preserving test (see inner class CandidatesIterator)
+ */
 public class InitialDataset extends Dataset {
 	
 	protected int transactionsCount = 0;
 	protected int[] discoveredClosure;
 	
 	/**
-	 * Filtered transactions : they contain only items whose support count is in [minusp, 100% [
+	 * Filtered'n'ordered transactions
 	 */
 	protected ArrayList<int[]> data = new ArrayList<int[]>();
 	
 	/**
 	 * frequent item => List<transactions containing item>
-	 * In other words, occurrences is projections' data field, pre-computed
+	 * In other words, this map provides projections "for free"
 	 */
 	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
@@ -88,6 +94,7 @@ public class InitialDataset extends Dataset {
 			}
 			
 			int [] filtered = builder.get();
+			Arrays.sort(filtered); // TODO perform insertion sort directly in ItemsetsFactory
 			
 			for (int item : filtered) {
 				ArrayList<int[]> tids = occurrences.get(item);
@@ -146,21 +153,26 @@ public class InitialDataset extends Dataset {
 			int[] frequentItems = occurrences.keys();
 			Arrays.sort(frequentItems);
 			
-			int core_index = 0;
-			while (core_index < frequentItems.length && frequentItems[core_index] <= core_item) core_index++;
-			
-			if (core_index < frequentItems.length) {
-				candidates = new int[frequentItems.length - core_index];
-				System.arraycopy(frequentItems, core_index, candidates, 0, candidates.length);
-				findNext();
+			if (core_item == Integer.MIN_VALUE) { // FIXME
+				candidates = frequentItems;
+			} else {
+				int core_index = 0;
+				while (core_index < frequentItems.length && frequentItems[core_index] <= core_item) core_index++;
+				
+				if (core_index < frequentItems.length) {
+					candidates = new int[frequentItems.length - core_index];
+					System.arraycopy(frequentItems, core_index, candidates, 0, candidates.length);
+				}
 			}
+			
+			findNext();
 		}
 		
 		private void findNext() {
 			next_index++;
 			
 			while (0 <= next_index && next_index < candidates.length) {
-				if (ppc(candidates[next_index])) {
+				if (prefixPreservingTest(candidates[next_index])) {
 					break;
 				} else {
 					next_index++;
@@ -168,28 +180,21 @@ public class InitialDataset extends Dataset {
 			}
 		}
 		
-		private boolean ppc(int candidate) {
+		/**
+		 * @return true if there is no int j in ] core_item; candidate [ having the same support as candidate 
+		 */
+		private boolean prefixPreservingTest(int candidate) {
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
 			
 			for (int i=0; candidates[i] < candidate; i++) {
 				int j = candidates[i];
-				ArrayList<int[]> otherOccurrences = occurrences.get(j);
+				ArrayList<int[]> jOccurrences = occurrences.get(j);
 				
-				// TODO pre-sorting should make this faster ! but it will also introduce crazy couplings
-				// with sorted transactions we could do Arrays.binarySearch
-				// shouldn't transactions be sorted only in initial set ?
-				
-				if (otherOccurrences.size() >= candidateOccurrences.size()) {
+				//  otherwise we have  supp(j) < supp(candidate) : no need to worry about j
+				if (jOccurrences.size() >= candidateOccurrences.size()) {
 					boolean jBelongsToAllCandidateOccurrences = true;
 					for (int[] transaction : candidateOccurrences) {
-						boolean belongs = false; 
-						for (int item : transaction) {
-							if (item == j) {
-								belongs = true;
-								break;
-							}
-						}
-						if (!belongs) {
+						if (Arrays.binarySearch(transaction, j) < 0) {
 							jBelongsToAllCandidateOccurrences = false;
 							break;
 						}
@@ -198,8 +203,7 @@ public class InitialDataset extends Dataset {
 					if (jBelongsToAllCandidateOccurrences) {
 						return false;
 					}
-					
-				} //  else it's  supp(candidate[i]) < supp(candidate) , NO PROBLEM, go on
+				}
 			}
 			
 			return true;
@@ -216,7 +220,7 @@ public class InitialDataset extends Dataset {
 		}
 
 		/**
-		 * NOT IMPLEMENTED
+		 * You probably thought this method was alive. NOPE. It's just Chuck Testa !
 		 */
 		public void remove() {
 			throw new NotImplementedException();
