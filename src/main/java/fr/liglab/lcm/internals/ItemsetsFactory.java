@@ -13,6 +13,13 @@ public class ItemsetsFactory {
 	private TIntArrayList buffer = new TIntArrayList();
 	private int capacity = 50;
 	
+	/**
+	 * If you're going big and have an estimation of future array's size...
+	 */
+	public void ensureCapacity(int c) {
+		buffer.ensureCapacity(c);
+	}
+	
 	public void add(int i) {
 		buffer.add(i);
 	}

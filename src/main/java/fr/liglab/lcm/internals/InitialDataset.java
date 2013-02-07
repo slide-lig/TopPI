@@ -7,6 +7,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -22,7 +23,7 @@ public class InitialDataset extends Dataset {
 	protected ArrayList<int[]> data = new ArrayList<int[]>();
 	
 	/**
-	 * item => List<transactions containing item>
+	 * frequent item => List<transactions containing item>
 	 * In other words, occurrences is projections' data field, pre-computed
 	 */
 	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
@@ -78,6 +79,7 @@ public class InitialDataset extends Dataset {
 		
 		discoveredClosure = builder.get();
 		
+		// create filtered transactions
 		for (int[] inputTransaction : copy) {
 			for (int item : inputTransaction) {
 				if (supportCounts.containsKey(item)) {
@@ -120,47 +122,104 @@ public class InitialDataset extends Dataset {
 
 	@Override
 	public TIntIterator getCandidatesIterator() {
-		// TODO Auto-generated method stub
-		return null;
+		return new CandidatesIterator(Integer.MIN_VALUE);
 	}
 	
 	/**
-	 * This iterator will enumerate candidate items such that
-	 *  - candidate's support count is in [minsup, transactionsCount[
+	 * Iterates on candidates items such that
+	 * - their support count is in [minsup, transactionsCount[ ,
 	 *  - candidate > core_item
 	 *  - no item in ] core_item; candidate [ has the same support as candidate (aka fast-prefix-preservation test)
 	 * Typically, core_item = extension item
 	 */
-	protected class FastPPCheckDecorator implements TIntIterator {
-		
-		private TIntIterator decorated;
+	protected class CandidatesIterator implements TIntIterator {
+		private int next_index;
+		private int[] candidates;
 		
 		/**
 		 * @param original an iterator on frequent items
 		 * @param min 
 		 */
-		public FastPPCheckDecorator(TIntIterator original, int core_item) {
-			decorated = original;
+		public CandidatesIterator(int core_item) {
+			next_index = -1;
+			
+			int[] frequentItems = occurrences.keys();
+			Arrays.sort(frequentItems);
+			
+			int core_index = 0;
+			while (core_index < frequentItems.length && frequentItems[core_index] <= core_item) core_index++;
+			
+			if (core_index < frequentItems.length) {
+				candidates = new int[frequentItems.length - core_index];
+				System.arraycopy(frequentItems, core_index, candidates, 0, candidates.length);
+				findNext();
+			}
 		}
 		
+		private void findNext() {
+			next_index++;
+			
+			while (0 <= next_index && next_index < candidates.length) {
+				if (ppc(candidates[next_index])) {
+					break;
+				} else {
+					next_index++;
+				}
+			}
+		}
 		
-
+		private boolean ppc(int candidate) {
+			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
+			
+			for (int i=0; candidates[i] < candidate; i++) {
+				int j = candidates[i];
+				ArrayList<int[]> otherOccurrences = occurrences.get(j);
+				
+				// TODO pre-sorting should make this faster ! but it will also introduce crazy couplings
+				// with sorted transactions we could do Arrays.binarySearch
+				// shouldn't transactions be sorted only in initial set ?
+				
+				if (otherOccurrences.size() >= candidateOccurrences.size()) {
+					boolean jBelongsToAllCandidateOccurrences = true;
+					for (int[] transaction : candidateOccurrences) {
+						boolean belongs = false; 
+						for (int item : transaction) {
+							if (item == j) {
+								belongs = true;
+								break;
+							}
+						}
+						if (!belongs) {
+							jBelongsToAllCandidateOccurrences = false;
+							break;
+						}
+					}
+					
+					if (jBelongsToAllCandidateOccurrences) {
+						return false;
+					}
+					
+				} //  else it's  supp(candidate[i]) < supp(candidate) , NO PROBLEM, go on
+			}
+			
+			return true;
+		}
+		
 		public boolean hasNext() {
-			// TODO Auto-generated method stub
-			return false;
+			return next_index >= 0;
 		}
 		
+		public int next() {
+			int old_i = next_index;
+			findNext();
+			return candidates[old_i];
+		}
+
 		/**
 		 * NOT IMPLEMENTED
 		 */
 		public void remove() {
 			throw new NotImplementedException();
 		}
-
-		public int next() {
-			// TODO Auto-generated method stub
-			return 0;
-		}
-		
 	}
 }
