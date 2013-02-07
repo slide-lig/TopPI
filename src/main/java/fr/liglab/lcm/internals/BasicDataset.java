@@ -14,19 +14,15 @@ import org.apache.commons.lang.NotImplementedException;
 
 /**
  * This dataset internally performs
- *  - item ordering and filtering, ie. transactions contain, in ascending order, items whose support count is in [minusp, 100% [
- *  - occurence delivery
+ *  - basic reduction : transactions contain only items having a support count in [minusp, 100% [
+ *  - item ordering in transactions (in ascending order)
+ *  - occurence delivery (actually, filtered transactions are only referenced in occurences lists)
  *  - fast prefix-preserving test (see inner class CandidatesIterator)
  */
-public class InitialDataset extends Dataset {
+public class BasicDataset extends Dataset {
 	
 	protected int transactionsCount = 0;
 	protected int[] discoveredClosure;
-	
-	/**
-	 * Filtered'n'ordered transactions
-	 */
-	protected ArrayList<int[]> data = new ArrayList<int[]>();
 	
 	/**
 	 * frequent item => List<transactions containing item>
@@ -39,7 +35,7 @@ public class InitialDataset extends Dataset {
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.  
 	 */
-	public InitialDataset(int minimumsupport, Iterator<int[]> transactions) {
+	public BasicDataset(int minimumsupport, Iterator<int[]> transactions) {
 		minsup = minimumsupport;
 		
 		ArrayList<int[]> copy = new ArrayList<int[]>();
@@ -106,9 +102,74 @@ public class InitialDataset extends Dataset {
 					tids.add(filtered);
 				}
 			}
-			
-			data.add(filtered);
 		}
+	}
+	
+	
+	/**
+	 * Projection constructor
+	 * coreSupport is supposed to be coreItem's support
+	 * items in coreSupport's transactions are assumed to be already sorted
+	 */
+	protected BasicDataset(int minimumsupport, ArrayList<int[]> coreSupport, int coreItem) {
+		/**
+		 *  /!\
+		 *  since we will delete transactions containing only closure and 
+		 *  locally-infrequent items, this may become > data.size()
+		 */
+		transactionsCount = coreSupport.size();
+		
+		minsup = minimumsupport;
+		
+		//////// COUNT
+		TIntIntMap supportCounts = new TIntIntHashMap();
+		
+		for (int[] transaction : coreSupport) {
+			for (int i = 0; i < transaction.length; i++) {
+				supportCounts.adjustOrPutValue(transaction[i], 1, 1);
+			}
+		}
+		
+		/////// FILTER COUNT
+		ItemsetsFactory builder = new ItemsetsFactory();
+		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
+			count.advance();
+			
+			if (count.value() < minsup) {
+				count.remove();
+			} else if (count.value() == transactionsCount) {
+				builder.add(count.key());
+				count.remove();
+			}
+		}
+		
+		discoveredClosure = builder.get();
+		
+		/////// REDUCE DATA
+		for (int[] inputTransaction : coreSupport) {
+			for (int item : inputTransaction) {
+				if (supportCounts.containsKey(item)) {
+					builder.add(item);
+				}
+			}
+			
+			if (!builder.isEmpty()) {
+				int [] filtered = builder.get();
+				
+				for (int item : filtered) {
+					ArrayList<int[]> tids = occurrences.get(item);
+					if (tids == null) {
+						tids = new ArrayList<int[]>();
+						tids.add(filtered);
+						occurrences.put(item, tids);
+					} else {
+						tids.add(filtered);
+					}
+				}
+			}
+		}
+		
+		/////// PROFIT
 	}
 
 	@Override
@@ -123,10 +184,14 @@ public class InitialDataset extends Dataset {
 
 	@Override
 	public Dataset getProjection(int extension) {
-		// TODO Auto-generated method stub
-		return null;
+		return new BasicDataset(minsup, occurrences.get(extension), extension);
 	}
 
+	
+	
+	
+	
+	
 	@Override
 	public TIntIterator getCandidatesIterator() {
 		return new CandidatesIterator(Integer.MIN_VALUE);
@@ -153,7 +218,7 @@ public class InitialDataset extends Dataset {
 			int[] frequentItems = occurrences.keys();
 			Arrays.sort(frequentItems);
 			
-			if (core_item == Integer.MIN_VALUE) { // FIXME
+			if (core_item == Integer.MIN_VALUE) {
 				candidates = frequentItems;
 			} else {
 				int core_index = 0;

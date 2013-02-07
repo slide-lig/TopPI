@@ -1,7 +1,7 @@
 package fr.liglab.lcm;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.InitialDataset;
+import fr.liglab.lcm.internals.BasicDataset;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.StdOutCollector;
@@ -30,7 +30,7 @@ public class Main {
 		int minsup = Integer.parseInt(args[1]);
 		PatternsCollector collector = new StdOutCollector();
 		
-		Dataset dataset = new InitialDataset(minsup, reader);
+		Dataset dataset = new BasicDataset(minsup, reader);
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
 		
