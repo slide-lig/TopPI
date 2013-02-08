@@ -21,6 +21,7 @@ import org.apache.commons.lang.NotImplementedException;
  */
 public class BasicDataset extends Dataset {
 	
+	protected int coreItem = Integer.MIN_VALUE; // default value for the initial itemset
 	protected int transactionsCount = 0;
 	protected int[] discoveredClosure;
 	
@@ -108,25 +109,29 @@ public class BasicDataset extends Dataset {
 	
 	/**
 	 * Projection constructor
-	 * coreSupport is supposed to be coreItem's support
+	 * projectedItem is supposed to be projectedItem support
 	 * items in coreSupport's transactions are assumed to be already sorted
 	 */
-	protected BasicDataset(int minimumsupport, ArrayList<int[]> coreSupport, int coreItem) {
+	protected BasicDataset(int minimumsupport, ArrayList<int[]> projectedSupport, int projectedItem) {
 		/**
 		 *  /!\
 		 *  since we will delete transactions containing only closure and 
 		 *  locally-infrequent items, this may become > data.size()
 		 */
-		transactionsCount = coreSupport.size();
+		transactionsCount = projectedSupport.size();
 		
 		minsup = minimumsupport;
+		coreItem = projectedItem;
 		
 		//////// COUNT
 		TIntIntMap supportCounts = new TIntIntHashMap();
 		
-		for (int[] transaction : coreSupport) {
+		for (int[] transaction : projectedSupport) {
 			for (int i = 0; i < transaction.length; i++) {
-				supportCounts.adjustOrPutValue(transaction[i], 1, 1);
+				// coz we assume coreItem'support will 100% + we don't want it in the computed closure
+				if (transaction[i] != coreItem) {
+					supportCounts.adjustOrPutValue(transaction[i], 1, 1);
+				}
 			}
 		}
 		
@@ -146,7 +151,7 @@ public class BasicDataset extends Dataset {
 		discoveredClosure = builder.get();
 		
 		/////// REDUCE DATA
-		for (int[] inputTransaction : coreSupport) {
+		for (int[] inputTransaction : projectedSupport) {
 			for (int item : inputTransaction) {
 				if (supportCounts.containsKey(item)) {
 					builder.add(item);
@@ -194,19 +199,21 @@ public class BasicDataset extends Dataset {
 	
 	@Override
 	public TIntIterator getCandidatesIterator() {
-		return new CandidatesIterator(Integer.MIN_VALUE);
+		return new CandidatesIterator(coreItem);
 	}
 	
 	/**
 	 * Iterates on candidates items such that
 	 * - their support count is in [minsup, transactionsCount[ ,
 	 *  - candidate > core_item
-	 *  - no item in ] core_item; candidate [ has the same support as candidate (aka fast-prefix-preservation test)
+	 *  - no item < candidate has the same support as candidate (aka fast-prefix-preservation test)
+	 *    => assuming items from previously found patterns have been removed !!
 	 * Typically, core_item = extension item
 	 */
 	protected class CandidatesIterator implements TIntIterator {
 		private int next_index;
 		private int[] candidates;
+		private int[] frequentItems;
 		
 		/**
 		 * @param original an iterator on frequent items
@@ -215,11 +222,12 @@ public class BasicDataset extends Dataset {
 		public CandidatesIterator(int core_item) {
 			next_index = -1;
 			
-			int[] frequentItems = occurrences.keys();
+			frequentItems = occurrences.keys();
 			Arrays.sort(frequentItems);
 			
 			if (core_item == Integer.MIN_VALUE) {
 				candidates = frequentItems;
+				findNext();
 			} else {
 				int core_index = 0;
 				while (core_index < frequentItems.length && frequentItems[core_index] <= core_item) core_index++;
@@ -227,10 +235,11 @@ public class BasicDataset extends Dataset {
 				if (core_index < frequentItems.length) {
 					candidates = new int[frequentItems.length - core_index];
 					System.arraycopy(frequentItems, core_index, candidates, 0, candidates.length);
+					findNext();
 				}
+				// else : there's nothing to iterate on
 			}
 			
-			findNext();
 		}
 		
 		private void findNext() {
@@ -254,8 +263,8 @@ public class BasicDataset extends Dataset {
 		private boolean prefixPreservingTest(int candidate) {
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
 			
-			for (int i=0; candidates[i] < candidate; i++) {
-				int j = candidates[i];
+			for (int i=0; frequentItems[i] < candidate; i++) {
+				int j = frequentItems[i];
 				ArrayList<int[]> jOccurrences = occurrences.get(j);
 				
 				//  otherwise we have  supp(j) < supp(candidate) : no need to worry about j
