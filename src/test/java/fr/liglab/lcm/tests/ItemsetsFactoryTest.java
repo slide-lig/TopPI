@@ -56,4 +56,18 @@ public class ItemsetsFactoryTest {
 		assertEquals(10000, result[0]);
 		assertEquals(1, result[result.length-1]);
 	}
+	
+	@Test
+	public void testMultipleInstanciations() {
+		int[] result = factory.get();
+		assertEquals(0, result.length);
+		
+		factory.add(1);
+		result = factory.get();
+		assertEquals(1, result.length);
+		assertEquals(1, result[0]);
+		
+		testLooooongArray();
+		testBuildingAndOrdering();
+	}
 }
