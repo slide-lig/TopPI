@@ -46,7 +46,7 @@ public class ItemsetsAsArraysMatcher extends BaseMatcher<int[]> {
 	}
 
 	public void describeTo(Description description) {
-		description.appendText("Expecting " + Arrays.toString(expected));
+		description.appendText("Expecting " + Arrays.toString(expected) + " (arrays have been sorted)");
 	}
 	
 }

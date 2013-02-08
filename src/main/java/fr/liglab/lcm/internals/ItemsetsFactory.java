@@ -50,10 +50,9 @@ public class ItemsetsFactory {
 	public static int[] extend(int[] pattern, int extension, int[] closure) {
 		int[] extended = new int[pattern.length + closure.length + 1];
 		
-		System.arraycopy(pattern, 0, extended, closure.length, pattern.length);
-		System.arraycopy(pattern, 0, extended, closure.length, pattern.length);
-		
-		extended[extended.length - 1] = extension;
+		System.arraycopy(pattern, 0, extended, 0, pattern.length);
+		extended[pattern.length] = extension;
+		System.arraycopy(closure, 0, extended, pattern.length+1, closure.length);
 		
 		return extended;
 	}

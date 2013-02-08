@@ -1,6 +1,7 @@
 package fr.liglab.lcm.tests;
 
 import static org.junit.Assert.*;
+import static fr.liglab.lcm.tests.matchers.ItemsetsAsArraysMatcher.arrayIsItemset;
 
 import org.junit.After;
 import org.junit.Before;
@@ -69,5 +70,20 @@ public class ItemsetsFactoryTest {
 		
 		testLooooongArray();
 		testBuildingAndOrdering();
+	}
+	
+	@Test
+	public void testExtend() {
+		int[] extended = ItemsetsFactory.extend(new int[0], 4, new int[0]);
+		assertThat(extended, arrayIsItemset(new int[] {4}));
+		
+		extended = ItemsetsFactory.extend(new int[] {1,2,3}, 4, new int[0]);
+		assertThat(extended, arrayIsItemset(new int[] {1,2,3,4}));
+		
+		extended = ItemsetsFactory.extend(new int[0], 4, new int[] {5,6,7});
+		assertThat(extended, arrayIsItemset(new int[] {4,5,6,7}));
+		
+		extended = ItemsetsFactory.extend(new int[] {1,2,3}, 4, new int[] {5,6,7});
+		assertThat(extended, arrayIsItemset(new int[] {1,2,3,4,5,6,7}));
 	}
 }
