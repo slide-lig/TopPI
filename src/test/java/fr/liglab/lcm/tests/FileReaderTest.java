@@ -7,10 +7,14 @@ import org.junit.Test;
 import fr.liglab.lcm.io.FileReader;
 
 public class FileReaderTest {
-
+	
+	public static FileReader getMicroReader() {
+		return new FileReader("target/test-classes/micro.dat");
+	}
+	
 	@Test
 	public void testMicroLoading() {
-		FileReader reader = new FileReader("target/test-classes/micro.dat");
+		FileReader reader = FileReaderTest.getMicroReader();
 		assertTrue(reader.hasNext());
 		assertArrayEquals(new int[] {5,3,1,6,7}, reader.next());
 		assertTrue(reader.hasNext());

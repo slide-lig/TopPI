@@ -236,8 +236,11 @@ public class BasicDataset extends Dataset {
 		private void findNext() {
 			next_index++;
 			
-			while (0 <= next_index && next_index < candidates.length) {
-				if (prefixPreservingTest(candidates[next_index])) {
+			while (0 <= next_index) {
+				if (next_index == candidates.length) {
+					next_index = -1;
+					break;
+				} else if (prefixPreservingTest(candidates[next_index])) {
 					break;
 				} else {
 					next_index++;
