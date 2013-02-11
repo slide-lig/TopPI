@@ -52,19 +52,6 @@ public class BasicDataset extends Dataset {
 			}
 		}
 		
-		// predict frequent-only-transactions count - aka future closure's support count
-		nextTransaction: for( Iterator<int[]> it = copy.iterator(); it.hasNext(); ) {
-			int[] transaction = it.next();
-			
-			for (int item : transaction) {
-				if (supportCounts.get(item) >= minsup) {
-					continue nextTransaction;
-				}
-			}
-			
-			it.remove();
-		}
-		
 		transactionsCount = copy.size();
 		
 		// filter unfrequent and closure
@@ -109,19 +96,14 @@ public class BasicDataset extends Dataset {
 	
 	/**
 	 * Projection constructor
-	 * projectedItem is supposed to be projectedItem support
+	 * projectedSupport is supposed to be projectedItem support
 	 * items in coreSupport's transactions are assumed to be already sorted
+	 * projectedItem will never re-appear or be outputted by this object
 	 */
 	protected BasicDataset(int minimumsupport, ArrayList<int[]> projectedSupport, int projectedItem) {
-		/**
-		 *  /!\
-		 *  since we will delete transactions containing only closure and 
-		 *  locally-infrequent items, this may become > data.size()
-		 */
-		transactionsCount = projectedSupport.size();
-		
 		minsup = minimumsupport;
 		coreItem = projectedItem;
+		transactionsCount = projectedSupport.size();
 		
 		//////// COUNT
 		TIntIntMap supportCounts = new TIntIntHashMap();
@@ -258,7 +240,7 @@ public class BasicDataset extends Dataset {
 		}
 		
 		/**
-		 * @return true if there is no int j in ] core_item; candidate [ having the same support as candidate 
+		 * @return true if there is no int j in [0; candidate [ having the same support as candidate 
 		 */
 		private boolean prefixPreservingTest(int candidate) {
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);

@@ -10,9 +10,7 @@ import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 
-/**
- * For every implementation of Dataset, add 
- */
+
 public class BasicDatasetTest {
 
 	@Test
@@ -30,6 +28,32 @@ public class BasicDatasetTest {
 		}
 		
 		assertThat(factory.get(), arrayIsItemset(new int[] {1,2,3,5,7}));
+	}
+	
+	@Test
+	public void testClosureAtStart() {
+		BasicDataset dataset = new BasicDataset(3, FileReaderTest.getGlobalClosure());
+		
+		int[] closure = dataset.getDiscoveredClosureItems();
+		assertEquals(1, closure.length);
+		assertEquals(1, closure[0]);
+		assertEquals(5, dataset.getTransactionsCount());
+		
+		TIntIterator candidates = dataset.getCandidatesIterator();
+		assertTrue(candidates.hasNext());
+		assertEquals(2, candidates.next());
+		assertFalse(candidates.hasNext());
+	}
+	
+	@Test
+	public void testFakeClosure() {
+		BasicDataset dataset = new BasicDataset(4, FileReaderTest.getFakeGlobalClosure());
+		assertEquals(0, dataset.getDiscoveredClosureItems().length);
+		
+		TIntIterator candidates = dataset.getCandidatesIterator();
+		while(candidates.hasNext()) {
+			assertFalse(1 != candidates.next());
+		}
 	}
 	
 	@Test

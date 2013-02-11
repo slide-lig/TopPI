@@ -12,6 +12,13 @@ public class FileReaderTest {
 		return new FileReader("target/test-classes/micro.dat");
 	}
 	
+	public static FileReader getGlobalClosure() {
+		return new FileReader("target/test-classes/globalclosure.dat");
+	}
+
+	public static FileReader getFakeGlobalClosure() {
+		return new FileReader("target/test-classes/fakeglobalclosure.dat");
+	}
 	@Test
 	public void testMicroLoading() {
 		FileReader reader = FileReaderTest.getMicroReader();
