@@ -183,16 +183,16 @@ public class BasicDataset extends Dataset {
 	
 	@Override
 	public TIntIterator getCandidatesIterator() {
-		return new CandidatesIterator(coreItem);
+		return new CandidatesIterator();
 	}
 	
 	/**
 	 * Iterates on candidates items such that
 	 * - their support count is in [minsup, transactionsCount[ ,
-	 *  - candidate > core_item
+	 *  - candidate > coreItem
 	 *  - no item < candidate has the same support as candidate (aka fast-prefix-preservation test)
 	 *    => assuming items from previously found patterns have been removed !!
-	 * Typically, core_item = extension item
+	 * coreItem = extension item (if it exists)
 	 */
 	protected class CandidatesIterator implements TIntIterator {
 		private int next_index;
@@ -203,27 +203,30 @@ public class BasicDataset extends Dataset {
 		 * @param original an iterator on frequent items
 		 * @param min 
 		 */
-		public CandidatesIterator(int core_item) {
+		public CandidatesIterator() {
 			next_index = -1;
 			
 			frequentItems = occurrences.keys();
 			Arrays.sort(frequentItems);
 			
-			if (core_item == Integer.MIN_VALUE) {
-				candidates = frequentItems;
-				findNext();
-			} else {
-				int core_index = 0;
-				while (core_index < frequentItems.length && frequentItems[core_index] <= core_item) core_index++;
-				
-				if (core_index < frequentItems.length) {
-					candidates = new int[frequentItems.length - core_index];
-					System.arraycopy(frequentItems, core_index, candidates, 0, candidates.length);
-					findNext();
-				}
-				// else : there's nothing to iterate on
+			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
+			if (coreItemIndex >= 0) {
+				throw new RuntimeException("Unexpected : coreItem appears in frequentItems !");
 			}
 			
+			// binarySearch returns -(insertion_point)-1
+			// where insertion_point == index of first element greater OR a.length
+			int candidatesStartIndex = -coreItemIndex - 1;
+			
+			if (candidatesStartIndex == 0) {
+				candidates = frequentItems;
+				findNext();
+			} else if (candidatesStartIndex < frequentItems.length) {
+				candidates = new int[frequentItems.length - candidatesStartIndex];
+				System.arraycopy(frequentItems, candidatesStartIndex, candidates, 0, candidates.length);
+				findNext();
+				
+			} // else candidatesStartIndex == frequentItems.length , ie. STOP
 		}
 		
 		private void findNext() {
