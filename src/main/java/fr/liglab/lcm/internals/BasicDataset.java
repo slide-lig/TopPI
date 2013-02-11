@@ -28,6 +28,8 @@ public class BasicDataset extends Dataset {
 	/**
 	 * frequent item => List<transactions containing item>
 	 * In other words, this map provides projections "for free"
+	 * 
+	 * Note that transactions are added in the same order in all occurences-ArrayLists. This property is used in CandidatesIterator's prefix-preserving test
 	 */
 	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
@@ -251,15 +253,10 @@ public class BasicDataset extends Dataset {
 				
 				//  otherwise we have  supp(j) < supp(candidate) : no need to worry about j
 				if (jOccurrences.size() >= candidateOccurrences.size()) {
-					boolean jBelongsToAllCandidateOccurrences = true;
-					for (int[] transaction : candidateOccurrences) {
-						if (Arrays.binarySearch(transaction, j) < 0) {
-							jBelongsToAllCandidateOccurrences = false;
-							break;
-						}
-					}
 					
-					if (jBelongsToAllCandidateOccurrences) {
+					// here we're using AbstractList::equals
+					// ie. transactions are expected to appear in the same order
+					if (candidateOccurrences.equals(jOccurrences)) {
 						return false;
 					}
 				}
