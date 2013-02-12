@@ -1,7 +1,10 @@
 package fr.liglab.lcm;
 
-import fr.liglab.lcm.internals.Dataset;
+import java.io.IOException;
+
 import fr.liglab.lcm.internals.BasicDataset;
+import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.StdOutCollector;
@@ -28,7 +31,20 @@ public class Main {
 	public static void standalone(String[] args) {
 		FileReader reader = new FileReader(args[0]);
 		int minsup = Integer.parseInt(args[1]);
-		PatternsCollector collector = new StdOutCollector();
+		
+		PatternsCollector collector = null;
+		
+		if (args.length >= 3) {
+			try {
+				collector = new FileCollector(args[2]);
+			} catch (IOException e) {
+				e.printStackTrace(System.err);
+				System.err.println("Aborting mining.");
+				System.exit(1);
+			}
+		} else {
+			collector = new StdOutCollector();
+		}
 		
 		Dataset dataset = new BasicDataset(minsup, reader);
 		LCM miner = new LCM(collector);
