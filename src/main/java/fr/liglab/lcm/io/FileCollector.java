@@ -3,9 +3,10 @@ package fr.liglab.lcm.io;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-
+import java.nio.charset.Charset;
 
 
 /**
@@ -16,12 +17,11 @@ public class FileCollector implements PatternsCollector {
 	
 	// this should be profiled and tuned !
 	protected static int BUFFER_CAPACITY = 4096;
-	// below this remaining capacity in buffer, it will be flushed to file
-	protected static int BUFFER_THRESHOLD = 20; 
 	
 	protected FileOutputStream stream;
 	protected FileChannel channel;
 	protected ByteBuffer buffer;
+	protected static Charset charset = Charset.forName("ASCII");
 	
 	public FileCollector(String path) throws IOException {
 		File file = new File(path);
@@ -39,43 +39,49 @@ public class FileCollector implements PatternsCollector {
 	
 	public void collect(int support, int[] pattern) {
 		putInt(support);
-		buffer.putChar('\t');
-		
-		if (buffer.remaining() < BUFFER_THRESHOLD) {
-			flush();
-		}
+		safePut((byte) '\t'); // putChar('\t') would append TWO bytes, but in ASCII we need only one
 		
 		boolean addSeparator = false;
 		for (int item : pattern) {
-			putInt(item);
 			if (addSeparator) {
-				buffer.putChar(' ');
+				safePut((byte) ' ');
 			} else {
 				addSeparator = true;
 			}
 			
-			if (buffer.remaining() < BUFFER_THRESHOLD) {
-				flush();
-			}
+			putInt(item);
 		}
 		
-		buffer.putChar('\n');	
+		safePut((byte) '\n');	
 	}
 	
 	protected void putInt(int i) {
-		for (char c : Integer.toString(i).toCharArray()) {
-			buffer.putChar(c);
+		try {
+			byte[] asBytes = Integer.toString(i).getBytes(charset);
+			buffer.put(asBytes);
+		} catch (BufferOverflowException e) {
+			flush();
+			putInt(i);
+		}
+	}
+	
+	protected void safePut(byte b) {
+		try {
+			buffer.put(b);
+		} catch (BufferOverflowException e) {
+			flush();
+			safePut(b);
 		}
 	}
 	
 	protected void flush() {
 		try {
+			buffer.flip();
 			channel.write(buffer);
+			buffer.clear();
 		} catch (IOException e) {
 			e.printStackTrace(System.err);
 		}
-		
-		buffer.clear();
 	}
 
 	public void close() {
