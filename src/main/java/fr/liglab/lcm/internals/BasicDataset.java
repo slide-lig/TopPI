@@ -256,16 +256,41 @@ public class BasicDataset extends Dataset {
 				
 				//  otherwise we have  supp(j) < supp(candidate) : no need to worry about j
 				if (jOccurrences.size() >= candidateOccurrences.size()) {
-					
-					// here we're using AbstractList::equals
-					// ie. transactions are expected to appear in the same order
-					if (candidateOccurrences.equals(jOccurrences)) {
+					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
 						return false;
 					}
 				}
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * @return true if A is included in B, assuming they share array pointers (appended in the same order)
+		 */
+		private boolean isAincludedInB(ArrayList<int[]> a, ArrayList<int[]> b) {
+			Iterator<int[]> aIt = a.iterator();
+			Iterator<int[]> bIt = b.iterator();
+			
+			int[] transactionA = null;
+			int[] transactionB = null;
+			
+			// FIXME maybe some readahead could avoid complete traversal 
+			while (aIt.hasNext()) {
+				transactionA = aIt.next();
+				
+				while (true) {
+					transactionB = bIt.next();
+					if (transactionA == transactionB) {
+						break;
+					}
+					if (!bIt.hasNext()) { // couldn't find transactionA in B
+						return false;
+					}
+				}
+			}
+			
+			return transactionA == transactionB;
 		}
 		
 		public boolean hasNext() {

@@ -32,7 +32,7 @@ public class BasicDatasetTest {
 	
 	@Test
 	public void testClosureAtStart() {
-		BasicDataset dataset = new BasicDataset(3, FileReaderTest.getGlobalClosure());
+		BasicDataset dataset = new BasicDataset(2, FileReaderTest.getGlobalClosure());
 		
 		int[] closure = dataset.getDiscoveredClosureItems();
 		assertEquals(1, closure.length);
@@ -47,13 +47,13 @@ public class BasicDatasetTest {
 	
 	@Test
 	public void testFakeClosure() {
-		BasicDataset dataset = new BasicDataset(4, FileReaderTest.getFakeGlobalClosure());
+		BasicDataset dataset = new BasicDataset(2, FileReaderTest.getFakeGlobalClosure());
 		assertEquals(0, dataset.getDiscoveredClosureItems().length);
 		
 		TIntIterator candidates = dataset.getCandidatesIterator();
-		while(candidates.hasNext()) {
-			assertFalse(1 != candidates.next());
-		}
+		assertTrue(candidates.hasNext());
+		assertEquals(1, candidates.next());
+		assertFalse(candidates.hasNext());
 	}
 	
 	@Test

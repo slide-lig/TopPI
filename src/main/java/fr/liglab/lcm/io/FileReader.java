@@ -19,6 +19,7 @@ public class FileReader implements Iterator<int[]> {
 	
 	private Scanner scanner;
 	private ItemsetsFactory builder = new ItemsetsFactory();
+	private String[] nextTokens;
 	
 	public FileReader(String path) {
 		File file = new File(path);
@@ -30,22 +31,35 @@ public class FileReader implements Iterator<int[]> {
 			System.exit(1);
 		}
 		
+		fillNextTokens();
 	}
 	
 	public void close() {
 		scanner.close();
 	}
+	
+	private void fillNextTokens() {
+		nextTokens = null;
+		
+		while (nextTokens == null && scanner.hasNextLine()) {
+			String[] tokens = scanner.nextLine().split(" ");
+			
+			if (tokens.length > 0 && !tokens[0].isEmpty()) {
+				nextTokens = tokens;
+			}
+		}
+	}
 
 	public boolean hasNext() {
-		return scanner.hasNextLine();
+		return nextTokens != null;
 	}
 
 	public int[] next() {
-		String[] tokens = scanner.nextLine().split(" ");
-		
-		for (String token : tokens) {
+		for (String token : nextTokens) {
 			builder.add(Integer.parseInt(token));
 		}
+		
+		fillNextTokens();
 		
 		return builder.get();
 	}
