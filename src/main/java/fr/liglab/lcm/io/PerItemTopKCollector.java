@@ -1,10 +1,10 @@
 package fr.liglab.lcm.io;
 
-import java.util.Arrays;
-
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
+
+import java.util.Arrays;
 
 public class PerItemTopKCollector implements PatternsCollector {
 	/*
@@ -24,7 +24,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		this.k = k;
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
-		this.topK = new TIntObjectHashMap<>();
+		this.topK = new TIntObjectHashMap<PatternWithFreq[]>();
 	}
 
 	@Override

@@ -33,5 +33,9 @@ public class LCMTest {
 				new BasicDataset(2, FileReaderTest.getMicroReader())
 				);
 		
+		invokeAndCheck(
+				FileReaderTest.get50RetailPatterns(),
+				new BasicDataset(4, FileReaderTest.get50Retail())
+				);
 	}
 }

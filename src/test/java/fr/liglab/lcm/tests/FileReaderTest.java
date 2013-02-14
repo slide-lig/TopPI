@@ -72,6 +72,35 @@ public class FileReaderTest {
 		return patterns;
 	}
 	
+	/**
+	 * First 50 lines of retail.dat
+	 */
+	public static FileReader get50Retail() {
+		return new FileReader("target/test-classes/50retail.dat");
+	}
+	
+	/**
+	 * minsup = 4
+	 */
+	public static StubPatternsCollector get50RetailPatterns() {
+		StubPatternsCollector patterns = new StubPatternsCollector();
+		patterns.expectCollect(5, 	32);
+		patterns.expectCollect(12, 	38);
+		patterns.expectCollect(6, 	38, 36);
+		patterns.expectCollect(32, 	39);
+		patterns.expectCollect(11, 	39, 38);
+		patterns.expectCollect(5, 	39, 38, 36);
+		patterns.expectCollect(11, 	41);
+		patterns.expectCollect(4, 	41, 38);
+		patterns.expectCollect(8, 	41, 39);
+		patterns.expectCollect(23, 	48);
+		patterns.expectCollect(7, 	48, 38);
+		patterns.expectCollect(18, 	48, 39);
+		patterns.expectCollect(6, 	48, 39, 38);
+		patterns.expectCollect(6, 	48, 41);
+		patterns.expectCollect(5, 	48, 41, 39);
+		return patterns;
+	}
 	
 	
 	
