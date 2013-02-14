@@ -21,7 +21,7 @@ import org.apache.commons.lang.NotImplementedException;
  */
 public class BasicDataset extends Dataset {
 	
-	protected int coreItem = Integer.MIN_VALUE; // default value for the initial itemset
+	protected int coreItem = Integer.MAX_VALUE; // default value for the initial dataset : everything is a candidate
 	protected int transactionsCount = 0;
 	protected int[] discoveredClosure;
 	
@@ -189,14 +189,14 @@ public class BasicDataset extends Dataset {
 	/**
 	 * Iterates on candidates items such that
 	 * - their support count is in [minsup, transactionsCount[ ,
-	 *  - candidate > coreItem
-	 *  - no item < candidate has the same support as candidate (aka fast-prefix-preservation test)
-	 *    => assuming items from previously found patterns have been removed !!
+	 *  - candidate < coreItem
+	 *  - no item > candidate has the same support as candidate (aka fast-prefix-preservation test)
+	 *    => assuming items from previously found patterns (including coreItem) have been removed !!
 	 * coreItem = extension item (if it exists)
 	 */
 	protected class CandidatesIterator implements TIntIterator {
 		private int next_index;
-		private final int[] candidates;
+		private final int candidatesLength; // candidates is frequentItems[0:candidatesLength[
 		private final int[] frequentItems;
 		
 		/**
@@ -216,18 +216,10 @@ public class BasicDataset extends Dataset {
 			
 			// binarySearch returns -(insertion_point)-1
 			// where insertion_point == index of first element greater OR a.length
-			int candidatesStartIndex = -coreItemIndex - 1;
+			candidatesLength = -coreItemIndex - 1; 
 			
-			if (candidatesStartIndex == 0) {
-				candidates = frequentItems;
+			if (candidatesLength >= 0) {
 				findNext();
-			} else if (candidatesStartIndex < frequentItems.length) {
-				candidates = new int[frequentItems.length - candidatesStartIndex];
-				System.arraycopy(frequentItems, candidatesStartIndex, candidates, 0, candidates.length);
-				findNext();
-				
-			} else { // candidatesStartIndex == frequentItems.length , ie. STOP
-				candidates = null;
 			}
 		}
 		
@@ -235,10 +227,10 @@ public class BasicDataset extends Dataset {
 			next_index++;
 			
 			while (0 <= next_index) {
-				if (next_index == candidates.length) {
+				if (next_index == candidatesLength) {
 					next_index = -1;
 					break;
-				} else if (prefixPreservingTest(candidates[next_index])) {
+				} else if (prefixPreservingTest(next_index)) {
 					break;
 				} else {
 					next_index++;
@@ -247,12 +239,13 @@ public class BasicDataset extends Dataset {
 		}
 		
 		/**
-		 * @return true if there is no int j in [0; candidate [ having the same support as candidate 
+		 * @return true if there is no int j > candidate having the same support as candidate 
 		 */
-		private boolean prefixPreservingTest(final int candidate) {
+		private boolean prefixPreservingTest(final int candidateIndex) {
+			final int candidate = frequentItems[candidateIndex];
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
 			
-			for (int i=0; frequentItems[i] < candidate; i++) {
+			for (int i=candidateIndex + 1; i < frequentItems.length; i++) {
 				int j = frequentItems[i];
 				ArrayList<int[]> jOccurrences = occurrences.get(j);
 				
@@ -277,7 +270,6 @@ public class BasicDataset extends Dataset {
 			int[] transactionA = null;
 			int[] transactionB = null;
 			
-			// FIXME maybe some readahead could avoid complete traversal 
 			while (aIt.hasNext()) {
 				transactionA = aIt.next();
 				
@@ -302,7 +294,7 @@ public class BasicDataset extends Dataset {
 		public int next() {
 			int old_i = next_index;
 			findNext();
-			return candidates[old_i];
+			return frequentItems[old_i];
 		}
 
 		/**
