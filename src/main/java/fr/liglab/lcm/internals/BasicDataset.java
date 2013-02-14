@@ -38,7 +38,7 @@ public class BasicDataset extends Dataset {
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.  
 	 */
-	public BasicDataset(int minimumsupport, Iterator<int[]> transactions) {
+	public BasicDataset(final int minimumsupport, final Iterator<int[]> transactions) {
 		minsup = minimumsupport;
 		
 		ArrayList<int[]> copy = new ArrayList<int[]>();
@@ -102,7 +102,7 @@ public class BasicDataset extends Dataset {
 	 * items in coreSupport's transactions are assumed to be already sorted
 	 * projectedItem will never re-appear or be outputted by this object
 	 */
-	protected BasicDataset(int minimumsupport, ArrayList<int[]> projectedSupport, int projectedItem) {
+	protected BasicDataset(final int minimumsupport, final ArrayList<int[]> projectedSupport, final int projectedItem) {
 		minsup = minimumsupport;
 		coreItem = projectedItem;
 		transactionsCount = projectedSupport.size();
@@ -196,8 +196,8 @@ public class BasicDataset extends Dataset {
 	 */
 	protected class CandidatesIterator implements TIntIterator {
 		private int next_index;
-		private int[] candidates;
-		private int[] frequentItems;
+		private final int[] candidates;
+		private final int[] frequentItems;
 		
 		/**
 		 * @param original an iterator on frequent items
@@ -226,7 +226,9 @@ public class BasicDataset extends Dataset {
 				System.arraycopy(frequentItems, candidatesStartIndex, candidates, 0, candidates.length);
 				findNext();
 				
-			} // else candidatesStartIndex == frequentItems.length , ie. STOP
+			} else { // candidatesStartIndex == frequentItems.length , ie. STOP
+				candidates = null;
+			}
 		}
 		
 		private void findNext() {
@@ -247,7 +249,7 @@ public class BasicDataset extends Dataset {
 		/**
 		 * @return true if there is no int j in [0; candidate [ having the same support as candidate 
 		 */
-		private boolean prefixPreservingTest(int candidate) {
+		private boolean prefixPreservingTest(final int candidate) {
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
 			
 			for (int i=0; frequentItems[i] < candidate; i++) {
@@ -268,7 +270,7 @@ public class BasicDataset extends Dataset {
 		/**
 		 * @return true if A is included in B, assuming they share array pointers (appended in the same order)
 		 */
-		private boolean isAincludedInB(ArrayList<int[]> a, ArrayList<int[]> b) {
+		private boolean isAincludedInB(final ArrayList<int[]> a, final ArrayList<int[]> b) {
 			Iterator<int[]> aIt = a.iterator();
 			Iterator<int[]> bIt = b.iterator();
 			

@@ -21,7 +21,7 @@ public class FileReader implements Iterator<int[]> {
 	private ItemsetsFactory builder = new ItemsetsFactory();
 	private String[] nextTokens;
 	
-	public FileReader(String path) {
+	public FileReader(final String path) {
 		File file = new File(path);
 		
 		try {

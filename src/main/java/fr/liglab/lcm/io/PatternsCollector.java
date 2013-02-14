@@ -1,7 +1,7 @@
 package fr.liglab.lcm.io;
 
 public interface PatternsCollector {
-	public void collect(int support, int[] pattern);
+	public void collect(final int support, final int[] pattern);
 	
 	/**
 	 * Call this once mining has terminated.

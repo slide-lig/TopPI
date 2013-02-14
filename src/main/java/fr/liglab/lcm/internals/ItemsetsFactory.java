@@ -16,11 +16,11 @@ public class ItemsetsFactory {
 	/**
 	 * If you're going big and have an estimation of future array's size...
 	 */
-	public void ensureCapacity(int c) {
+	public void ensureCapacity(final int c) {
 		buffer.ensureCapacity(c);
 	}
 	
-	public void add(int i) {
+	public void add(final int i) {
 		buffer.add(i);
 	}
 	
@@ -47,7 +47,7 @@ public class ItemsetsFactory {
 	/**
 	 * @return a new array concatenating each of its arguments
 	 */
-	public static int[] extend(int[] pattern, int extension, int[] closure) {
+	public static int[] extend(final int[] pattern, final int extension, final int[] closure) {
 		int[] extended = new int[pattern.length + closure.length + 1];
 		
 		System.arraycopy(pattern, 0, extended, 0, pattern.length);

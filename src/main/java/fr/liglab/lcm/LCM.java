@@ -11,7 +11,7 @@ import gnu.trove.iterator.TIntIterator;
  * by Takeaki Uno el. al.
  */
 public class LCM {
-	PatternsCollector collector;
+	private final PatternsCollector collector;
 	
 	public LCM(PatternsCollector patternsCollector) {
 		collector = patternsCollector;
@@ -20,7 +20,7 @@ public class LCM {
 	/**
 	 * Initial invocation
 	 */
-	public void lcm (Dataset dataset) {
+	public void lcm (final Dataset dataset) {
 		int[] pattern = dataset.getDiscoveredClosureItems(); // usually, it's empty
 		
 		if (pattern.length > 0) {
@@ -43,7 +43,7 @@ public class LCM {
 	 * @param parent_dataset - pattern's support
 	 * @param extension is an item known to yield a prefix-preserving extension of P 
 	 */
-	public void lcm(int[] pattern, Dataset parent_dataset, int extension) {
+	public void lcm(final int[] pattern, final Dataset parent_dataset, int extension) {
 		
 		Dataset dataset = parent_dataset.getProjection(extension);
 		int[] Q = ItemsetsFactory.extend(pattern, extension, dataset.getDiscoveredClosureItems());
