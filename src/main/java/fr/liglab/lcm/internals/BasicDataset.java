@@ -51,10 +51,7 @@ public class BasicDataset extends Dataset {
 		
 		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		reduceAndBuildOccurrences(transactionsCopier, 
-				supportCounts.keySet(), 
-				new SortedItemsetsFactory()
-		);
+		reduceAndBuildOccurrences(transactionsCopier, supportCounts, new SortedItemsetsFactory());
 	}
 	
 	
@@ -75,20 +72,18 @@ public class BasicDataset extends Dataset {
 		
 		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		reduceAndBuildOccurrences(projectedSupport, 
-				supportCounts.keySet(), 
-				new ItemsetsFactory()
-		);
+		reduceAndBuildOccurrences(projectedSupport, supportCounts, new ItemsetsFactory());
 	}
 	
 	/**
 	 * Reduce the given dataset and build occurrences list by the way
 	 * 
-	 * All transactions will be filtered (keeping only items in "retained") and 
+	 * All transactions will be filtered (keeping only items existing in supportCounts) and 
 	 * constructed via the provided builder
 	 */
-	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntSet retained, ItemsetsFactory builder) {
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntIntMap supportCounts, ItemsetsFactory builder) {
 		builder.get(); // reset builder, just to be sure
+		TIntSet retained = supportCounts.keySet();
 		
 		for (int[] inputTransaction : dataset) {
 			for (int item : inputTransaction) {
