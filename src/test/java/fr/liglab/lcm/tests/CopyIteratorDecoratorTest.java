@@ -31,7 +31,7 @@ public class CopyIteratorDecoratorTest {
 		
 		assertEquals(3, tested.size());
 		
-		Iterator<Integer> itAgain = tested.newIterator();
+		Iterator<Integer> itAgain = tested.iterator();
 		assertTrue(itAgain.hasNext());
 		assertEquals((Integer) 12, itAgain.next());
 		assertTrue(itAgain.hasNext());
@@ -62,7 +62,7 @@ public class CopyIteratorDecoratorTest {
 		
 		assertEquals(2, tested.size());
 		
-		Iterator<Integer> itAgain = tested.newIterator();
+		Iterator<Integer> itAgain = tested.iterator();
 		assertTrue(itAgain.hasNext());
 		assertEquals((Integer) 12, itAgain.next());
 		assertTrue(itAgain.hasNext());
