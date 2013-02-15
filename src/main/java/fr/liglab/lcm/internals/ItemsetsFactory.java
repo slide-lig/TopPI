@@ -10,8 +10,8 @@ public class ItemsetsFactory {
 	
 	// default constructor FTW
 	
-	private TIntArrayList buffer = new TIntArrayList();
-	private int capacity = 50;
+	protected TIntArrayList buffer = new TIntArrayList();
+	protected int capacity = 50;
 	
 	/**
 	 * If you're going big and have an estimation of future array's size...
