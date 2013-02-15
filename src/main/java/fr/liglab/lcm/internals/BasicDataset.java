@@ -1,9 +1,7 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
-import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.ArrayList;
@@ -21,9 +19,9 @@ import org.apache.commons.lang.NotImplementedException;
  */
 public class BasicDataset extends Dataset {
 	
-	protected int coreItem = Integer.MAX_VALUE; // default value for the initial dataset : everything is a candidate
-	protected int transactionsCount = 0;
-	protected int[] discoveredClosure;
+	protected final int coreItem;
+	protected final int transactionsCount;
+	protected final int[] discoveredClosure;
 	
 	/**
 	 * frequent item => List<transactions containing item>
@@ -34,6 +32,8 @@ public class BasicDataset extends Dataset {
 	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
 	/**
+	 * Initial dataset constructor
+	 * 
 	 * "transactions" iterator will be traversed only once. Though, references 
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.  
@@ -41,38 +41,18 @@ public class BasicDataset extends Dataset {
 	public BasicDataset(final int minimumsupport, final Iterator<int[]> transactions) {
 		minsup = minimumsupport;
 		
-		ArrayList<int[]> copy = new ArrayList<int[]>();
-		TIntIntMap supportCounts = new TIntIntHashMap();
+		// in initial dataset, all items are candidate => all items < coreItem
+		coreItem = Integer.MAX_VALUE;
 		
-		// count
-		while (transactions.hasNext()) {
-			int[] transaction = transactions.next();
-			copy.add(transaction);
-			
-			for (int i = 0; i < transaction.length; i++) {
-				supportCounts.adjustOrPutValue(transaction[i], 1, 1);
-			}
-		}
+		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(transactions); 
+		TIntIntMap supportCounts = Dataset.genSupportCounts(transactionsCopier);
+		transactionsCount = transactionsCopier.size();
 		
-		transactionsCount = copy.size();
+		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		// filter unfrequent and closure
 		ItemsetsFactory builder = new ItemsetsFactory();
-		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
-			count.advance();
-			
-			if (count.value() < minsup) {
-				count.remove();
-			} else if (count.value() == transactionsCount) {
-				builder.add(count.key());
-				count.remove();
-			}
-		}
 		
-		discoveredClosure = builder.get();
-		
-		// create filtered transactions
-		for (int[] inputTransaction : copy) {
+		for (int[] inputTransaction : transactionsCopier) {
 			for (int item : inputTransaction) {
 				if (supportCounts.containsKey(item)) {
 					builder.add(item);
@@ -107,34 +87,14 @@ public class BasicDataset extends Dataset {
 		coreItem = projectedItem;
 		transactionsCount = projectedSupport.size();
 		
-		//////// COUNT
-		TIntIntMap supportCounts = new TIntIntHashMap();
+		TIntIntMap supportCounts = Dataset.genSupportCounts(projectedSupport.iterator());
+		// coreItem is known to have a 100% support,  we don't want it in the computed closure
+		supportCounts.remove(coreItem);
 		
-		for (int[] transaction : projectedSupport) {
-			for (int i = 0; i < transaction.length; i++) {
-				// coz we assume coreItem'support will 100% + we don't want it in the computed closure
-				if (transaction[i] != coreItem) {
-					supportCounts.adjustOrPutValue(transaction[i], 1, 1);
-				}
-			}
-		}
+		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		/////// FILTER COUNT
 		ItemsetsFactory builder = new ItemsetsFactory();
-		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
-			count.advance();
-			
-			if (count.value() < minsup) {
-				count.remove();
-			} else if (count.value() == transactionsCount) {
-				builder.add(count.key());
-				count.remove();
-			}
-		}
 		
-		discoveredClosure = builder.get();
-		
-		/////// REDUCE DATA
 		for (int[] inputTransaction : projectedSupport) {
 			for (int item : inputTransaction) {
 				if (supportCounts.containsKey(item)) {
@@ -157,9 +117,11 @@ public class BasicDataset extends Dataset {
 				}
 			}
 		}
-		
-		/////// PROFIT
 	}
+	
+	
+	
+	
 
 	@Override
 	public int getTransactionsCount() {
