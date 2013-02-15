@@ -3,6 +3,7 @@ package fr.liglab.lcm.internals;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.set.TIntSet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,29 +51,10 @@ public class BasicDataset extends Dataset {
 		
 		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		ItemsetsFactory builder = new ItemsetsFactory();
-		
-		for (int[] inputTransaction : transactionsCopier) {
-			for (int item : inputTransaction) {
-				if (supportCounts.containsKey(item)) {
-					builder.add(item);
-				}
-			}
-			
-			int [] filtered = builder.get();
-			Arrays.sort(filtered); // TODO perform insertion sort directly in ItemsetsFactory
-			
-			for (int item : filtered) {
-				ArrayList<int[]> tids = occurrences.get(item);
-				if (tids == null) {
-					tids = new ArrayList<int[]>();
-					tids.add(filtered);
-					occurrences.put(item, tids);
-				} else {
-					tids.add(filtered);
-				}
-			}
-		}
+		reduceAndBuildOccurrences(transactionsCopier, 
+				supportCounts.keySet(), 
+				new SortedItemsetsFactory()
+		);
 	}
 	
 	
@@ -93,11 +75,24 @@ public class BasicDataset extends Dataset {
 		
 		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		ItemsetsFactory builder = new ItemsetsFactory();
+		reduceAndBuildOccurrences(projectedSupport, 
+				supportCounts.keySet(), 
+				new ItemsetsFactory()
+		);
+	}
+	
+	/**
+	 * Reduce the given dataset and build occurrences list by the way
+	 * 
+	 * All transactions will be filtered (keeping only items in "retained") and 
+	 * constructed via the provided builder
+	 */
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntSet retained, ItemsetsFactory builder) {
+		builder.get(); // reset builder, just to be sure
 		
-		for (int[] inputTransaction : projectedSupport) {
+		for (int[] inputTransaction : dataset) {
 			for (int item : inputTransaction) {
-				if (supportCounts.containsKey(item)) {
+				if (retained.contains(item)) {
 					builder.add(item);
 				}
 			}
