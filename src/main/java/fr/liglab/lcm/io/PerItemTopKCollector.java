@@ -13,6 +13,10 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * we need to take a lock when dealing with an item We can use a collection
 	 * of locks and a hash of the item to do that safely, be careful with
 	 * insertions in the map though
+	 * 
+	 * What we should do for MapReduce is create it in the open and close it on
+	 * the close, so when we execute several maps on the same mapper they all
+	 * benefit from the top-k of the others
 	 */
 	private final PatternsCollector follower;
 	private final int k;
