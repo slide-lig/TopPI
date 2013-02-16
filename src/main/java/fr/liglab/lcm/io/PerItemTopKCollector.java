@@ -1,10 +1,10 @@
 package fr.liglab.lcm.io;
 
-import java.util.Arrays;
-
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
+
+import java.util.Arrays;
 
 public class PerItemTopKCollector implements PatternsCollector {
 	/*
@@ -23,15 +23,13 @@ public class PerItemTopKCollector implements PatternsCollector {
 	private final TIntObjectMap<PatternWithFreq[]> topK;
 
 	public PerItemTopKCollector(PatternsCollector follower, int k) {
-		super();
 		this.follower = follower;
 		this.k = k;
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
-		this.topK = new TIntObjectHashMap<>();
+		this.topK = new TIntObjectHashMap<PatternWithFreq[]>();
 	}
-
-	@Override
+	
 	public void collect(final int support, final int[] pattern) {
 		for (final int item : pattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
@@ -86,7 +84,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	@Override
 	public void close() {
 		// output all patterns of top-k, generating multiple times the same
 		// pattern if in different top-k
@@ -139,7 +136,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		final StringBuilder sb = new StringBuilder();
 		this.topK.forEachEntry(new TIntObjectProcedure<PatternWithFreq[]>() {
 
-			@Override
 			public boolean execute(int key, PatternWithFreq[] value) {
 				sb.append("item " + key + " patterns");
 				for (int i = 0; i < value.length; i++) {

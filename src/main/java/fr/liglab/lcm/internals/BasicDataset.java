@@ -1,10 +1,9 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
-import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.set.TIntSet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,9 +20,9 @@ import org.apache.commons.lang.NotImplementedException;
  */
 public class BasicDataset extends Dataset {
 	
-	protected int coreItem = Integer.MIN_VALUE; // default value for the initial itemset
-	protected int transactionsCount = 0;
-	protected int[] discoveredClosure;
+	protected final int coreItem;
+	protected final int transactionsCount;
+	protected final int[] discoveredClosure;
 	
 	/**
 	 * frequent item => List<transactions containing item>
@@ -34,65 +33,25 @@ public class BasicDataset extends Dataset {
 	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
 	/**
+	 * Initial dataset constructor
+	 * 
 	 * "transactions" iterator will be traversed only once. Though, references 
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.  
 	 */
-	public BasicDataset(int minimumsupport, Iterator<int[]> transactions) {
+	public BasicDataset(final int minimumsupport, final Iterator<int[]> transactions) {
 		minsup = minimumsupport;
 		
-		ArrayList<int[]> copy = new ArrayList<int[]>();
-		TIntIntMap supportCounts = new TIntIntHashMap();
+		// in initial dataset, all items are candidate => all items < coreItem
+		coreItem = Integer.MAX_VALUE;
 		
-		// count
-		while (transactions.hasNext()) {
-			int[] transaction = transactions.next();
-			copy.add(transaction);
-			
-			for (int i = 0; i < transaction.length; i++) {
-				supportCounts.adjustOrPutValue(transaction[i], 1, 1);
-			}
-		}
+		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(transactions); 
+		TIntIntMap supportCounts = Dataset.genSupportCounts(transactionsCopier);
+		transactionsCount = transactionsCopier.size();
 		
-		transactionsCount = copy.size();
+		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		// filter unfrequent and closure
-		ItemsetsFactory builder = new ItemsetsFactory();
-		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
-			count.advance();
-			
-			if (count.value() < minsup) {
-				count.remove();
-			} else if (count.value() == transactionsCount) {
-				builder.add(count.key());
-				count.remove();
-			}
-		}
-		
-		discoveredClosure = builder.get();
-		
-		// create filtered transactions
-		for (int[] inputTransaction : copy) {
-			for (int item : inputTransaction) {
-				if (supportCounts.containsKey(item)) {
-					builder.add(item);
-				}
-			}
-			
-			int [] filtered = builder.get();
-			Arrays.sort(filtered); // TODO perform insertion sort directly in ItemsetsFactory
-			
-			for (int item : filtered) {
-				ArrayList<int[]> tids = occurrences.get(item);
-				if (tids == null) {
-					tids = new ArrayList<int[]>();
-					tids.add(filtered);
-					occurrences.put(item, tids);
-				} else {
-					tids.add(filtered);
-				}
-			}
-		}
+		reduceAndBuildOccurrences(transactionsCopier, supportCounts, new SortedItemsetsFactory());
 	}
 	
 	
@@ -102,42 +61,33 @@ public class BasicDataset extends Dataset {
 	 * items in coreSupport's transactions are assumed to be already sorted
 	 * projectedItem will never re-appear or be outputted by this object
 	 */
-	protected BasicDataset(int minimumsupport, ArrayList<int[]> projectedSupport, int projectedItem) {
+	protected BasicDataset(final int minimumsupport, final ArrayList<int[]> projectedSupport, final int projectedItem) {
 		minsup = minimumsupport;
 		coreItem = projectedItem;
 		transactionsCount = projectedSupport.size();
 		
-		//////// COUNT
-		TIntIntMap supportCounts = new TIntIntHashMap();
+		TIntIntMap supportCounts = Dataset.genSupportCounts(projectedSupport.iterator());
+		// coreItem is known to have a 100% support,  we don't want it in the computed closure
+		supportCounts.remove(coreItem);
 		
-		for (int[] transaction : projectedSupport) {
-			for (int i = 0; i < transaction.length; i++) {
-				// coz we assume coreItem'support will 100% + we don't want it in the computed closure
-				if (transaction[i] != coreItem) {
-					supportCounts.adjustOrPutValue(transaction[i], 1, 1);
-				}
-			}
-		}
+		discoveredClosure = getClosureAndFilterCount(supportCounts);
 		
-		/////// FILTER COUNT
-		ItemsetsFactory builder = new ItemsetsFactory();
-		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
-			count.advance();
-			
-			if (count.value() < minsup) {
-				count.remove();
-			} else if (count.value() == transactionsCount) {
-				builder.add(count.key());
-				count.remove();
-			}
-		}
+		reduceAndBuildOccurrences(projectedSupport, supportCounts, new ItemsetsFactory());
+	}
+	
+	/**
+	 * Reduce the given dataset and build occurrences list by the way
+	 * 
+	 * All transactions will be filtered (keeping only items existing in supportCounts) and 
+	 * constructed via the provided builder
+	 */
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntIntMap supportCounts, ItemsetsFactory builder) {
+		builder.get(); // reset builder, just to be sure
+		TIntSet retained = supportCounts.keySet();
 		
-		discoveredClosure = builder.get();
-		
-		/////// REDUCE DATA
-		for (int[] inputTransaction : projectedSupport) {
+		for (int[] inputTransaction : dataset) {
 			for (int item : inputTransaction) {
-				if (supportCounts.containsKey(item)) {
+				if (retained.contains(item)) {
 					builder.add(item);
 				}
 			}
@@ -157,9 +107,11 @@ public class BasicDataset extends Dataset {
 				}
 			}
 		}
-		
-		/////// PROFIT
 	}
+	
+	
+	
+	
 
 	@Override
 	public int getTransactionsCount() {
@@ -189,15 +141,15 @@ public class BasicDataset extends Dataset {
 	/**
 	 * Iterates on candidates items such that
 	 * - their support count is in [minsup, transactionsCount[ ,
-	 *  - candidate > coreItem
-	 *  - no item < candidate has the same support as candidate (aka fast-prefix-preservation test)
-	 *    => assuming items from previously found patterns have been removed !!
+	 *  - candidate < coreItem
+	 *  - no item > candidate has the same support as candidate (aka fast-prefix-preservation test)
+	 *    => assuming items from previously found patterns (including coreItem) have been removed !!
 	 * coreItem = extension item (if it exists)
 	 */
 	protected class CandidatesIterator implements TIntIterator {
 		private int next_index;
-		private int[] candidates;
-		private int[] frequentItems;
+		private final int candidatesLength; // candidates is frequentItems[0:candidatesLength[
+		private final int[] frequentItems;
 		
 		/**
 		 * @param original an iterator on frequent items
@@ -216,27 +168,21 @@ public class BasicDataset extends Dataset {
 			
 			// binarySearch returns -(insertion_point)-1
 			// where insertion_point == index of first element greater OR a.length
-			int candidatesStartIndex = -coreItemIndex - 1;
+			candidatesLength = -coreItemIndex - 1; 
 			
-			if (candidatesStartIndex == 0) {
-				candidates = frequentItems;
+			if (candidatesLength >= 0) {
 				findNext();
-			} else if (candidatesStartIndex < frequentItems.length) {
-				candidates = new int[frequentItems.length - candidatesStartIndex];
-				System.arraycopy(frequentItems, candidatesStartIndex, candidates, 0, candidates.length);
-				findNext();
-				
-			} // else candidatesStartIndex == frequentItems.length , ie. STOP
+			}
 		}
 		
 		private void findNext() {
 			next_index++;
 			
 			while (0 <= next_index) {
-				if (next_index == candidates.length) {
+				if (next_index == candidatesLength) {
 					next_index = -1;
 					break;
-				} else if (prefixPreservingTest(candidates[next_index])) {
+				} else if (prefixPreservingTest(next_index)) {
 					break;
 				} else {
 					next_index++;
@@ -245,27 +191,52 @@ public class BasicDataset extends Dataset {
 		}
 		
 		/**
-		 * @return true if there is no int j in [0; candidate [ having the same support as candidate 
+		 * @return true if there is no int j > candidate having the same support as candidate 
 		 */
-		private boolean prefixPreservingTest(int candidate) {
+		private boolean prefixPreservingTest(final int candidateIndex) {
+			final int candidate = frequentItems[candidateIndex];
 			ArrayList<int[]> candidateOccurrences = occurrences.get(candidate);
 			
-			for (int i=0; frequentItems[i] < candidate; i++) {
+			for (int i=candidateIndex + 1; i < frequentItems.length; i++) {
 				int j = frequentItems[i];
 				ArrayList<int[]> jOccurrences = occurrences.get(j);
 				
 				//  otherwise we have  supp(j) < supp(candidate) : no need to worry about j
 				if (jOccurrences.size() >= candidateOccurrences.size()) {
-					
-					// here we're using AbstractList::equals
-					// ie. transactions are expected to appear in the same order
-					if (candidateOccurrences.equals(jOccurrences)) {
+					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
 						return false;
 					}
 				}
 			}
 			
 			return true;
+		}
+		
+		/**
+		 * @return true if A is included in B, assuming they share array pointers (appended in the same order)
+		 */
+		private boolean isAincludedInB(final ArrayList<int[]> a, final ArrayList<int[]> b) {
+			Iterator<int[]> aIt = a.iterator();
+			Iterator<int[]> bIt = b.iterator();
+			
+			int[] transactionA = null;
+			int[] transactionB = null;
+			
+			while (aIt.hasNext()) {
+				transactionA = aIt.next();
+				
+				while (true) {
+					transactionB = bIt.next();
+					if (transactionA == transactionB) {
+						break;
+					}
+					if (!bIt.hasNext()) { // couldn't find transactionA in B
+						return false;
+					}
+				}
+			}
+			
+			return transactionA == transactionB;
 		}
 		
 		public boolean hasNext() {
@@ -275,7 +246,7 @@ public class BasicDataset extends Dataset {
 		public int next() {
 			int old_i = next_index;
 			findNext();
-			return candidates[old_i];
+			return frequentItems[old_i];
 		}
 
 		/**

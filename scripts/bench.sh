@@ -1,5 +1,9 @@
 #!/bin/bash
 
+###### TODO:
+## inclure le LCM d'Uno et al dans le bench
+
+
 CLASSPATH="$HOME/Labo/lcm-over-hadoop/target/classes"
 CLASSPATH="$CLASSPATH:$HOME/.m2/repository/net/sf/trove4j/trove4j/3.0.3/trove4j-3.0.3.jar"
 CLASSPATH="$CLASSPATH:$HOME/.m2/repository/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"
@@ -7,12 +11,16 @@ CLASSPATH="$CLASSPATH:$HOME/.m2/repository/commons-lang/commons-lang/2.4/commons
 PLCM="/Users/martin/Labo/plcm/algorithms/plcm/plcm"
 jLCM="java -Xmx1024m -cp $CLASSPATH fr.liglab.lcm.Main"
 
+function algoName() {
+  commandline=`echo $1 | cut -f 1 -d ' '`
+  basename $commandline
+}
 
 function runner() {
   start=`date +%s`
   peak=0
   
-  $* > /dev/null &
+  $* &
   
   while rss=`ps -o rss= -p$!`
   do
@@ -24,14 +32,28 @@ function runner() {
   
   end=`date +%s`
   duration=$(($end-$start))
+  name=`algoName $1`
   
-  echo "$* : ${duration}s on ${peak}kb"
+  echo "$name : ${duration}s on ${peak}kb"
 }
 
 function bench() {
   echo "== $2 @ $1"
-  runner $PLCM $1 -i $2
-  runner $jLCM $2 $1
+  
+  runner $PLCM $1 -i $2 -o tmp_plcm_patterns_
+  plcmCount=`wc -l tmp_plcm_patterns_* | tail -n 1 | grep -o -E '[0-9]+ '`
+  rm tmp_plcm_patterns_*
+  
+  runner $jLCM $2 $1 tmp_jlcm_patterns.dat
+  jlcmCount=`wc -l tmp_jlcm_patterns.dat | grep -o -E [0-9]+`
+  rm tmp_jlcm_patterns.dat
+  
+  if [[ $plcmCount -ne $jlcmCount ]]; then
+    echo "STAHP : PLCM found $plcmCount patterns and our LCM $jlcmCount"
+    exit 1
+  else
+    echo "-- $jlcmCount patterns"
+  fi
 }
 
 function hard() {

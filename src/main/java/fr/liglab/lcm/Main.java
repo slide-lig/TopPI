@@ -2,11 +2,11 @@ package fr.liglab.lcm;
 
 import java.io.IOException;
 
-import fr.liglab.lcm.internals.BasicDataset;
-import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.RebasedBasicDataset;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
+import fr.liglab.lcm.io.RebaserCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 
 /**
@@ -46,7 +46,10 @@ public class Main {
 			collector = new StdOutCollector();
 		}
 		
-		Dataset dataset = new BasicDataset(minsup, reader);
+		
+		RebasedBasicDataset dataset = new RebasedBasicDataset(minsup, reader);
+		collector = new RebaserCollector(collector, dataset.getReverseMap());
+		
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
 		

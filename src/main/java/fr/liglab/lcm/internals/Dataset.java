@@ -1,6 +1,11 @@
 package fr.liglab.lcm.internals;
 
+import java.util.Iterator;
+
+import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
+import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 /**
  * a Dataset represents a "smart" transactions database : the object 
@@ -45,4 +50,43 @@ public abstract class Dataset {
 	 * @return candidates items known to be frequent, preserving prefix and not in closure's extension
 	 */
 	public abstract TIntIterator getCandidatesIterator();
+	
+	
+	
+	/**
+	 * Find (in supportCounts) current dataset's closure (ie. items with 100% support)
+	 * By the way, unfrequent items (having a value < minsup) are removed from supportCounts
+	 */
+	public int[] getClosureAndFilterCount(TIntIntMap supportCounts) {
+		ItemsetsFactory builder = new ItemsetsFactory();
+		int closureSupport = getTransactionsCount();
+		
+		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
+			count.advance();
+			
+			if (count.value() < minsup) {
+				count.remove();
+			} else if (count.value() == closureSupport) {
+				builder.add(count.key());
+				count.remove();
+			}
+		}
+				
+		return builder.get();
+	}
+	
+	/**
+	 * @return support counts for items in given transactions, as a map [item => support count]
+	 */
+	public static TIntIntMap genSupportCounts(final Iterator<int[]> transactions) {
+		TIntIntMap supportCounts = new TIntIntHashMap();
+		
+		while (transactions.hasNext()) {
+			for (int item : transactions.next()) {
+				supportCounts.adjustOrPutValue(item, 1, 1);
+			}
+		}
+		
+		return supportCounts;
+	}
 }

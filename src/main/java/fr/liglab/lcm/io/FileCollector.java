@@ -16,14 +16,14 @@ import java.nio.charset.Charset;
 public class FileCollector implements PatternsCollector {
 	
 	// this should be profiled and tuned !
-	protected static int BUFFER_CAPACITY = 4096;
+	protected static final int BUFFER_CAPACITY = 4096;
 	
 	protected FileOutputStream stream;
 	protected FileChannel channel;
 	protected ByteBuffer buffer;
-	protected static Charset charset = Charset.forName("ASCII");
+	protected static final Charset charset = Charset.forName("ASCII");
 	
-	public FileCollector(String path) throws IOException {
+	public FileCollector(final String path) throws IOException {
 		File file = new File(path);
 		
 		if (file.exists()) {
@@ -37,7 +37,7 @@ public class FileCollector implements PatternsCollector {
 		buffer.clear();
 	}
 	
-	public void collect(int support, int[] pattern) {
+	public void collect(final int support, final int[] pattern) {
 		putInt(support);
 		safePut((byte) '\t'); // putChar('\t') would append TWO bytes, but in ASCII we need only one
 		
@@ -55,7 +55,7 @@ public class FileCollector implements PatternsCollector {
 		safePut((byte) '\n');	
 	}
 	
-	protected void putInt(int i) {
+	protected void putInt(final int i) {
 		try {
 			byte[] asBytes = Integer.toString(i).getBytes(charset);
 			buffer.put(asBytes);
@@ -65,7 +65,7 @@ public class FileCollector implements PatternsCollector {
 		}
 	}
 	
-	protected void safePut(byte b) {
+	protected void safePut(final byte b) {
 		try {
 			buffer.put(b);
 		} catch (BufferOverflowException e) {
