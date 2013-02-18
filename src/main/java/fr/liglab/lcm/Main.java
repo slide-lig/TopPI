@@ -53,6 +53,7 @@ public class Main {
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
 		
+		reader.close();
 		collector.close();
 	}
 }

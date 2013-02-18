@@ -27,7 +27,7 @@ public class FileCollector implements PatternsCollector {
 		File file = new File(path);
 		
 		if (file.exists()) {
-			throw new IOException(path + " already exists.");
+			System.err.println("Warning : overwriting output file "+path);
 		}
 		
 		stream = new FileOutputStream(file, false);
