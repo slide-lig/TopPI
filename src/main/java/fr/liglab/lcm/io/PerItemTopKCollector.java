@@ -5,6 +5,10 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.SortedMap;
 
 public class PerItemTopKCollector implements PatternsCollector {
 	/*
@@ -21,15 +25,22 @@ public class PerItemTopKCollector implements PatternsCollector {
 	private final PatternsCollector follower;
 	private final int k;
 	private final TIntObjectMap<PatternWithFreq[]> topK;
+	private final boolean outputEachPatternOnce;
 
 	public PerItemTopKCollector(PatternsCollector follower, int k) {
+		this(follower, k, false);
+	}
+
+	public PerItemTopKCollector(PatternsCollector follower, int k,
+			boolean outputEachPatternOnce) {
 		this.follower = follower;
 		this.k = k;
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
 		this.topK = new TIntObjectHashMap<PatternWithFreq[]>();
+		this.outputEachPatternOnce = outputEachPatternOnce;
 	}
-	
+
 	public void collect(final int support, final int[] pattern) {
 		for (final int item : pattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
@@ -85,46 +96,82 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public void close() {
-		// output all patterns of top-k, generating multiple times the same
-		// pattern if in different top-k
-		// TODO output each pattern only once ? do we want this ? maybe not for
-		// the MR version
-		for (PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
-			for (int i = 0; i < itemTopK.length; i++) {
-				if (itemTopK[i] == null) {
-					break;
-				} else {
-					this.follower.collect(itemTopK[i].getSupportCount(),
-							itemTopK[i].getPattern());
+		if (this.outputEachPatternOnce) {
+			Set<PatternWithFreq> dedup = new HashSet<>();
+			for (PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+				for (int i = 0; i < itemTopK.length; i++) {
+					if (itemTopK[i] == null) {
+						break;
+					} else {
+						if (dedup.add(itemTopK[i])) {
+							this.follower.collect(
+									itemTopK[i].getSupportCount(),
+									itemTopK[i].getPattern());
+						}
+					}
+				}
+			}
+		} else {
+			for (PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+				for (int i = 0; i < itemTopK.length; i++) {
+					if (itemTopK[i] == null) {
+						break;
+					} else {
+						this.follower.collect(itemTopK[i].getSupportCount(),
+								itemTopK[i].getPattern());
+					}
 				}
 			}
 		}
 		this.follower.close();
 	}
 
-	// given that I am going to explore a branch of patterns where the current
-	// pattern is currentPattern and the maximum support maxSupport, is it
-	// possible that I produce patterns that make it into the top-k of any item
-	// ?
-	// Assumes that the lowest ID item is at the end of the pattern, which
-	// should be the case
-	// Also assumes that minimum item ID is 0
-	public boolean explore(int[] currentPattern, int maxSupport) {
+	/*
+	 * @param currentPattern Pattern corresponding to the current dataset
+	 * 
+	 * @param currentSupport Support of currentPattern
+	 * 
+	 * @param extension Proposition of an item to extend the current pattern
+	 * 
+	 * @param support Map giving the support for each item present in the
+	 * current dataset
+	 * 
+	 * @return true if it is possible to generate patterns that make it into
+	 * topK by exploring this extension
+	 */
+	// Assumes that patterns are extended with lower IDs
+	// Also assumes that frequency test is already done
+	public boolean explore(int[] currentPattern, int currentSupport,
+			int extension, SortedMap<Integer, Integer> support) {
 		if (currentPattern.length == 0) {
 			return true;
 		}
 		// start by checking the topk of items already in the pattern
 		for (int item : currentPattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
+			// itemTopK == null should never happen in theory, as
+			// currentPattern should be in there at least
 			if (itemTopK == null || itemTopK[this.k - 1] == null
-					|| itemTopK[this.k - 1].getSupportCount() < maxSupport) {
+					|| itemTopK[this.k - 1].getSupportCount() < currentSupport) {
 				return true;
 			}
 		}
-		for (int item = currentPattern[currentPattern.length - 1]; item >= 0; item--) {
-			PatternWithFreq[] itemTopK = this.topK.get(item);
-			if (itemTopK == null || itemTopK[this.k - 1] == null
-					|| itemTopK[this.k - 1].getSupportCount() < maxSupport) {
+		// check for extension
+		int extensionSupport = support.get(extension);
+		PatternWithFreq[] itemTopK = this.topK.get(extension);
+		if (itemTopK == null || itemTopK[this.k - 1] == null
+				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+			return true;
+		}
+		// check for items < extension
+		// keep in mind that their max support will be the min of their own
+		// support in current dataset and support of the extension
+		for (Entry<Integer, Integer> en : support.headMap(extension).entrySet()) {
+			itemTopK = this.topK.get(en.getKey());
+			if (itemTopK == null
+					|| itemTopK[this.k - 1] == null
+					|| itemTopK[this.k - 1].getSupportCount() < Math.min(
+							extensionSupport, en.getValue())) {
 				return true;
 			}
 		}
@@ -176,11 +223,32 @@ public class PerItemTopKCollector implements PatternsCollector {
 					+ Arrays.toString(pattern) + "]";
 		}
 
+		@Override
+		public int hashCode() {
+			return Arrays.hashCode(pattern);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			PatternWithFreq other = (PatternWithFreq) obj;
+			if (supportCount != other.supportCount)
+				return false;
+			if (!Arrays.equals(pattern, other.pattern))
+				return false;
+			return true;
+		}
+
 	}
 
 	public static void main(String[] args) {
 		PerItemTopKCollector topk = new PerItemTopKCollector(
-				new StdOutCollector(), 3);
+				new StdOutCollector(), 3, true);
 		topk.collect(10, new int[] { 3, 1, 2 });
 		topk.collect(100, new int[] { 1 });
 		topk.collect(30, new int[] { 1, 3 });
@@ -192,10 +260,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		topk.collect(35, new int[] { 1, 0 });
 		topk.collect(20, new int[] { 2, 0 });
 		System.out.println(topk);
-		System.out.println(topk.explore(new int[] { 2, 1 }, 11));
-		System.out.println(topk.explore(new int[] { 2, 1 }, 10));
-		System.out.println(topk.explore(new int[] { 1 }, 9));
-		System.out.println(topk.explore(new int[] { 4 }, 11));
 		topk.close();
 	}
 }
