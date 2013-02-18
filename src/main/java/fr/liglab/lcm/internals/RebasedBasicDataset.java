@@ -10,7 +10,7 @@ import java.util.PriorityQueue;
 
 /**
  * A dataset where items are re-indexed by frequency (only at first loading) 
- * such that 0 will be the most frequent item.
+ * such that 0 will be the most frequent item. Then it's projected as BasicDataset
  * 
  * WARNING : once instanciated, all items outputted by this object and its 
  * projections should be considered as rebased
@@ -68,8 +68,14 @@ public class RebasedBasicDataset extends BasicDataset {
 
 	
 	protected TIntIntMap buildRebasingMaps(TIntIntMap supportCounts) {
-		TIntIntMap rebaseMap = new TIntIntHashMap(supportCounts.size());
-		reverseMap = new int[supportCounts.size()];
+		int mapSize = supportCounts.size();
+		
+		if (discoveredClosure.length > 0) {
+			mapSize += discoveredClosure.length;
+		}
+		
+		TIntIntMap rebaseMap = new TIntIntHashMap(mapSize);
+		reverseMap = new int[mapSize];
 		final PriorityQueue<ItemAndSupport> heap = new PriorityQueue<ItemAndSupport>(supportCounts.size());
 		
 		supportCounts.forEachEntry(new TIntIntProcedure() {
@@ -79,8 +85,13 @@ public class RebasedBasicDataset extends BasicDataset {
 			}
 		});
 		
+		for (int i = 0; i < discoveredClosure.length; i++) {
+			reverseMap[i] = discoveredClosure[i];
+			discoveredClosure[i] = i;
+		}
+		
 		ItemAndSupport entry = heap.poll();
-		for (int i=0; entry != null; i++) {
+		for (int i=discoveredClosure.length; entry != null; i++) {
 			reverseMap[i] = entry.item;
 			rebaseMap.put(entry.item, i);
 			entry = heap.poll();

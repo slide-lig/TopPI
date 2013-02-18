@@ -57,7 +57,7 @@ public abstract class Dataset {
 	 * Find (in supportCounts) current dataset's closure (ie. items with 100% support)
 	 * By the way, unfrequent items (having a value < minsup) are removed from supportCounts
 	 */
-	public int[] getClosureAndFilterCount(TIntIntMap supportCounts) {
+	protected final int[] getClosureAndFilterCount(TIntIntMap supportCounts) {
 		ItemsetsFactory builder = new ItemsetsFactory();
 		int closureSupport = getTransactionsCount();
 		
@@ -78,7 +78,7 @@ public abstract class Dataset {
 	/**
 	 * @return support counts for items in given transactions, as a map [item => support count]
 	 */
-	public static TIntIntMap genSupportCounts(final Iterator<int[]> transactions) {
+	protected final static TIntIntMap genSupportCounts(final Iterator<int[]> transactions) {
 		TIntIntMap supportCounts = new TIntIntHashMap();
 		
 		while (transactions.hasNext()) {

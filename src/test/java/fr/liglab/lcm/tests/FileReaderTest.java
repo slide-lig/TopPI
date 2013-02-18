@@ -73,6 +73,7 @@ public class FileReaderTest {
 	}
 	
 	/**
+	 * recommanded minsup = 4
 	 * First 50 lines of retail.dat
 	 */
 	public static FileReader get50Retail() {
@@ -99,6 +100,28 @@ public class FileReaderTest {
 		patterns.expectCollect(6, 	48, 39, 38);
 		patterns.expectCollect(6, 	48, 41);
 		patterns.expectCollect(5, 	48, 41, 39);
+		return patterns;
+	}
+	
+	/**
+	 * made for minsup=2
+	 * In order to ease testing, each item in this file is equal to its support count
+	 */
+	public static FileReader getRebasing() {
+		return new FileReader("target/test-classes/rebasing.dat");
+	}
+	
+	/**
+	 * To be wrapped in a RebaserCollector !!
+	 * minsup = 2
+	 */
+	public static StubPatternsCollector getRebasingPatterns() {
+		StubPatternsCollector patterns = new StubPatternsCollector();
+		patterns.expectCollect(5, 	5);
+		patterns.expectCollect(4, 	4);
+		patterns.expectCollect(3, 	4, 5);
+		patterns.expectCollect(3, 	3, 5);
+		patterns.expectCollect(2, 	2, 3, 5);
 		return patterns;
 	}
 	

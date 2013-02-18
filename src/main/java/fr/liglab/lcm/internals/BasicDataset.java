@@ -22,7 +22,7 @@ public class BasicDataset extends Dataset {
 	
 	protected final int coreItem;
 	protected final int transactionsCount;
-	protected final int[] discoveredClosure;
+	protected int[] discoveredClosure;
 	
 	/**
 	 * frequent item => List<transactions containing item>
