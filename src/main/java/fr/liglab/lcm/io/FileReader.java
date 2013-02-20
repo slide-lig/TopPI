@@ -42,19 +42,19 @@ public class FileReader implements Iterator<int[]> {
 	private void fillNextTokens() {
 		try {
 			nextTokens = null;
-			String nextLine = inBuffer.readLine();
-		
-			while (nextTokens == null && nextLine != null) {
-				String[] tokens = nextLine.split(" ");
+			
+			while (nextTokens == null) {
+				// profiler claims .split() is called half times as this.next() - dafuq ??
+				String[] tokens = inBuffer.readLine().split(" ");
 				
 				if (tokens.length > 0 && !tokens[0].isEmpty()) {
 					nextTokens = tokens;
-				} else {
-					nextLine = inBuffer.readLine();
 				}
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
+		} catch (NullPointerException e) {
+			// ie. inBuffer.readLine() == null => EOF
 		}
 	}
 
