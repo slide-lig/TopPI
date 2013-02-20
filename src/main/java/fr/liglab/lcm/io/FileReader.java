@@ -10,7 +10,7 @@ import org.apache.commons.lang.NotImplementedException;
 import fr.liglab.lcm.internals.ItemsetsFactory;
 
 /**
- * Reads transactions from a classic text file
+ * Reads transactions from an ASCII text file (\n-terminated)
  * Each line is a transaction, containing space-separated item IDs as integers
  * 
  * It directly implements the transactions iterator, but don't forget to call close() when finished !
@@ -19,7 +19,7 @@ public class FileReader implements Iterator<int[]> {
 	
 	private BufferedReader inBuffer;
 	private ItemsetsFactory builder = new ItemsetsFactory();
-	private String[] nextTokens;
+	private int[] nextArray;
 	
 	public FileReader(final String path) {
 		try {
@@ -28,7 +28,8 @@ public class FileReader implements Iterator<int[]> {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		fillNextTokens();
+		
+		fillNextArray();
 	}
 	
 	public void close() {
@@ -39,37 +40,70 @@ public class FileReader implements Iterator<int[]> {
 		}
 	}
 	
-	private void fillNextTokens() {
+	
+	private void fillNextArray() {
+		nextArray = null;
+		
 		try {
-			nextTokens = null;
+			int nextInt = -1;
+			int nextChar = inBuffer.read();
 			
-			while (nextTokens == null) {
-				// profiler claims .split() is called half times as this.next() - dafuq ??
-				String[] tokens = inBuffer.readLine().split(" ");
-				
-				if (tokens.length > 0 && !tokens[0].isEmpty()) {
-					nextTokens = tokens;
+			while(true) {
+				if (nextChar == -1) { // EOF
+					if (!builder.isEmpty()) {
+						nextArray = builder.get();
+					}
+					return;
+					
+				} else if (nextChar == '\n') { // EOL - skip possible empty lines
+					
+					if (!builder.isEmpty()) {
+						nextArray = builder.get();
+					}
+					
+					while (nextChar == '\n') {
+						inBuffer.mark(2);
+						nextChar = inBuffer.read();
+					}
+					
+					inBuffer.reset();
+					
+					return;
+					
+				} else if (nextChar == ' ') {
+					nextChar = inBuffer.read();
+					
+				} else {
+					nextInt = -1;
+					
+					while('0' <= nextChar && nextChar <= '9') {
+						if (nextInt < 0) {
+							nextInt = nextChar - '0';
+						} else {
+							nextInt = (10*nextInt) + (nextChar - '0');
+						}
+						nextChar = inBuffer.read();
+					}
+					
+					if (nextInt >= 0) {
+						builder.add(nextInt);
+					}
 				}
+				
 			}
 		} catch (IOException e) {
 			e.printStackTrace();
-		} catch (NullPointerException e) {
-			// ie. inBuffer.readLine() == null => EOF
 		}
 	}
 
 	public boolean hasNext() {
-		return nextTokens != null;
+		return nextArray != null;
 	}
 
 	public int[] next() {
-		for (String token : nextTokens) {
-			builder.add(Integer.parseInt(token));
-		}
-		
-		fillNextTokens();
-		
-		return builder.get();
+		int[] current = nextArray;
+		fillNextArray();
+		return current;
 	}
 
 	public void remove() {
