@@ -8,11 +8,25 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import fr.liglab.lcm.internals.BasicDataset;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.RebasedBasicDataset;
+import fr.liglab.lcm.tests.stubs.EmptyInputFile;
 import gnu.trove.iterator.TIntIterator;
 
 public class RebasedBasicDatasetTest {
+	
+	@Test
+	public void testNoCrashOnEmpty() {
+		// super-high minimum support
+		BasicDataset dataset = new RebasedBasicDataset(99999, FileReaderTest.getMicroReader());
+		assertEquals(0, dataset.getDiscoveredClosureItems().length);
+		assertFalse(dataset.getCandidatesIterator().hasNext());
+		// OR empty file
+		dataset = new RebasedBasicDataset(1, new EmptyInputFile());
+		assertEquals(0, dataset.getDiscoveredClosureItems().length);
+		assertFalse(dataset.getCandidatesIterator().hasNext());
+	}
 
 	@Test
 	public void testRemapping() {

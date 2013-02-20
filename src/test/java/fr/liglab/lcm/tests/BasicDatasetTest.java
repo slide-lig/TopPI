@@ -1,17 +1,33 @@
 package fr.liglab.lcm.tests;
 
 import static fr.liglab.lcm.tests.matchers.ItemsetsAsArraysMatcher.arrayIsItemset;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import fr.liglab.lcm.internals.BasicDataset;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ItemsetsFactory;
+import fr.liglab.lcm.tests.stubs.EmptyInputFile;
 import gnu.trove.iterator.TIntIterator;
 
 
 public class BasicDatasetTest {
+	
+	@Test
+	public void testNoCrashOnEmpty() {
+		// super-high minimum support
+		BasicDataset dataset = new BasicDataset(99999, FileReaderTest.getMicroReader());
+		assertEquals(0, dataset.getDiscoveredClosureItems().length);
+		assertFalse(dataset.getCandidatesIterator().hasNext());
+		// OR empty file
+		dataset = new BasicDataset(1, new EmptyInputFile());
+		assertEquals(0, dataset.getDiscoveredClosureItems().length);
+		assertFalse(dataset.getCandidatesIterator().hasNext());
+	}
 
 	@Test
 	public void testLoadedMicro() {

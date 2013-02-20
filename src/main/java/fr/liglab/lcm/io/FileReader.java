@@ -1,9 +1,9 @@
 package fr.liglab.lcm.io;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Iterator;
-import java.util.Scanner;
 
 import org.apache.commons.lang.NotImplementedException;
 
@@ -17,36 +17,44 @@ import fr.liglab.lcm.internals.ItemsetsFactory;
  */
 public class FileReader implements Iterator<int[]> {
 	
-	private Scanner scanner;
+	private BufferedReader inBuffer;
 	private ItemsetsFactory builder = new ItemsetsFactory();
 	private String[] nextTokens;
 	
 	public FileReader(final String path) {
-		File file = new File(path);
-		
 		try {
-			scanner = new Scanner(file);
+			inBuffer = new BufferedReader(new java.io.FileReader(path));
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		
 		fillNextTokens();
 	}
 	
 	public void close() {
-		scanner.close();
+		try {
+			inBuffer.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	private void fillNextTokens() {
-		nextTokens = null;
+		try {
+			nextTokens = null;
+			String nextLine = inBuffer.readLine();
 		
-		while (nextTokens == null && scanner.hasNextLine()) {
-			String[] tokens = scanner.nextLine().split(" ");
-			
-			if (tokens.length > 0 && !tokens[0].isEmpty()) {
-				nextTokens = tokens;
+			while (nextTokens == null && nextLine != null) {
+				String[] tokens = nextLine.split(" ");
+				
+				if (tokens.length > 0 && !tokens[0].isEmpty()) {
+					nextTokens = tokens;
+				} else {
+					nextLine = inBuffer.readLine();
+				}
 			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 

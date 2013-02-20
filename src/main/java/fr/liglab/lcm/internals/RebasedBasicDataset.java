@@ -40,26 +40,31 @@ public class RebasedBasicDataset extends BasicDataset {
 	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntIntMap supportCounts, ItemsetsFactory builder) {
 		builder.get(); // reset builder, just to be sure
 		
-		TIntIntMap newBase = buildRebasingMaps(supportCounts);
-		
-		for (int[] inputTransaction : dataset) {
-			for (int item : inputTransaction) {
-				if (newBase.containsKey(item)) {
-					builder.add(newBase.get(item));
-				}
-			}
+		if (supportCounts.isEmpty()) {
+			reverseMap = new int[0];
+		} else {
 			
-			if (!builder.isEmpty()) {
-				int [] filtered = builder.get();
+			TIntIntMap newBase = buildRebasingMaps(supportCounts);
+			
+			for (int[] inputTransaction : dataset) {
+				for (int item : inputTransaction) {
+					if (newBase.containsKey(item)) {
+						builder.add(newBase.get(item));
+					}
+				}
 				
-				for (int item : filtered) {
-					ArrayList<int[]> tids = occurrences.get(item);
-					if (tids == null) {
-						tids = new ArrayList<int[]>();
-						tids.add(filtered);
-						occurrences.put(item, tids);
-					} else {
-						tids.add(filtered);
+				if (!builder.isEmpty()) {
+					int [] filtered = builder.get();
+					
+					for (int item : filtered) {
+						ArrayList<int[]> tids = occurrences.get(item);
+						if (tids == null) {
+							tids = new ArrayList<int[]>();
+							tids.add(filtered);
+							occurrences.put(item, tids);
+						} else {
+							tids.add(filtered);
+						}
 					}
 				}
 			}
