@@ -16,11 +16,22 @@ import gnu.trove.map.hash.TIntIntHashMap;
  * Sub-classes are instanciated explicitely or by applying a projection.
  */
 public abstract class Dataset {
+	protected TIntIntMap supportCounts;
 	
 	protected int minsup;
 	
 	public int getMinsup() {
 		return minsup;
+	}
+	
+	protected int[] discoveredClosure;
+	
+	/**
+	 * Items in the array are unique and may be unordered
+	 * @return items found to have a 100% support count
+	 */
+	public int[] getDiscoveredClosureItems() {
+		return discoveredClosure;
 	}
 	
 	/**
@@ -29,11 +40,6 @@ public abstract class Dataset {
 	 */
 	public abstract int getTransactionsCount();
 	
-	/**
-	 * Items in the array are unique and may be unordered
-	 * @return items found to have a 100% support count
-	 */
-	public abstract int[] getDiscoveredClosureItems();
 	
 	/**
 	 * Projects current dataset on the given item, implicitely extending current pattern
@@ -56,10 +62,12 @@ public abstract class Dataset {
 	/**
 	 * Find (in supportCounts) current dataset's closure (ie. items with 100% support)
 	 * By the way, unfrequent items (having a value < minsup) are removed from supportCounts
+	 * @return sum of remaining items' support counts
 	 */
-	protected final int[] getClosureAndFilterCount(TIntIntMap supportCounts) {
+	protected int genClosureAndFilterCount() {
 		ItemsetsFactory builder = new ItemsetsFactory();
 		int closureSupport = getTransactionsCount();
+		int remainingsSupportsSum = 0;
 		
 		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
 			count.advance();
@@ -69,24 +77,26 @@ public abstract class Dataset {
 			} else if (count.value() == closureSupport) {
 				builder.add(count.key());
 				count.remove();
+			} else {
+				remainingsSupportsSum += count.value();
 			}
 		}
-				
-		return builder.get();
+		
+		discoveredClosure = builder.get();
+		
+		return remainingsSupportsSum;
 	}
 	
 	/**
-	 * @return support counts for items in given transactions, as a map [item => support count]
+	 * sets supportCounts, a map [item => support count]
 	 */
-	protected final static TIntIntMap genSupportCounts(final Iterator<int[]> transactions) {
-		TIntIntMap supportCounts = new TIntIntHashMap();
+	protected void genSupportCounts(final Iterator<int[]> transactions) {
+		supportCounts = new TIntIntHashMap();
 		
 		while (transactions.hasNext()) {
 			for (int item : transactions.next()) {
 				supportCounts.adjustOrPutValue(item, 1, 1);
 			}
 		}
-		
-		return supportCounts;
 	}
 }

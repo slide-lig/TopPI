@@ -1,7 +1,6 @@
 package fr.liglab.lcm.internals;
 
 import gnu.trove.iterator.TIntIterator;
-import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
 
@@ -22,7 +21,6 @@ public class BasicDataset extends Dataset {
 	
 	protected final int coreItem;
 	protected final int transactionsCount;
-	protected int[] discoveredClosure;
 	
 	/**
 	 * frequent item => List<transactions containing item>
@@ -30,7 +28,7 @@ public class BasicDataset extends Dataset {
 	 * 
 	 * Note that transactions are added in the same order in all occurences-ArrayLists. This property is used in CandidatesIterator's prefix-preserving test
 	 */
-	protected TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
+	protected final TIntObjectHashMap<ArrayList<int[]>> occurrences = new TIntObjectHashMap<ArrayList<int[]>>();
 	
 	/**
 	 * Initial dataset constructor
@@ -46,12 +44,12 @@ public class BasicDataset extends Dataset {
 		coreItem = Integer.MAX_VALUE;
 		
 		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(transactions); 
-		TIntIntMap supportCounts = Dataset.genSupportCounts(transactionsCopier);
+		genSupportCounts(transactionsCopier);
 		transactionsCount = transactionsCopier.size();
 		
-		discoveredClosure = getClosureAndFilterCount(supportCounts);
+		genClosureAndFilterCount();
 		
-		reduceAndBuildOccurrences(transactionsCopier, supportCounts, new SortedItemsetsFactory());
+		reduceAndBuildOccurrences(transactionsCopier, new SortedItemsetsFactory());
 	}
 	
 	
@@ -66,13 +64,13 @@ public class BasicDataset extends Dataset {
 		coreItem = projectedItem;
 		transactionsCount = projectedSupport.size();
 		
-		TIntIntMap supportCounts = Dataset.genSupportCounts(projectedSupport.iterator());
+		genSupportCounts(projectedSupport.iterator());
 		// coreItem is known to have a 100% support,  we don't want it in the computed closure
 		supportCounts.remove(coreItem);
 		
-		discoveredClosure = getClosureAndFilterCount(supportCounts);
+		genClosureAndFilterCount();
 		
-		reduceAndBuildOccurrences(projectedSupport, supportCounts, new ItemsetsFactory());
+		reduceAndBuildOccurrences(projectedSupport, new ItemsetsFactory());
 	}
 	
 	/**
@@ -81,9 +79,9 @@ public class BasicDataset extends Dataset {
 	 * All transactions will be filtered (keeping only items existing in supportCounts) and 
 	 * constructed via the provided builder
 	 */
-	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntIntMap supportCounts, ItemsetsFactory builder) {
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, ItemsetsFactory builder) {
 		builder.get(); // reset builder, just to be sure
-		TIntSet retained = supportCounts.keySet();
+		TIntSet retained = this.supportCounts.keySet();
 		
 		for (int[] inputTransaction : dataset) {
 			for (int item : inputTransaction) {
@@ -116,11 +114,6 @@ public class BasicDataset extends Dataset {
 	@Override
 	public int getTransactionsCount() {
 		return transactionsCount;
-	}
-
-	@Override
-	public int[] getDiscoveredClosureItems() {
-		return discoveredClosure;
 	}
 
 	@Override

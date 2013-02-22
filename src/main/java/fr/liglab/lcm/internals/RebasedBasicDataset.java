@@ -37,14 +37,14 @@ public class RebasedBasicDataset extends BasicDataset {
 	/**
 	 * Only difference with its parent implementation should be the "newBase" apparition
 	 */
-	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, TIntIntMap supportCounts, ItemsetsFactory builder) {
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, ItemsetsFactory builder) {
 		builder.get(); // reset builder, just to be sure
 		
 		if (supportCounts.isEmpty()) {
 			reverseMap = new int[0];
 		} else {
 			
-			TIntIntMap newBase = buildRebasingMaps(supportCounts);
+			TIntIntMap newBase = buildRebasingMaps();
 			
 			for (int[] inputTransaction : dataset) {
 				for (int item : inputTransaction) {
@@ -72,7 +72,7 @@ public class RebasedBasicDataset extends BasicDataset {
 	}
 
 	
-	protected TIntIntMap buildRebasingMaps(TIntIntMap supportCounts) {
+	protected TIntIntMap buildRebasingMaps() {
 		int mapSize = supportCounts.size();
 		
 		if (discoveredClosure.length > 0) {
