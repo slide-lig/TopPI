@@ -7,7 +7,10 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
 
+import java.util.Arrays;
 import java.util.Iterator;
+
+import org.apache.commons.lang.NotImplementedException;
 
 /**
  * Here all transactions are prefixed by their length and concatenated in a 
@@ -68,9 +71,11 @@ public class ConcatenatedDataset extends Dataset {
 				}
 			}
 			
-			this.concatenated[tIndex] = length;
-			tIndex = i;
-			i++;
+			if (length > 0) {
+				this.concatenated[tIndex] = length;
+				tIndex = i;
+				i++;
+			}
 		}
 	}
 	
@@ -91,6 +96,7 @@ public class ConcatenatedDataset extends Dataset {
 			}
 		}
 		
+		supportCounts.remove(extension);
 		int remainingItemsCount = genClosureAndFilterCount();
 		this.prepareOccurences();
 		
@@ -101,11 +107,11 @@ public class ConcatenatedDataset extends Dataset {
 		
 		iterator = occurrences.iterator();
 		while(iterator.hasNext()) {
-			int tid = iterator.next();
-			int l = parent.concatenated[tid];
+			int parentTid = iterator.next();
+			int parentLength = parent.concatenated[parentTid];
 			int length = 0;
 			
-			for (int j = tid + 1; i <= tid+l; i++) {
+			for (int j = parentTid + 1; j <= parentTid + parentLength; j++) {
 				int item = parent.concatenated[j];
 				
 				if (retained.contains(item)) {
@@ -116,9 +122,11 @@ public class ConcatenatedDataset extends Dataset {
 				}
 			}
 			
-			this.concatenated[tIndex] = length;
-			tIndex = i;
-			i++;
+			if (length > 0) {
+				this.concatenated[tIndex] = length;
+				tIndex = i;
+				i++;
+			}
 		}
 	}
 	
@@ -145,8 +153,125 @@ public class ConcatenatedDataset extends Dataset {
 
 	@Override
 	public TIntIterator getCandidatesIterator() {
-		// TODO Auto-generated method stub
-		return null;
+		return new CandidatesIterator();
 	}
+	
+	/**
+	 * Iterates on candidates items such that
+	 * - their support count is in [minsup, transactionsCount[ ,
+	 *  - candidate < coreItem
+	 *  - no item > candidate has the same support as candidate (aka fast-prefix-preservation test)
+	 *    => assuming items from previously found patterns (including coreItem) have been removed !!
+	 * coreItem = extension item (if it exists)
+	 */
+	protected class CandidatesIterator implements TIntIterator {
+		private int next_index;
+		private final int candidatesLength; // candidates is frequentItems[0:candidatesLength[
+		private final int[] frequentItems;
+		
+		/**
+		 * @param original an iterator on frequent items
+		 * @param min 
+		 */
+		public CandidatesIterator() {
+			this.next_index = -1;
+			
+			this.frequentItems = occurrences.keys();
+			Arrays.sort(this.frequentItems);
+			
+			int coreItemIndex = Arrays.binarySearch(this.frequentItems, coreItem);
+			if (coreItemIndex >= 0) {
+				throw new RuntimeException("Unexpected : coreItem appears in frequentItems !");
+			}
+			
+			// binarySearch returns -(insertion_point)-1
+			// where insertion_point == index of first element greater OR a.length
+			candidatesLength = -coreItemIndex - 1; 
+			
+			if (candidatesLength >= 0) {
+				findNext();
+			}
+		}
+		
+		private void findNext() {
+			next_index++;
+			
+			while (0 <= next_index) {
+				if (next_index == candidatesLength) {
+					next_index = -1;
+					break;
+				} else if (prefixPreservingTest(next_index)) {
+					break;
+				} else {
+					next_index++;
+				}
+			}
+		}
+		
+		/**
+		 * @return true if there is no int j > candidate having the same support as candidate 
+		 */
+		private boolean prefixPreservingTest(final int candidateIndex) {
+			final int candidate = frequentItems[candidateIndex];
+			final int candidateSupport = supportCounts.get(candidate);
+			TIntArrayList candidateOccurrences = occurrences.get(candidate);
+			
+			for (int i=candidateIndex + 1; i < frequentItems.length; i++) {
+				int j = frequentItems[i];
+				
+				if (supportCounts.get(j) >= candidateSupport) {
+					TIntArrayList jOccurrences = occurrences.get(j);
+					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
+						return false;
+					}
+				}
+			}
+			
+			return true;
+		}
+		
+		/**
+		 * @return true if A is included in B, assuming they share array pointers (appended in the same order)
+		 */
+		private boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
+			TIntIterator aIt = a.iterator();
+			TIntIterator bIt = b.iterator();
+			
+			int tidA = 0;
+			int tidB = 0;
+			
+			while (aIt.hasNext()) {
+				tidA = aIt.next();
+				
+				while (true) {
+					tidB = bIt.next();
+					if (tidA == tidB) {
+						break;
+					}
+					if (!bIt.hasNext()) { // couldn't find tidA in B
+						return false;
+					}
+				}
+			}
+			
+			return tidA == tidB;
+		}
+		
+		public boolean hasNext() {
+			return next_index >= 0;
+		}
+		
+		public int next() {
+			int old_i = next_index;
+			findNext();
+			return frequentItems[old_i];
+		}
 
+		/**
+		 * You probably thought this method was alive. NOPE. It's just Chuck Testa !
+		 */
+		public void remove() {
+			throw new NotImplementedException();
+		}
+	}
 }
