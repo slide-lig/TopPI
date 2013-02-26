@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals;
+package fr.liglab.lcm.util;
 
 /**
  * A < B <=> A.support > B.support

@@ -1,8 +1,8 @@
 package fr.liglab.lcm;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.ItemsetsFactory;
 import fr.liglab.lcm.io.PatternsCollector;
+import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 
 /**

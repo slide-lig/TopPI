@@ -9,7 +9,7 @@ import java.util.Iterator;
 
 import org.junit.Test;
 
-import fr.liglab.lcm.internals.CopyIteratorDecorator;
+import fr.liglab.lcm.util.CopyIteratorDecorator;
 
 public class CopyIteratorDecoratorTest {
 	

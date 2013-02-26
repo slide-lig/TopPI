@@ -6,7 +6,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import fr.liglab.lcm.internals.SortedItemsetsFactory;
+import fr.liglab.lcm.util.SortedItemsetsFactory;
 
 public class SortedItemsetsFactoryTest {
 	

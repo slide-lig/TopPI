@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals;
+package fr.liglab.lcm.util;
 
 import gnu.trove.list.array.TIntArrayList;
 

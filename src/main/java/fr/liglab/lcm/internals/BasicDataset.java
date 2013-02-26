@@ -1,5 +1,8 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.util.CopyIteratorDecorator;
+import fr.liglab.lcm.util.ItemsetsFactory;
+import fr.liglab.lcm.util.SortedItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;

@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals;
+package fr.liglab.lcm.util;
 
 import java.util.ArrayList;
 import java.util.Iterator;

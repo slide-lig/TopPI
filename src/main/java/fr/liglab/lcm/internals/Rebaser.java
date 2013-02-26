@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.util.ItemAndSupport;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.procedure.TIntIntProcedure;

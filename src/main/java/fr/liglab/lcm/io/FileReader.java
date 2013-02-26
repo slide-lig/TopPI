@@ -7,7 +7,7 @@ import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
 
-import fr.liglab.lcm.internals.ItemsetsFactory;
+import fr.liglab.lcm.util.ItemsetsFactory;
 
 /**
  * Reads transactions from an ASCII text file (\n-terminated)

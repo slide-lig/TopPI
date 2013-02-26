@@ -2,6 +2,7 @@ package fr.liglab.lcm.internals;
 
 import java.util.Iterator;
 
+import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;

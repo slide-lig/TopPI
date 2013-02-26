@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;

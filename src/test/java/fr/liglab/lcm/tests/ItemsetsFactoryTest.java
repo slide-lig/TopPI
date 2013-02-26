@@ -7,7 +7,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import fr.liglab.lcm.internals.ItemsetsFactory;
+import fr.liglab.lcm.util.ItemsetsFactory;
 
 public class ItemsetsFactoryTest {
 	

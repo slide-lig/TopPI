@@ -1,6 +1,7 @@
-package fr.liglab.lcm.internals;
+package fr.liglab.lcm.util;
 
 import java.util.Arrays;
+
 
 /**
  * An ItemsetsFactory that sorts (in ascending order) items before returning 
