@@ -105,21 +105,30 @@ public class ConcatenatedDataset extends Dataset {
 		int remainingItemsCount = genClosureAndFilterCount();
 		this.prepareOccurences();
 		
-		TIntSet retained = this.supportCounts.keySet();
+		TIntSet keeped = this.supportCounts.keySet();
 		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
+		
+		filterParent(parent.concatenated, occurrences.iterator(), keeped);
+	}
+	
+	/**
+	 * @param parent
+	 * @param occIterator iterator on occurences iterator (giving indexes in parent)
+	 * @param keeped items that will remain in our transactions
+	 */
+	protected void filterParent(int[] parent, TIntIterator occIterator, TIntSet keeped) {
 		int i = 1;
 		int tIndex = 0;
 		
-		iterator = occurrences.iterator();
-		while(iterator.hasNext()) {
-			int parentTid = iterator.next();
-			int parentLength = parent.concatenated[parentTid];
+		while(occIterator.hasNext()) {
+			int parentTid = occIterator.next();
+			int parentLength = parent[parentTid];
 			int length = 0;
 			
 			for (int j = parentTid + 1; j <= parentTid + parentLength; j++) {
-				int item = parent.concatenated[j];
+				int item = parent[j];
 				
-				if (retained.contains(item)) {
+				if (keeped.contains(item)) {
 					this.concatenated[i] = item;
 					this.occurrences.get(item).add(tIndex);
 					length++;
