@@ -21,7 +21,7 @@ public class LCMTest {
 	
 	private void invokeRebasedAndCheck(int minsup, StubPatternsCollector collector, Iterator<int[]> transactions) {
 		RebasedBasicDataset dataset = new RebasedBasicDataset(minsup, transactions);
-		RebaserCollector wrapper = new RebaserCollector(collector, dataset.getReverseMap());
+		RebaserCollector wrapper = new RebaserCollector(collector, dataset);
 		
 		LCM instance = new LCM(wrapper);
 		instance.lcm(dataset);

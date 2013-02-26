@@ -16,15 +16,17 @@ import gnu.trove.map.hash.TIntIntHashMap;
  * Sub-classes are instanciated explicitely or by applying a projection.
  */
 public abstract class Dataset {
-	protected TIntIntMap supportCounts;
-	
 	protected int minsup;
 	
 	public int getMinsup() {
 		return minsup;
 	}
 	
-	protected int[] discoveredClosure;
+	/// YES these two are package-visible. See Rebaser.
+	
+	TIntIntMap supportCounts;
+	
+	int[] discoveredClosure;
 	
 	/**
 	 * Items in the array are unique and may be unordered

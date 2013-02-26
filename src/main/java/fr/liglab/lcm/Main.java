@@ -48,7 +48,7 @@ public class Main {
 		
 		
 		RebasedBasicDataset dataset = new RebasedBasicDataset(minsup, reader);
-		collector = new RebaserCollector(collector, dataset.getReverseMap());
+		collector = new RebaserCollector(collector, dataset);
 		
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);

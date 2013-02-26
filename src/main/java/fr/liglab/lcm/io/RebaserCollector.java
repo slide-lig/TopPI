@@ -2,20 +2,20 @@ package fr.liglab.lcm.io;
 
 import java.util.Arrays;
 
+import fr.liglab.lcm.internals.RebasedDataset;
+
 /**
- * Decorated another PatternsCollector : it will transmit everything, 
+ * a PatternsCollector decorator : it will transmit everything, 
  * except that all patterns are re-instanciated and translated according 
- * to the map provided at instanciation.
- * 
- * It's made for items in [O;maxItem] so we're using a classic array as a map
+ * to the RebasedDataset provided at instanciation.
  */
 public class RebaserCollector implements PatternsCollector {
 	
 	protected final int[] map;
 	protected final PatternsCollector decorated;
 	
-	public RebaserCollector(PatternsCollector wrapped, final int[] reverseMap) {
-		this.map = reverseMap;
+	public RebaserCollector(PatternsCollector wrapped, RebasedDataset initalDataset) {
+		this.map = initalDataset.getReverseMap();
 		this.decorated = wrapped;
 	}
 
@@ -23,14 +23,14 @@ public class RebaserCollector implements PatternsCollector {
 		int[] rebased = Arrays.copyOf(pattern, pattern.length);
 		
 		for (int i = 0; i < pattern.length; i++) {
-			rebased[i] = map[pattern[i]];
+			rebased[i] = this.map[pattern[i]];
 		}
 		
-		decorated.collect(support, rebased);
+		this.decorated.collect(support, rebased);
 	}
 
 	public void close() {
-		decorated.close();
+		this.decorated.close();
 	}
 
 }
