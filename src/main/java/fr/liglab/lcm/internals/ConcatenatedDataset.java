@@ -54,13 +54,17 @@ public class ConcatenatedDataset extends Dataset {
 		
 		int remainingItemsCount = genClosureAndFilterCount();
 		this.prepareOccurences();
-		
-		TIntSet retained = this.supportCounts.keySet();
 		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
+		
+		this.filter(transactionsCopier);
+	}
+	
+	protected void filter(final Iterable<int[]> transactions) {
+		TIntSet retained = this.supportCounts.keySet();
 		int i = 1;
 		int tIndex = 0;
 		
-		for (int[] transaction : transactionsCopier) {
+		for (int[] transaction : transactions) {
 			int length = 0;
 			
 			for (int item : transaction) {
@@ -232,7 +236,10 @@ public class ConcatenatedDataset extends Dataset {
 		}
 		
 		/**
-		 * @return true if A is included in B, assuming they share array pointers (appended in the same order)
+		 * Assumptions :
+		 *  - both contain array indexes appended in increasing order
+		 *  - you already tested that B.size >= A.size
+		 * @return true if A is included in B 
 		 */
 		private boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
 			TIntIterator aIt = a.iterator();
@@ -241,17 +248,16 @@ public class ConcatenatedDataset extends Dataset {
 			int tidA = 0;
 			int tidB = 0;
 			
-			while (aIt.hasNext()) {
+			while (aIt.hasNext() && bIt.hasNext()) {
 				tidA = aIt.next();
+				tidB = bIt.next();
 				
-				while (true) {
+				while (tidB < tidA && bIt.hasNext()) {
 					tidB = bIt.next();
-					if (tidA == tidB) {
-						break;
-					}
-					if (!bIt.hasNext()) { // couldn't find tidA in B
-						return false;
-					}
+				}
+				
+				if (tidB > tidA) {
+					return false;
 				}
 			}
 			

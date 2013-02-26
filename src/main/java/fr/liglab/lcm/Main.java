@@ -2,7 +2,7 @@ package fr.liglab.lcm;
 
 import java.io.IOException;
 
-import fr.liglab.lcm.internals.RebasedBasicDataset;
+import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.PatternsCollector;
@@ -47,7 +47,7 @@ public class Main {
 		}
 		
 		
-		RebasedBasicDataset dataset = new RebasedBasicDataset(minsup, reader);
+		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(minsup, reader);
 		collector = new RebaserCollector(collector, dataset);
 		
 		LCM miner = new LCM(collector);
