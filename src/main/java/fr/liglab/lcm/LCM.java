@@ -53,6 +53,9 @@ public class LCM {
 		
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		while (iterator.hasNext()) {
+			
+			///// PLUG TOP-K STOPPER HERE
+			
 			lcm(Q, dataset, iterator.next());
 		}
 	}
