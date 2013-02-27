@@ -1,12 +1,11 @@
 package fr.liglab.lcm.internals;
 
-import java.util.Iterator;
-
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
+
+import java.util.Iterator;
 
 /**
  * a Dataset represents a "smart" transactions database : the object 
@@ -58,7 +57,7 @@ public abstract class Dataset {
 	/**
 	 * @return candidates items known to be frequent, preserving prefix and not in closure's extension
 	 */
-	public abstract TIntIterator getCandidatesIterator();
+	public abstract ExtensionsIterator getCandidatesIterator();
 	
 	
 	

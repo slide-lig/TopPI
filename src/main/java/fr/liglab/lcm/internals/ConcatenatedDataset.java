@@ -166,7 +166,7 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	@Override
-	public TIntIterator getCandidatesIterator() {
+	public ExtensionsIterator getCandidatesIterator() {
 		return new CandidatesIterator();
 	}
 	
@@ -178,10 +178,14 @@ public class ConcatenatedDataset extends Dataset {
 	 *    => assuming items from previously found patterns (including coreItem) have been removed !!
 	 * coreItem = extension item (if it exists)
 	 */
-	protected class CandidatesIterator implements TIntIterator {
+	protected class CandidatesIterator implements TIntIterator, ExtensionsIterator {
 		private int next_index;
 		private final int candidatesLength; // candidates is frequentItems[0:candidatesLength[
 		private final int[] frequentItems;
+
+		public int[] getSortedFrequents() {
+			return frequentItems;
+		}
 		
 		/**
 		 * @param original an iterator on frequent items

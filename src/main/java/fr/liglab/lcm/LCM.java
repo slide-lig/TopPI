@@ -1,6 +1,7 @@
 package fr.liglab.lcm;
 
 import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
@@ -50,7 +51,7 @@ public class LCM {
 		
 		collector.collect(dataset.getTransactionsCount(), Q);
 		
-		TIntIterator iterator = dataset.getCandidatesIterator();
+		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		while (iterator.hasNext()) {
 			lcm(Q, dataset, iterator.next());
 		}

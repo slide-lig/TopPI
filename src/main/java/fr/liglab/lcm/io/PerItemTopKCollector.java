@@ -1,14 +1,13 @@
 package fr.liglab.lcm.io;
 
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.SortedMap;
 
 public final class PerItemTopKCollector implements PatternsCollector {
 	/*
@@ -133,7 +132,10 @@ public final class PerItemTopKCollector implements PatternsCollector {
 	 * 
 	 * @param extension Proposition of an item to extend the current pattern
 	 * 
-	 * @param support Map giving the support for each item present in the
+	 * @param sortedFreqItems array of remaining frequent items in the current 
+	 * data set (sorted in increasing order)
+	 * 
+	 * @param supportCounts Map giving the support for each item present in the
 	 * current dataset
 	 * 
 	 * @return true if it is possible to generate patterns that make it into
@@ -143,7 +145,8 @@ public final class PerItemTopKCollector implements PatternsCollector {
 	// Also assumes that frequency test is already done
 	public boolean explore(final int[] currentPattern,
 			final int currentSupport, final int extension,
-			final SortedMap<Integer, Integer> support) {
+			final int[] sortedFreqItems,
+			final TIntIntMap supportCounts) {
 		if (currentPattern.length == 0) {
 			return true;
 		}
@@ -158,25 +161,31 @@ public final class PerItemTopKCollector implements PatternsCollector {
 			}
 		}
 		// check for extension
-		final int extensionSupport = support.get(extension);
+		final int extensionSupport = supportCounts.get(extension);
 		final PatternWithFreq[] itemTopK = this.topK.get(extension);
 		if (itemTopK == null || itemTopK[this.k - 1] == null
 				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
 			return true;
 		}
+		
 		// check for items < extension
 		// keep in mind that their max support will be the min of their own
 		// support in current dataset and support of the extension
-		for (Entry<Integer, Integer> en : support.headMap(extension).entrySet()) {
-			final PatternWithFreq[] potentialExtensionTopK = this.topK.get(en
-					.getKey());
+		for (int item : sortedFreqItems) {
+			if (item >= extension) {
+				break;
+			}
+			
+			final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
+			
 			if (potentialExtensionTopK == null
 					|| potentialExtensionTopK[this.k - 1] == null
 					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
-							.min(extensionSupport, en.getValue())) {
+							.min(extensionSupport, supportCounts.get(item) )) {
 				return true;
 			}
 		}
+		
 		return false;
 	}
 
