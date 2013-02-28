@@ -1,8 +1,8 @@
 package fr.liglab.lcm.internals;
 
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Iterator;
 
@@ -29,10 +29,9 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 	}
 	
 	@Override
-	protected void prepareOccurences() {
-		
-		// Rebaser instanciation will nullify supportCounts - grab it while it's there ! 
+	protected TIntIntMap prepareOccurences() { 
 		TIntIntIterator counts = this.supportCounts.iterator();
+		TIntIntMap indexesMap = new TIntIntHashMap(this.supportCounts.size());
 		
 		this.rebaser = new Rebaser(this);
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
@@ -40,12 +39,15 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
+			this.occurrences.put(rebasedItem, new int[counts.value()] );
+			indexesMap.put(rebasedItem, 0);
 		}
+		
+		return indexesMap;
 	}
 	
 	@Override
-	protected void filter(Iterable<int[]> transactions) {
+	protected void filter(Iterable<int[]> transactions, TIntIntMap indexesMap) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
 		
 		int i = 1;
@@ -58,7 +60,11 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 				if (rebasing.containsKey(item)) {
 					int rebased = rebasing.get(item);
 					this.concatenated[i] = rebased;
-					this.occurrences.get(rebased).add(tIndex);
+					
+					int occurrenceIndex = indexesMap.get(rebased);
+					this.occurrences.get(rebased)[occurrenceIndex] = tIndex;
+					indexesMap.put(rebased, occurrenceIndex + 1);
+					
 					length++;
 					i++;
 				}

@@ -3,7 +3,7 @@ package fr.liglab.lcm.internals;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
-import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
@@ -34,7 +34,7 @@ public class ConcatenatedDataset extends Dataset {
 	 * frequent item => array of occurrences indexes in "concatenated"
 	 * Transactions are added in the same order in all occurences-arrays. This property is used in CandidatesIterator's prefix-preserving test
 	 */
-	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
+	protected final TIntObjectHashMap<int[]> occurrences = new TIntObjectHashMap<int[]>();
 	
 	/**
 	 * Initial dataset constructor
@@ -53,13 +53,13 @@ public class ConcatenatedDataset extends Dataset {
 		this.transactionsCount = transactionsCopier.size();
 		
 		int remainingItemsCount = genClosureAndFilterCount();
-		this.prepareOccurences();
+		TIntIntMap indexesMap = this.prepareOccurences();
 		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
 		
-		this.filter(transactionsCopier);
+		this.filter(transactionsCopier, indexesMap);
 	}
 	
-	protected void filter(final Iterable<int[]> transactions) {
+	protected void filter(final Iterable<int[]> transactions, TIntIntMap indexesMap) {
 		TIntSet retained = this.supportCounts.keySet();
 		int i = 1;
 		int tIndex = 0;
@@ -70,7 +70,11 @@ public class ConcatenatedDataset extends Dataset {
 			for (int item : transaction) {
 				if (retained.contains(item)) {
 					this.concatenated[i] = item;
-					this.occurrences.get(item).add(tIndex);
+					
+					int occurrenceIndex = indexesMap.get(item);
+					this.occurrences.get(item)[occurrenceIndex] = tIndex;
+					indexesMap.put(item, occurrenceIndex + 1);
+					
 					length++;
 					i++;
 				}
@@ -89,12 +93,10 @@ public class ConcatenatedDataset extends Dataset {
 		this.minsup = parent.minsup;
 		this.coreItem = extension;
 		
-		TIntArrayList occurrences = parent.occurrences.get(extension);
-		this.transactionsCount = occurrences.size();
+		int[] occurrences = parent.occurrences.get(extension);
+		this.transactionsCount = occurrences.length;
 		
-		TIntIterator iterator =  occurrences.iterator();
-		while(iterator.hasNext()) {
-			int tid = iterator.next();
+		for(int tid : occurrences) {
 			int length = parent.concatenated[tid];
 			for (int i = tid + 1; i <= tid+length; i++) {
 				this.supportCounts.adjustOrPutValue(parent.concatenated[i], 1, 1);
@@ -103,25 +105,25 @@ public class ConcatenatedDataset extends Dataset {
 		
 		supportCounts.remove(extension);
 		int remainingItemsCount = genClosureAndFilterCount();
-		this.prepareOccurences();
+		TIntIntMap indexesMap = this.prepareOccurences();
 		
 		TIntSet keeped = this.supportCounts.keySet();
 		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
 		
-		filterParent(parent.concatenated, occurrences.iterator(), keeped);
+		filterParent(parent.concatenated, occurrences, keeped, indexesMap);
 	}
 	
 	/**
-	 * @param parent
-	 * @param occIterator iterator on occurences iterator (giving indexes in parent)
+	 * @param parent concatenated parent transactions
+	 * @param occIterator occurences (giving indexes in parent)
 	 * @param keeped items that will remain in our transactions
+	 * @param indexes in this.occurrences
 	 */
-	protected void filterParent(int[] parent, TIntIterator occIterator, TIntSet keeped) {
+	protected void filterParent(int[] parent, int[] occurrences, TIntSet keeped, TIntIntMap indexesMap) {
 		int i = 1;
 		int tIndex = 0;
 		
-		while(occIterator.hasNext()) {
-			int parentTid = occIterator.next();
+		for(int parentTid : occurrences) {
 			int parentLength = parent[parentTid];
 			int length = 0;
 			
@@ -130,7 +132,11 @@ public class ConcatenatedDataset extends Dataset {
 				
 				if (keeped.contains(item)) {
 					this.concatenated[i] = item;
-					this.occurrences.get(item).add(tIndex);
+					
+					int occurrenceIndex = indexesMap.get(item);
+					this.occurrences.get(item)[occurrenceIndex] = tIndex;
+					indexesMap.put(item, occurrenceIndex + 1);
+					
 					length++;
 					i++;
 				}
@@ -146,13 +152,19 @@ public class ConcatenatedDataset extends Dataset {
 	
 	/**
 	 * Pre-instanciate occurrences ArrayLists according to this.supportCounts
+	 * @return a prepared indexes map (all items => 0)
 	 */
-	protected void prepareOccurences() {
+	protected TIntIntMap prepareOccurences() {
 		TIntIntIterator counts = this.supportCounts.iterator();
+		TIntIntMap indexesMap = new TIntIntHashMap(this.supportCounts.size());
+		
 		while (counts.hasNext()) {
 			counts.advance();
-			this.occurrences.put(counts.key(), new TIntArrayList(counts.value()));
+			this.occurrences.put(counts.key(), new int[counts.value()] );
+			indexesMap.put(counts.key(), 0);
 		}
+		
+		return indexesMap;
 	}
 	
 	@Override
@@ -232,13 +244,13 @@ public class ConcatenatedDataset extends Dataset {
 		private boolean prefixPreservingTest(final int candidateIndex) {
 			final int candidate = frequentItems[candidateIndex];
 			final int candidateSupport = supportCounts.get(candidate);
-			TIntArrayList candidateOccurrences = occurrences.get(candidate);
+			int[] candidateOccurrences = occurrences.get(candidate);
 			
 			for (int i=candidateIndex + 1; i < frequentItems.length; i++) {
 				int j = frequentItems[i];
 				
 				if (supportCounts.get(j) >= candidateSupport) {
-					TIntArrayList jOccurrences = occurrences.get(j);
+					int[] jOccurrences = occurrences.get(j);
 					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
 						return false;
 					}
@@ -254,24 +266,23 @@ public class ConcatenatedDataset extends Dataset {
 		 *  - you already tested that B.size >= A.size
 		 * @return true if A is included in B 
 		 */
-		private boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
-			TIntIterator aIt = a.iterator();
-			TIntIterator bIt = b.iterator();
-			
+		private boolean isAincludedInB(final int[] a, final int[] b) {
 			int tidA = 0;
 			int tidB = 0;
 			
-			while (aIt.hasNext() && bIt.hasNext()) {
-				tidA = aIt.next();
-				tidB = bIt.next();
-				
-				while (tidB < tidA && bIt.hasNext()) {
-					tidB = bIt.next();
+			for (int aIt = 0, bIt =0; aIt < a.length && bIt < b.length; aIt++, bIt++) {
+				tidA = a[aIt];
+				tidB = b[bIt];
+
+				bIt++;
+				while (tidB < tidA && bIt < b.length) {
+					tidB = b[bIt];
+					bIt++;
 				}
 				
 				if (tidB > tidA) {
 					return false;
-				}
+				}				
 			}
 			
 			return tidA == tidB;
