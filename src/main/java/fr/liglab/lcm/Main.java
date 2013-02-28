@@ -71,14 +71,14 @@ public class Main {
 		} else {
 			collector = new StdOutCollector();
 		}
+
+		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(minsup, reader);
+		collector = new RebaserCollector(collector, dataset);
 		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
 			collector = new PerItemTopKCollector(collector, k, true);
 		}
-		
-		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(minsup, reader);
-		collector = new RebaserCollector(collector, dataset);
 		
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);

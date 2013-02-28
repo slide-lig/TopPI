@@ -128,8 +128,6 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	/*
 	 * @param currentPattern Pattern corresponding to the current dataset
 	 * 
-	 * @param currentSupport Support of currentPattern
-	 * 
 	 * @param extension Proposition of an item to extend the current pattern
 	 * 
 	 * @param sortedFreqItems array of remaining frequent items in the current 
@@ -144,25 +142,25 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public boolean explore(final int[] currentPattern,
-			final int currentSupport, final int extension,
-			final int[] sortedFreqItems,
-			final TIntIntMap supportCounts) {
+	public boolean explore(final int[] currentPattern, final int extension,
+			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
 		if (currentPattern.length == 0) {
 			return true;
 		}
+		
+		final int extensionSupport = supportCounts.get(extension);
+		
 		// start by checking the topk of items already in the pattern
 		for (int item : currentPattern) {
 			final PatternWithFreq[] itemTopK = this.topK.get(item);
 			// itemTopK == null should never happen in theory, as
 			// currentPattern should be in there at least
 			if (itemTopK == null || itemTopK[this.k - 1] == null
-					|| itemTopK[this.k - 1].getSupportCount() < currentSupport) {
+					|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
 				return true;
 			}
 		}
 		// check for extension
-		final int extensionSupport = supportCounts.get(extension);
 		final PatternWithFreq[] itemTopK = this.topK.get(extension);
 		if (itemTopK == null || itemTopK[this.k - 1] == null
 				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {

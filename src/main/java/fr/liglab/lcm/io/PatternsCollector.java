@@ -14,8 +14,6 @@ public abstract class PatternsCollector {
 	/*
 	 * @param currentPattern Pattern corresponding to the current dataset
 	 * 
-	 * @param currentSupport Support of currentPattern
-	 * 
 	 * @param extension Proposition of an item to extend the current pattern
 	 * 
 	 * @param sortedFreqItems array of remaining frequent items in the current 
@@ -27,10 +25,9 @@ public abstract class PatternsCollector {
 	 * @return true if it is possible to generate patterns that make it into
 	 * topK by exploring this extension
 	 */
-	public boolean explore(final int[] currentPattern,
-			final int currentSupport, final int extension,
-			final int[] sortedFreqItems,
-			final TIntIntMap supportCounts) {
+	public boolean explore(final int[] currentPattern, final int extension,
+			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
+		
 		return true;
 	}
 }

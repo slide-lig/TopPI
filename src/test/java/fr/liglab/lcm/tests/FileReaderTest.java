@@ -125,6 +125,27 @@ public class FileReaderTest {
 		return patterns;
 	}
 	
+	/**
+	 * made for minsup=1, k=2
+	 */
+	public static FileReader getTestExplore() {
+		return new FileReader("target/test-classes/testExplore.dat");
+	}
+	
+	/**
+	 * minsup=1, k=2
+	 */
+	public static StubPatternsCollector getTestExplorePatternsK2() {
+		StubPatternsCollector patterns = new StubPatternsCollector();
+		patterns.expectCollect(8, 	1);
+		patterns.expectCollect(5, 	2);
+		patterns.expectCollect(3, 	2, 1);
+		patterns.expectCollect(4, 	3);
+		patterns.expectCollect(3, 	3, 1);
+		return patterns;
+	}
+	
+	
 	
 	
 	

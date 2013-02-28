@@ -4,8 +4,17 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import fr.liglab.lcm.LCM;
+import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.ExtensionsIterator;
+import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
+import fr.liglab.lcm.io.FileReader;
+import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
+import fr.liglab.lcm.io.RebaserCollector;
+import fr.liglab.lcm.tests.stubs.NullCollector;
 import fr.liglab.lcm.tests.stubs.StubPatternsCollector;
+import gnu.trove.map.TIntIntMap;
 
 public class PerItemTopKCollectorTest {
 	
@@ -23,7 +32,7 @@ public class PerItemTopKCollectorTest {
 	 * a complete test on a small file
 	 */
 	@Test
-	public void test() {
+	public void testCollect() {
 		StubPatternsCollector stub = new StubPatternsCollector();
 		
 		PerItemTopKCollector collector = new PerItemTopKCollector(stub, 2, true);
@@ -51,5 +60,47 @@ public class PerItemTopKCollectorTest {
 		
 		assertTrue(stub.isEmpty());
 	}
-
+	
+	@Test
+	public void testCompleteLCM() {
+		FileReader trans = FileReaderTest.getTestExplore();
+		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(2, trans);
+		
+		PatternsCollector collector = FileReaderTest.getTestExplorePatternsK2();
+		collector = new RebaserCollector(collector, dataset);
+		collector = new PerItemTopKCollector(collector, 2, true);
+		
+		LCM instance = new LCM(collector);
+		instance.lcm(dataset);
+		collector.close();
+	}
+	
+	@Test
+	public void testExplore() {
+		FileReader trans = FileReaderTest.getTestExplore();
+		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(2, trans);
+		
+		// rebasing : 1 => 0 , 2 => 1, 3 => 2
+		PatternsCollector collector = new NullCollector();
+		collector = new PerItemTopKCollector(collector, 2, true);
+		
+		// exploring 0 and 1
+		collector.collect(8, new int[] {0});
+		collector.collect(5, new int[] {1});
+		collector.collect(3, new int[] {0, 1});
+		
+		// outputted candidates should be 0 and 1
+		Dataset dataset_2 = dataset.getProjection(2);
+		ExtensionsIterator it_2 = dataset_2.getCandidatesIterator();
+		int[] freqs_2 = it_2.getSortedFrequents();
+		TIntIntMap supports_2 = dataset_2.getSupportCounts();
+		
+		collector.collect(4, new int[] {2});
+		
+		assertTrue(collector.explore(new int[] {2}, 0, freqs_2, supports_2));
+		collector.collect(3, new int[] {2,0});
+		
+		// next one should be 2,{2,1} - which support is too low 
+		assertFalse(collector.explore(new int[] {2}, 1, freqs_2, supports_2));
+	}
 }

@@ -15,9 +15,8 @@ import gnu.trove.map.TIntIntMap;
 public class LCM {
 	private final PatternsCollector collector;
 	
-	private int collected = 0;
 	private int explored = 0;
-	private int cutted = 0;
+	private int cut = 0;
 	
 	public LCM(PatternsCollector patternsCollector) {
 		collector = patternsCollector;
@@ -30,7 +29,6 @@ public class LCM {
 		int[] pattern = dataset.getDiscoveredClosureItems(); // usually, it's empty
 		
 		if (pattern.length > 0) {
-			collected++;
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
 		
@@ -55,28 +53,25 @@ public class LCM {
 		
 		Dataset dataset = parent_dataset.getProjection(extension);
 		int[] Q = ItemsetsFactory.extend(pattern, extension, dataset.getDiscoveredClosureItems());
-		int QSupport = dataset.getTransactionsCount();
-		collector.collect(QSupport, Q);
-		collected++;
+		collector.collect(dataset.getTransactionsCount(), Q);
 		
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int[] sortedFreqs = iterator.getSortedFrequents();
 		TIntIntMap supportCounts = dataset.getSupportCounts();
 		
 		while (iterator.hasNext()) {
-			
 			int candidate = iterator.next();
 			
-			if (collector.explore(Q, QSupport, candidate, sortedFreqs, supportCounts)) {
+			if (collector.explore(Q, candidate, sortedFreqs, supportCounts)) {
 				explored++;
 				lcm(Q, dataset, candidate);
 			} else {
-				cutted++;
+				cut++;
 			}
 		}
 	}
 	
 	public String toString() {
-		return collected + " patterns collected / " + explored + " explored / " + cutted + " cutted";
+		return "LCM exploration : " + explored + " patterns explored / " + cut + " aborted";
 	}
 }
