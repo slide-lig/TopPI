@@ -19,7 +19,7 @@ import fr.liglab.lcm.io.PatternsCollector;
  * 
  * You should also assertTrue(thisCollector.isEmpty()) at the end 
  */
-public class StubPatternsCollector implements PatternsCollector {
+public class StubPatternsCollector extends PatternsCollector {
 	
 	protected static Map<Integer, Set<Set<Integer>>> expected = new TreeMap<Integer, Set<Set<Integer>>>();
 	

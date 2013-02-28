@@ -85,5 +85,7 @@ public class Main {
 		
 		reader.close();
 		collector.close();
+		
+		System.err.println(miner.toString());
 	}
 }

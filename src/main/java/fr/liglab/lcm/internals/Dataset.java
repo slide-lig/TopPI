@@ -26,6 +26,10 @@ public abstract class Dataset {
 	
 	TIntIntMap supportCounts;
 	
+	public TIntIntMap getSupportCounts() {
+		return supportCounts;
+	}
+	
 	int[] discoveredClosure;
 	
 	/**

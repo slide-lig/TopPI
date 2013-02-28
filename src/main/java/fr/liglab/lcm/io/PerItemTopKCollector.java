@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class PerItemTopKCollector implements PatternsCollector {
+public final class PerItemTopKCollector extends PatternsCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a
 	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
@@ -143,6 +143,7 @@ public final class PerItemTopKCollector implements PatternsCollector {
 	 */
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
+	@Override
 	public boolean explore(final int[] currentPattern,
 			final int currentSupport, final int extension,
 			final int[] sortedFreqItems,

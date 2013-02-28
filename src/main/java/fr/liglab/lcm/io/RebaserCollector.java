@@ -9,7 +9,7 @@ import fr.liglab.lcm.internals.RebasedDataset;
  * except that all patterns are re-instanciated and translated according 
  * to the RebasedDataset provided at instanciation.
  */
-public class RebaserCollector implements PatternsCollector {
+public class RebaserCollector extends PatternsCollector {
 	
 	protected final int[] map;
 	protected final PatternsCollector decorated;
