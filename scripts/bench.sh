@@ -2,11 +2,14 @@
 
 ###### TODO:
 ## inclure le LCM d'Uno et al dans le bench
+## fix les supports partout
+## passer le nom a afficher dans runner()
 
 
 CLASSPATH="$HOME/Labo/lcm-over-hadoop/target/classes"
 CLASSPATH="$CLASSPATH:$HOME/.m2/repository/net/sf/trove4j/trove4j/3.0.3/trove4j-3.0.3.jar"
 CLASSPATH="$CLASSPATH:$HOME/.m2/repository/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"
+CLASSPATH="$CLASSPATH:$HOME/.m2/repository/commons-cli/commons-cli/1.2/commons-cli-1.2.jar"
 
 PLCM="/Users/martin/Labo/plcm/algorithms/plcm/plcm"
 jLCM="java -Xmx1024m -cp $CLASSPATH fr.liglab.lcm.Main"
@@ -59,11 +62,11 @@ function bench() {
 function hard() {
   echo "===== Starting hard benchmark :"
   bench 80 retail.dat
-  bench 200000 accidents.dat
-  bench 9000 kosarak.dat
-  bench 2000 T40I10D100K.dat
+  bench 3000 kosarak.dat
+  bench 10000 T40I10D100K.dat
   bench 8000 digg.dat
   bench 120000 lastfm.dat
+  #bench 200000 accidents.dat
   echo "===== HARD BENCHMARK DONE"
 }
 
@@ -73,8 +76,8 @@ function easy() {
   bench 300000 accidents.dat
   bench 100000 kosarak.dat
   bench 20000 T40I10D100K.dat
-  bench 80000 digg.dat
-  bench 400000 lastfm.dat
+  #bench 80000 digg.dat
+  #bench 400000 lastfm.dat
   echo "===== EASY BENCHMARK DONE"
 }
 
