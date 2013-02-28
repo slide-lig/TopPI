@@ -1,4 +1,4 @@
-package fr.liglab.lcm.tests.stubs;
+package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.io.PatternsCollector;
 

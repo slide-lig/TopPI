@@ -9,10 +9,10 @@ import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.io.FileReader;
+import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.RebaserCollector;
-import fr.liglab.lcm.tests.stubs.NullCollector;
 import fr.liglab.lcm.tests.stubs.StubPatternsCollector;
 import gnu.trove.map.TIntIntMap;
 
