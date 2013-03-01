@@ -29,9 +29,9 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 	}
 	
 	@Override
-	protected TIntIntMap prepareOccurences() { 
+	protected void prepareOccurences() { 
 		TIntIntIterator counts = this.supportCounts.iterator();
-		TIntIntMap indexesMap = new TIntIntHashMap(this.supportCounts.size());
+		int i = 0;
 		
 		this.rebaser = new Rebaser(this);
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
@@ -39,17 +39,17 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences.put(rebasedItem, new int[counts.value()] );
-			indexesMap.put(rebasedItem, 0);
+			
+			this.occurrences[i] = counts.value();
+			this.occurrencesIndexes.put(rebasedItem, i);
+			i += counts.value() + 1;
 		}
-		
-		return indexesMap;
 	}
 	
 	@Override
-	protected void filter(Iterable<int[]> transactions, TIntIntMap indexesMap) {
+	protected void filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		
+		TIntIntMap indexesMap = new TIntIntHashMap(occurrencesIndexes);
 		int i = 1;
 		int tIndex = 0;
 		
@@ -61,9 +61,9 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 					int rebased = rebasing.get(item);
 					this.concatenated[i] = rebased;
 					
-					int occurrenceIndex = indexesMap.get(rebased);
-					this.occurrences.get(rebased)[occurrenceIndex] = tIndex;
-					indexesMap.put(rebased, occurrenceIndex + 1);
+					int occurrenceIndex = indexesMap.get(rebased) + 1;
+					this.occurrences[occurrenceIndex] = tIndex;
+					indexesMap.put(rebased, occurrenceIndex);
 					
 					length++;
 					i++;

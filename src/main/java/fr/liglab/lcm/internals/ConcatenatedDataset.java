@@ -5,7 +5,6 @@ import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.set.TIntSet;
 
 import java.util.Arrays;
@@ -31,10 +30,17 @@ public class ConcatenatedDataset extends Dataset {
 	protected final int transactionsCount;
 	
 	/**
-	 * frequent item => array of occurrences indexes in "concatenated"
-	 * Transactions are added in the same order in all occurences-arrays. This property is used in CandidatesIterator's prefix-preserving test
+	 * Occurrences lists, prefixed by their length and concatenated
+	 * TIDs (ie. transaction index in "concatenated") are added in the 
+	 * same order in all occurences-arrays. 
+	 * This property is used in CandidatesIterator's prefix-preserving test
 	 */
-	protected final TIntObjectHashMap<int[]> occurrences = new TIntObjectHashMap<int[]>();
+	protected final int[] occurrences;
+	
+	/**
+	 * item => occurrences list index in "occurrences"
+	 */
+	protected final TIntIntMap occurrencesIndexes;
 	
 	/**
 	 * Initial dataset constructor
@@ -53,13 +59,16 @@ public class ConcatenatedDataset extends Dataset {
 		this.transactionsCount = transactionsCopier.size();
 		
 		int remainingItemsCount = genClosureAndFilterCount();
-		TIntIntMap indexesMap = this.prepareOccurences();
-		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
+		occurrences = new int[remainingItemsCount + supportCounts.size()];
+		occurrencesIndexes = new TIntIntHashMap(supportCounts.size());
+		this.prepareOccurences();
 		
-		this.filter(transactionsCopier, indexesMap);
+		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
+		this.filter(transactionsCopier);
 	}
 	
-	protected void filter(final Iterable<int[]> transactions, TIntIntMap indexesMap) {
+	protected void filter(final Iterable<int[]> transactions) {
+		TIntIntMap indexesMap = new TIntIntHashMap(occurrencesIndexes);
 		TIntSet retained = this.supportCounts.keySet();
 		int i = 1;
 		int tIndex = 0;
@@ -71,9 +80,9 @@ public class ConcatenatedDataset extends Dataset {
 				if (retained.contains(item)) {
 					this.concatenated[i] = item;
 					
-					int occurrenceIndex = indexesMap.get(item);
-					this.occurrences.get(item)[occurrenceIndex] = tIndex;
-					indexesMap.put(item, occurrenceIndex + 1);
+					int occurrenceIndex = indexesMap.get(item) + 1;
+					this.occurrences[occurrenceIndex] = tIndex;
+					indexesMap.put(item, occurrenceIndex);
 					
 					length++;
 					i++;
@@ -93,10 +102,14 @@ public class ConcatenatedDataset extends Dataset {
 		this.minsup = parent.minsup;
 		this.coreItem = extension;
 		
-		int[] occurrences = parent.occurrences.get(extension);
-		this.transactionsCount = occurrences.length;
+		int occurrencesIndex = parent.occurrencesIndexes.get(extension);
+		this.transactionsCount = parent.occurrences[occurrencesIndex];
 		
-		for(int tid : occurrences) {
+		occurrencesIndex++;
+		int maxIndex = occurrencesIndex + this.transactionsCount;
+		
+		for(; occurrencesIndex < maxIndex; occurrencesIndex++) {
+			int tid = parent.occurrences[occurrencesIndex];
 			int length = parent.concatenated[tid];
 			for (int i = tid + 1; i <= tid+length; i++) {
 				this.supportCounts.adjustOrPutValue(parent.concatenated[i], 1, 1);
@@ -104,38 +117,46 @@ public class ConcatenatedDataset extends Dataset {
 		}
 		
 		supportCounts.remove(extension);
+		
 		int remainingItemsCount = genClosureAndFilterCount();
-		TIntIntMap indexesMap = this.prepareOccurences();
+		occurrences = new int[remainingItemsCount + supportCounts.size()];
+		occurrencesIndexes = new TIntIntHashMap(supportCounts.size());
+		this.prepareOccurences();
 		
 		TIntSet keeped = this.supportCounts.keySet();
 		this.concatenated = new int[remainingItemsCount + this.transactionsCount];
 		
-		filterParent(parent.concatenated, occurrences, keeped, indexesMap);
+		filterParent(parent, extension, keeped);
 	}
 	
 	/**
-	 * @param parent concatenated parent transactions
-	 * @param occIterator occurences (giving indexes in parent)
+	 * @param parent dataset
+	 * @param projection item
 	 * @param keeped items that will remain in our transactions
-	 * @param indexes in this.occurrences
 	 */
-	protected void filterParent(int[] parent, int[] occurrences, TIntSet keeped, TIntIntMap indexesMap) {
+	protected void filterParent(ConcatenatedDataset parent, int extension, TIntSet keeped) {
+		TIntIntMap indexesMap = new TIntIntHashMap(occurrencesIndexes);
 		int i = 1;
 		int tIndex = 0;
 		
-		for(int parentTid : occurrences) {
-			int parentLength = parent[parentTid];
+		int parentOccsIdx = parent.occurrencesIndexes.get(extension);
+		int maxIndex = parentOccsIdx + parent.occurrences[parentOccsIdx] + 1;
+		parentOccsIdx++;
+		
+		for(; parentOccsIdx < maxIndex; parentOccsIdx++) {
+			int parentTid = parent.occurrences[parentOccsIdx];
+			int parentLength = parent.concatenated[parentTid];
 			int length = 0;
 			
 			for (int j = parentTid + 1; j <= parentTid + parentLength; j++) {
-				int item = parent[j];
+				int item = parent.concatenated[j];
 				
 				if (keeped.contains(item)) {
 					this.concatenated[i] = item;
 					
-					int occurrenceIndex = indexesMap.get(item);
-					this.occurrences.get(item)[occurrenceIndex] = tIndex;
-					indexesMap.put(item, occurrenceIndex + 1);
+					int occurrenceIndex = indexesMap.get(item) + 1;
+					this.occurrences[occurrenceIndex] = tIndex;
+					indexesMap.put(item, occurrenceIndex);
 					
 					length++;
 					i++;
@@ -151,20 +172,18 @@ public class ConcatenatedDataset extends Dataset {
 	}
 	
 	/**
-	 * Pre-instanciate occurrences ArrayLists according to this.supportCounts
-	 * @return a prepared indexes map (all items => 0)
+	 * Prepare occurrences and occurrencesIndexes
 	 */
-	protected TIntIntMap prepareOccurences() {
+	protected void prepareOccurences() {
 		TIntIntIterator counts = this.supportCounts.iterator();
-		TIntIntMap indexesMap = new TIntIntHashMap(this.supportCounts.size());
+		int i = 0;
 		
 		while (counts.hasNext()) {
 			counts.advance();
-			this.occurrences.put(counts.key(), new int[counts.value()] );
-			indexesMap.put(counts.key(), 0);
+			this.occurrences[i] = counts.value();
+			this.occurrencesIndexes.put(counts.key(), i);
+			i += counts.value() + 1;
 		}
-		
-		return indexesMap;
 	}
 	
 	@Override
@@ -206,7 +225,7 @@ public class ConcatenatedDataset extends Dataset {
 		public CandidatesIterator() {
 			this.next_index = -1;
 			
-			this.frequentItems = occurrences.keys();
+			this.frequentItems = occurrencesIndexes.keys();
 			Arrays.sort(this.frequentItems);
 			
 			int coreItemIndex = Arrays.binarySearch(this.frequentItems, coreItem);
@@ -244,14 +263,14 @@ public class ConcatenatedDataset extends Dataset {
 		private boolean prefixPreservingTest(final int candidateIndex) {
 			final int candidate = frequentItems[candidateIndex];
 			final int candidateSupport = supportCounts.get(candidate);
-			int[] candidateOccurrences = occurrences.get(candidate);
+			final int candidateOccsIdx = occurrencesIndexes.get(candidate);
 			
 			for (int i=candidateIndex + 1; i < frequentItems.length; i++) {
 				int j = frequentItems[i];
 				
 				if (supportCounts.get(j) >= candidateSupport) {
-					int[] jOccurrences = occurrences.get(j);
-					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
+					int jOccsIdx = occurrencesIndexes.get(j);
+					if (isAincludedInB(candidateOccsIdx, jOccsIdx)) {
 						return false;
 					}
 				}
@@ -264,19 +283,24 @@ public class ConcatenatedDataset extends Dataset {
 		 * Assumptions :
 		 *  - both contain array indexes appended in increasing order
 		 *  - you already tested that B.size >= A.size
-		 * @return true if A is included in B 
+		 * @return true if occurrences at aStart are included in occurrences at bStart
 		 */
-		private boolean isAincludedInB(final int[] a, final int[] b) {
+		private boolean isAincludedInB(final int aStart, final int bStart) {
+			int aIt = aStart;
+			int aMax = aIt + occurrences[aIt] + 1;
 			int tidA = 0;
+			
+			int bIt = bStart;
+			int bMax = bIt + occurrences[bIt] + 1;
 			int tidB = 0;
 			
-			for (int aIt = 0, bIt =0; aIt < a.length && bIt < b.length; aIt++) {
-				tidA = a[aIt];
-				tidB = b[bIt];
+			for (aIt++, bIt++; aIt < aMax && bIt < bMax; aIt++) {
+				tidA = occurrences[aIt];
+				tidB = occurrences[bIt];
 
 				bIt++;
-				while (tidB < tidA && bIt < b.length) {
-					tidB = b[bIt];
+				while (tidB < tidA && bIt < bMax) {
+					tidB = occurrences[bIt];
 					bIt++;
 				}
 				
