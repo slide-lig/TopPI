@@ -5,9 +5,46 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>fr.liglab.lcm-over-hadoop</groupId>
   <artifactId>lcm-over-hadoop</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.1</version>
   <name>LCM over Hadoop</name>
-  <description>Standalone implementation of LCM algorithm, and its adaptation to the Hadoop platform as a top-k-per-item frequent closed itemset miner.</description>
+  <description>Standalone implementation of LCM algorithm and its adaptation to the Hadoop platform as a top-k-per-item frequent closed itemset miner.</description>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addClasspath>false</addClasspath>
+              <mainClass>fr.liglab.lcm.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4</version>
+        <executions>
+        	<execution>
+	        	<id>jar with deps</id>
+	        	<goals>
+	        		<goal>assembly</goal>
+	        	</goals>
+	        	<phase>package</phase>
+	        	<configuration>
+		          <descriptorId>jar-with-dependencies</descriptorId>
+		        </configuration>
+        	</execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  
   <dependencies>
   	<dependency>
   		<groupId>org.apache.hadoop</groupId>
