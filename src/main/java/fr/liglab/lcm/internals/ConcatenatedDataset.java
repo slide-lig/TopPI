@@ -270,7 +270,7 @@ public class ConcatenatedDataset extends Dataset {
 			int tidA = 0;
 			int tidB = 0;
 			
-			for (int aIt = 0, bIt =0; aIt < a.length && bIt < b.length; aIt++, bIt++) {
+			for (int aIt = 0, bIt =0; aIt < a.length && bIt < b.length; aIt++) {
 				tidA = a[aIt];
 				tidB = b[bIt];
 
