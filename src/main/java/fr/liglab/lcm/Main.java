@@ -9,6 +9,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -56,7 +57,8 @@ public class Main {
 		CommandLineParser parser = new PosixParser();
 		
 		try {
-			GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
+			Configuration conf = new Configuration();
+			GenericOptionsParser hadoopCmd = new GenericOptionsParser(conf, args);
 			CommandLine cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
 			String[] remainingArgs = cmd.getArgs();
 			
@@ -86,7 +88,18 @@ public class Main {
 						g = Integer.parseInt(cmd.getOptionValue(OPTION_GROUPS));
 					}
 					
-					ToolRunner.run(new Driver(input, output, minSupport, g, k), args);
+					conf = hadoopCmd.getConfiguration();
+					
+					conf.setStrings(Driver.KEY_INPUT, input);
+					conf.setStrings(Driver.KEY_OUTPUT, output);
+					conf.setInt(Driver.KEY_MINSUP, minSupport);
+					conf.setInt(Driver.KEY_NBGROUPS, g);
+					
+					if (k != null) {
+						conf.setInt(Driver.KEY_DO_TOP_K, k);
+					}
+					
+					ToolRunner.run(new Driver(conf), args);
 				}
 			} else {
 				printMan(options);
