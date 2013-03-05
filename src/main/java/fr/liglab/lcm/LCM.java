@@ -67,11 +67,18 @@ public class LCM {
 		TIntIntMap supportCounts = dataset.getSupportCounts();
 
 		int candidate;
+		boolean previousExplore = true;
+		int previousCandidate = -1;
 		while ((candidate = iterator.getExtension()) != -1) {
-			if (collector.explore(Q, candidate, sortedFreqs, supportCounts)) {
+			if (collector.explore(Q, candidate, sortedFreqs, supportCounts,
+					previousCandidate, previousExplore)) {
 				explored++;
+				previousCandidate = candidate;
+				previousExplore = true;
 				lcm(Q, dataset, candidate);
 			} else {
+				previousCandidate = candidate;
+				previousExplore = false;
 				cut++;
 			}
 		}
@@ -79,6 +86,6 @@ public class LCM {
 
 	public String toString() {
 		return "LCM exploration : " + explored + " patterns explored / " + cut
-				+ " aborted";
+				+ " aborted ";
 	}
 }

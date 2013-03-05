@@ -130,7 +130,7 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	 * 
 	 * @param extension Proposition of an item to extend the current pattern
 	 * 
-	 * @param sortedFreqItems array of remaining frequent items in the current 
+	 * @param sortedFreqItems array of remaining frequent items in the current
 	 * data set (sorted in increasing order)
 	 * 
 	 * @param supportCounts Map giving the support for each item present in the
@@ -143,19 +143,36 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	// Also assumes that frequency test is already done
 	@Override
 	public boolean explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
+			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final int previousItem, final boolean resultForPreviousItem) {
+
 		if (currentPattern.length == 0) {
 			return true;
 		}
-		
 		final int extensionSupport = supportCounts.get(extension);
-		
+		if (!resultForPreviousItem) {
+			final int previousItemSupport = supportCounts.get(previousItem);
+			if (previousItemSupport >= extensionSupport) {
+				// awesome, we just need to check for the extension
+				final PatternWithFreq[] itemTopK = this.topK.get(extension);
+				if (itemTopK == null
+						|| itemTopK[this.k - 1] == null
+						|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+					return true;
+				}
+				return false;
+			}
+		}
+		// previous item had explore=true or lower support, so we need to check
+		// it all again so
+		// that we might say no
 		// start by checking the topk of items already in the pattern
 		for (int item : currentPattern) {
 			final PatternWithFreq[] itemTopK = this.topK.get(item);
 			// itemTopK == null should never happen in theory, as
 			// currentPattern should be in there at least
-			if (itemTopK == null || itemTopK[this.k - 1] == null
+			if (itemTopK == null
+					|| itemTopK[this.k - 1] == null
 					|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
 				return true;
 			}
@@ -166,7 +183,7 @@ public final class PerItemTopKCollector extends PatternsCollector {
 				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
 			return true;
 		}
-		
+
 		// check for items < extension
 		// keep in mind that their max support will be the min of their own
 		// support in current dataset and support of the extension
@@ -174,17 +191,17 @@ public final class PerItemTopKCollector extends PatternsCollector {
 			if (item >= extension) {
 				break;
 			}
-			
-			final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
-			
+
+			final PatternWithFreq[] potentialExtensionTopK = this.topK
+					.get(item);
+
 			if (potentialExtensionTopK == null
 					|| potentialExtensionTopK[this.k - 1] == null
 					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
-							.min(extensionSupport, supportCounts.get(item) )) {
+							.min(extensionSupport, supportCounts.get(item))) {
 				return true;
 			}
 		}
-		
 		return false;
 	}
 
