@@ -31,8 +31,7 @@ public class TransactionWritable implements Writable {
 	public void set(int[] t) {
 		transaction = t;
 	}
-
-	@Override
+	
 	public void readFields(DataInput in) throws IOException {
 		int length = in.readInt();
 		transaction = new int[length];
@@ -41,8 +40,7 @@ public class TransactionWritable implements Writable {
 			transaction[i] = in.readInt();
 		}
 	}
-
-	@Override
+	
 	public void write(DataOutput out) throws IOException {
 		out.writeInt(transaction.length);
 		for	(int i=0; i<transaction.length; i++) {

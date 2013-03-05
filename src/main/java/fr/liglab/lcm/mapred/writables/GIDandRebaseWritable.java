@@ -5,7 +5,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 
 /**
@@ -14,38 +13,36 @@ import org.apache.hadoop.io.Writable;
 public class GIDandRebaseWritable implements Writable {
 	
 	private IntWritable gid;
-	private Text rebased;
+	private IntWritable rebased;
 	
 	public GIDandRebaseWritable() {
 		gid = new IntWritable();
-		rebased = new Text();
+		rebased = new IntWritable();
 	}
 	
-	public GIDandRebaseWritable(int i, String s) {
-		gid = new IntWritable(i);
-		rebased = new Text(s);
+	public GIDandRebaseWritable(final int g, final int r) {
+		gid = new IntWritable(g);
+		rebased = new IntWritable(r);
 	}
 	
 	public int getGid() {
 		return gid.get();
 	}
 	
-	public String getRebased() {
-		return rebased.toString();
+	public int getRebased() {
+		return rebased.get();
 	}
 	
-	public void set(int i, String s) {
-		gid.set(i);
-		rebased.set(s);
+	public void set(final int g, final int r) {
+		gid.set(g);
+		rebased.set(r);
 	}
 	
-	@Override
 	public void readFields(DataInput in) throws IOException {
 		gid.readFields(in);
 		rebased.readFields(in);
 	}
-
-	@Override
+	
 	public void write(DataOutput out) throws IOException {
 		gid.write(out);
 		rebased.write(out);

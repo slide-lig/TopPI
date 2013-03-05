@@ -7,8 +7,10 @@ import java.io.IOException;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
-public class ItemAndSupportWritable implements Writable {
+public class ItemAndSupportWritable implements Writable, 
+		WritableComparable<ItemAndSupportWritable>, Comparable<ItemAndSupportWritable> {
 	
 	private IntWritable item;
 	private LongWritable support;
@@ -36,13 +38,11 @@ public class ItemAndSupportWritable implements Writable {
 		support.set(s);
 	}
 	
-	@Override
 	public void readFields(DataInput in) throws IOException {
 		item.readFields(in);
 		support.readFields(in);
 	}
-
-	@Override
+	
 	public void write(DataOutput out) throws IOException {
 		item.write(out);
 		support.write(out);
@@ -65,5 +65,13 @@ public class ItemAndSupportWritable implements Writable {
 			return o.item.equals(item) && o.support.equals(support);
 		}
 		return false;
+	}
+
+	public int compareTo(ItemAndSupportWritable other) {
+		if (other.support.get() == this.support.get()) {
+			return this.item.get() - other.item.get();
+		} else {
+			return (int)(other.support.get() - this.support.get());
+		}
 	}
 }

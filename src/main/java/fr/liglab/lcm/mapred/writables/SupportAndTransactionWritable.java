@@ -36,13 +36,11 @@ public class SupportAndTransactionWritable implements Writable {
 		return transaction.get();
 	}
 	
-	@Override
 	public void write(DataOutput out) throws IOException {
 		support.write(out);
 		transaction.write(out);
 	}
 	
-	@Override 
 	public void readFields(DataInput in) throws IOException {
 		support.readFields(in);
 		transaction.readFields(in);
