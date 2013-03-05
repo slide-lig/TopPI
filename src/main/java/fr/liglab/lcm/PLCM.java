@@ -64,10 +64,11 @@ public class PLCM {
 		this.collector.collect(support, pattern);
 	}
 
-	public final boolean explore(int[] currentPattern, int extension,
-			int[] sortedFreqItems, TIntIntMap supportCounts) {
+	public final int explore(int[] currentPattern, int extension,
+			int[] sortedFreqItems, TIntIntMap supportCounts, int previousItem,
+			int previousResult) {
 		return this.collector.explore(currentPattern, extension,
-				sortedFreqItems, supportCounts);
+				sortedFreqItems, supportCounts, previousItem, previousResult);
 	}
 
 	/**
@@ -115,7 +116,12 @@ public class PLCM {
 						t.lock.readLock().unlock();
 						int extension = sj.iterator.getExtension();
 						if (extension != -1) {
-							return new StolenJob(extension, sj);
+							// need to copy because of possible inconsistencies
+							// in previous explore results (no lock to
+							// read/update them)
+							return new StolenJob(extension, new StackedJob(
+									sj.iterator, sj.dataset, sj.pattern,
+									sj.sortedfreqs));
 						}
 					} else {
 						t.lock.readLock().unlock();
@@ -183,14 +189,16 @@ public class PLCM {
 
 		private void lcm(StackedJob sj, int extension) {
 			TIntIntMap supportCounts = sj.dataset.getSupportCounts();
-			boolean explore;
+			int explore;
 			if (sj.sortedfreqs == null) {
-				explore = true;
+				explore = -1;
 			} else {
 				explore = explore(sj.pattern, extension, sj.sortedfreqs,
-						supportCounts);
+						supportCounts, sj.previousItem, sj.previousResult);
+				sj.previousItem = extension;
+				sj.previousResult = explore;
 			}
-			if (explore) {
+			if (explore < 0) {
 				explored.incrementAndGet();
 				Dataset dataset = sj.dataset.getProjection(extension);
 				int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
@@ -215,6 +223,8 @@ public class PLCM {
 		private final Dataset dataset;
 		private final int[] pattern;
 		private final int[] sortedfreqs;
+		private int previousItem;
+		private int previousResult;
 
 		public StackedJob(ExtensionsIterator iterator, Dataset dataset,
 				int[] pattern, int[] sortedfreqs) {
@@ -223,6 +233,8 @@ public class PLCM {
 			this.dataset = dataset;
 			this.pattern = pattern;
 			this.sortedfreqs = sortedfreqs;
+			this.previousItem = -1;
+			this.previousResult = -1;
 		}
 
 		@Override
@@ -297,7 +309,7 @@ public class PLCM {
 
 		long time = System.currentTimeMillis();
 
-		PLCM miner = new PLCM(collector, 1);
+		PLCM miner = new PLCM(collector, 8);
 		miner.lcm(dataset);
 
 		if (cmd.hasOption('b')) {

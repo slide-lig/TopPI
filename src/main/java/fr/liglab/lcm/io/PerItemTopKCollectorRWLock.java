@@ -168,62 +168,79 @@ public final class PerItemTopKCollectorRWLock extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public boolean explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
+	public int explore(final int[] currentPattern, final int extension,
+			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final int previousItem, final int resultForPreviousItem) {
 		if (currentPattern.length == 0) {
-			return true;
+			return -1;
 		}
-
 		final int extensionSupport = supportCounts.get(extension);
+		int threshold = Integer.MAX_VALUE;
+		boolean shortcut = resultForPreviousItem > extensionSupport;
 		this.mapLock.readLock().lock();
-		// start by checking the topk of items already in the pattern
-		for (int item : currentPattern) {
-			final PatternWithFreq[] itemTopK = this.topK.get(item);
-			// itemTopK == null should never happen in theory, as
-			// currentPattern should be in there at least
-			if (itemTopK == null) {
-				this.mapLock.readLock().unlock();
-				return true;
-			}
-			if (itemTopK[this.k - 1] == null
-					|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
-				this.mapLock.readLock().unlock();
-				return true;
+		if (shortcut) {
+			threshold = Math.min(resultForPreviousItem, threshold);
+		} else {
+			for (int item : currentPattern) {
+				final PatternWithFreq[] itemTopK = this.topK.get(item);
+				// itemTopK == null should never happen in theory, as
+				// currentPattern should be in there at least
+				if (itemTopK == null
+						|| itemTopK[this.k - 1] == null
+						|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+					this.mapLock.readLock().unlock();
+					return -1;
+				} else {
+					threshold = Math.min(threshold,
+							itemTopK[this.k - 1].getSupportCount());
+				}
 			}
 		}
 		// check for extension
 		final PatternWithFreq[] itemTopK = this.topK.get(extension);
-		if (itemTopK == null) {
-			this.mapLock.readLock().unlock();
-			return true;
-		}
-		if (itemTopK[this.k - 1] == null
+		if (itemTopK == null || itemTopK[this.k - 1] == null
 				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
 			this.mapLock.readLock().unlock();
-			return true;
+			return -1;
+		} else {
+			threshold = Math.min(threshold,
+					itemTopK[this.k - 1].getSupportCount());
+		}
+		int i = 0;
+		if (shortcut) {
+			i = Arrays.binarySearch(sortedFreqItems, previousItem);
+			if (i < 0) {
+				this.mapLock.readLock().unlock();
+				throw new RuntimeException(
+						"previous item not in frequent items");
+			}
+			i++;
 		}
 		// check for items < extension
 		// keep in mind that their max support will be the min of their own
 		// support in current dataset and support of the extension
-		for (int item : sortedFreqItems) {
+		for (; i < sortedFreqItems.length; i++) {
+			int item = sortedFreqItems[i];
 			if (item >= extension) {
 				break;
 			}
+
 			final PatternWithFreq[] potentialExtensionTopK = this.topK
 					.get(item);
-			if (potentialExtensionTopK == null) {
-				this.mapLock.readLock().unlock();
-				return true;
-			}
-			if (potentialExtensionTopK[this.k - 1] == null
+
+			if (potentialExtensionTopK == null
+					|| potentialExtensionTopK[this.k - 1] == null
 					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
 							.min(extensionSupport, supportCounts.get(item))) {
 				this.mapLock.readLock().unlock();
-				return true;
+				return -1;
+			} else {
+				threshold = Math.min(threshold,
+						potentialExtensionTopK[this.k - 1].getSupportCount());
 			}
 		}
 		this.mapLock.readLock().unlock();
-		return false;
+		return threshold;
 	}
 
 	@Override

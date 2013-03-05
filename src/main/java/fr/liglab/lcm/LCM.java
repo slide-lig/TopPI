@@ -60,7 +60,7 @@ public class LCM {
 		final Dataset dataset = parent_dataset.getProjection(extension);
 		int[] Q = ItemsetsFactory.extend(pattern, extension,
 				dataset.getDiscoveredClosureItems());
-		
+
 		collector.collect(dataset.getTransactionsCount(), Q);
 
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
@@ -68,18 +68,17 @@ public class LCM {
 		TIntIntMap supportCounts = dataset.getSupportCounts();
 
 		int candidate;
-		boolean previousExplore = true;
+		int previousExplore = -1;
 		int previousCandidate = -1;
 		while ((candidate = iterator.getExtension()) != -1) {
-			if (collector.explore(Q, candidate, sortedFreqs, supportCounts,
-					previousCandidate, previousExplore)) {
+			int explore = collector.explore(Q, candidate, sortedFreqs,
+					supportCounts, previousCandidate, previousExplore);
+			previousExplore = explore;
+			previousCandidate = candidate;
+			if (explore < 0) {
 				explored++;
-				previousCandidate = candidate;
-				previousExplore = true;
 				lcm(Q, dataset, candidate);
 			} else {
-				previousCandidate = candidate;
-				previousExplore = false;
 				cut++;
 			}
 		}

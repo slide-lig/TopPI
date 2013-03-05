@@ -25,19 +25,19 @@ public abstract class PatternsCollector {
 	 * @return true if it is possible to generate patterns that make it into
 	 * topK by exploring this extension
 	 */
-	public boolean explore(final int[] currentPattern, final int extension,
+	public int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
 		return this.explore(currentPattern, extension, sortedFreqItems,
-				supportCounts, -1, false);
+				supportCounts, -1, -1);
 	}
 
 	/*
 	 * @param resultForPreviousItem What was the explore result for the previous
 	 * item in the sequence
 	 */
-	public boolean explore(final int[] currentPattern, final int extension,
+	public int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final int previousItem, final boolean resultForPreviousItem) {
-		return true;
+			final int previousItem, final int resultForPreviousItem) {
+		return -1;
 	}
 }
