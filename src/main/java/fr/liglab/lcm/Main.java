@@ -11,7 +11,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.GenericOptionsParser;
-import org.apache.hadoop.util.ToolRunner;
 
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.internals.RebasedDataset;
@@ -99,7 +98,8 @@ public class Main {
 						conf.setInt(Driver.KEY_DO_TOP_K, k);
 					}
 					
-					ToolRunner.run(new Driver(conf), args);
+					Driver driver = new Driver(conf);
+					System.exit(driver.run());
 				}
 			} else {
 				printMan(options);

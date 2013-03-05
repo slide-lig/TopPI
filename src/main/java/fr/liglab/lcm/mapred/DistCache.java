@@ -1,5 +1,11 @@
 package fr.liglab.lcm.mapred;
 
+import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
+import fr.liglab.lcm.util.RebasingAndGroupID;
+import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
+
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -8,6 +14,8 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.SequenceFile.Reader;
 
 /**
  * Tooling functions for distributed cache I/O
@@ -15,6 +23,9 @@ import org.apache.hadoop.fs.Path;
 class DistCache {
 	static final String GROUPSMAP_DIRNAME = "itemGroups";
 	
+	/**
+	 * Adds given path to conf's distributed cache
+	 */
 	static void copyToCache(Configuration conf, String path) throws IOException {
 		FileSystem fs = FileSystem.get(conf);
 		Path qualifiedPath = fs.makeQualified(new Path(path));
@@ -28,5 +39,59 @@ class DistCache {
 				DistributedCache.addCacheFile(file.toUri(), conf);
 			}
 		}
+	}
+	
+	/**
+	 * @return a map which associates (to any frequent item) its group ID and its new item ID
+	 */
+	static TIntObjectMap<RebasingAndGroupID> readItemsDispatching(Configuration conf) throws IOException {
+		TIntObjectMap<RebasingAndGroupID> map = 
+				new TIntObjectHashMap<RebasingAndGroupID>();
+		
+		FileSystem fs = FileSystem.getLocal(conf);
+		
+		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
+			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+				Reader reader = new Reader(fs, path, conf);
+				IntWritable key = new IntWritable();
+				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				
+				while(reader.next(key, v)) {
+					RebasingAndGroupID entry = new RebasingAndGroupID(v.getRebased(), v.getGid());
+					map.put(key.get(), entry);
+				}
+				
+				reader.close();
+			}
+		}
+		
+		return map;
+	}
+	
+	/**
+	 * @return list of (rebased) items for given group ID  
+	 */
+	static TIntArrayList readStartersFor(Configuration conf, int gid) throws IOException {
+		TIntArrayList starters = new TIntArrayList();
+		
+		FileSystem fs = FileSystem.getLocal(conf);
+		
+		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
+			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+				Reader reader = new Reader(fs, path, conf);
+				IntWritable key = new IntWritable();
+				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				
+				while(reader.next(key, v)) {
+					if (v.getGid() == gid) {
+						starters.add(v.getRebased());
+					}
+				}
+				
+				reader.close();
+			}
+		}
+		
+		return starters;
 	}
 }

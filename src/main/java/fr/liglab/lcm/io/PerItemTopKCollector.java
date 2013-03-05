@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-public final class PerItemTopKCollector extends PatternsCollector {
+public class PerItemTopKCollector extends PatternsCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a
 	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
@@ -22,8 +22,8 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	 * benefit from the top-k of the others
 	 */
 	private final PatternsCollector decorated;
-	private final int k;
-	private final TIntObjectMap<PatternWithFreq[]> topK;
+	protected final int k;
+	protected final TIntObjectMap<PatternWithFreq[]> topK;
 	private final boolean outputEachPatternOnce;
 
 	public PerItemTopKCollector(final PatternsCollector decorated, final int k) {
@@ -40,7 +40,7 @@ public final class PerItemTopKCollector extends PatternsCollector {
 		this.outputEachPatternOnce = outputEachPatternOnce;
 	}
 
-	public void collect(final int support, final int[] pattern) {
+	public final void collect(final int support, final int[] pattern) {
 		for (final int item : pattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
 			if (itemTopK == null) {
@@ -142,7 +142,7 @@ public final class PerItemTopKCollector extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public boolean explore(final int[] currentPattern, final int extension,
+	public final boolean explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
 		if (currentPattern.length == 0) {
 			return true;
@@ -209,7 +209,7 @@ public final class PerItemTopKCollector extends PatternsCollector {
 		return sb.toString();
 	}
 
-	private static final class PatternWithFreq {
+	public static final class PatternWithFreq {
 		private final int supportCount;
 		private final int[] pattern;
 

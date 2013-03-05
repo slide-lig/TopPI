@@ -3,7 +3,6 @@ package fr.liglab.lcm.mapred;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -12,15 +11,16 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
-import org.apache.hadoop.util.Tool;
 
 import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
+import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
+import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
 /**
  * Driver methods for our 3 map-reduce jobs
  */
-public class Driver extends Configured implements Tool {
+public class Driver {
 	public static final String KEY_INPUT    = "fr.liglab.lcm.input";
 	public static final String KEY_OUTPUT   = "fr.liglab.lcm.output";
 	public static final String KEY_MINSUP   = "fr.liglab.lcm.minsup";
@@ -90,10 +90,10 @@ public class Driver extends Configured implements Tool {
 		return builder.toString();
 	}
 	
-	public int run(String[] args) throws Exception {
+	public int run() throws Exception {
 		System.out.println(toString());
 		
-		if (genItemMapToCache()) {
+		if (genItemMapToCache() && miningJob()) {
 			return 0;
 		}
 		
@@ -105,7 +105,8 @@ public class Driver extends Configured implements Tool {
 		
 		String output = this.conf.getStrings(KEY_GROUPS_MAP)[0];
 		
-		Job job = new Job(conf, "Computing frequent items mapping to groups, from "+input);
+		Job job = new Job(conf, 
+				"Computing frequent items mapping to groups, from "+this.input);
 		
 		job.setJarByClass(this.getClass());
 		
@@ -131,5 +132,31 @@ public class Driver extends Configured implements Tool {
 		}
 		
 		return success;
+	}
+	
+	protected boolean miningJob() 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		String output = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
+		
+		Job job = new Job(conf, "Mining frequent itemsets from "+this.input);
+		
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(this.input) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		job.setMapperClass(MiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(TransactionWritable.class);
+		
+		job.setReducerClass(MiningReducer.class);
+		
+		return job.waitForCompletion(true);
 	}
 }
