@@ -8,8 +8,10 @@ import gnu.trove.procedure.TIntObjectProcedure;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class PerItemTopKCollector extends PatternsCollector {
+public final class PerItemTopKCollectorRWLock extends PatternsCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a
 	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
@@ -22,76 +24,100 @@ public class PerItemTopKCollector extends PatternsCollector {
 	 * benefit from the top-k of the others
 	 */
 	private final PatternsCollector decorated;
-	protected final int k;
-	protected final TIntObjectMap<PatternWithFreq[]> topK;
+	private final int k;
+	private final TIntObjectMap<PatternWithFreq[]> topK;
 	private final boolean outputEachPatternOnce;
+	private final ReadWriteLock mapLock;
 
-	public PerItemTopKCollector(final PatternsCollector decorated, final int k) {
+	public PerItemTopKCollectorRWLock(final PatternsCollector decorated,
+			final int k) {
 		this(decorated, k, false);
 	}
 
-	public PerItemTopKCollector(final PatternsCollector follower, final int k,
-			final boolean outputEachPatternOnce) {
+	public PerItemTopKCollectorRWLock(final PatternsCollector follower,
+			final int k, final boolean outputEachPatternOnce) {
 		this.decorated = follower;
 		this.k = k;
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
 		this.topK = new TIntObjectHashMap<PatternWithFreq[]>();
 		this.outputEachPatternOnce = outputEachPatternOnce;
+		this.mapLock = new ReentrantReadWriteLock();
 	}
 
-	public final void collect(final int support, final int[] pattern) {
+	public void collect(final int support, final int[] pattern) {
+		this.mapLock.readLock().lock();
 		for (final int item : pattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
+			// first item in topk
 			if (itemTopK == null) {
-				itemTopK = new PatternWithFreq[this.k];
-				this.topK.put(item, itemTopK);
-			}
-			// we do not have k patterns for this item yet
-			if (itemTopK[this.k - 1] == null) {
-				// find the position of the last null entry
-				int lastNull = k - 1;
-				while (lastNull > 0 && itemTopK[lastNull - 1] == null) {
-					lastNull--;
+				// pas besoin du lock sur l'item
+				this.mapLock.readLock().unlock();
+				this.mapLock.writeLock().lock();
+				itemTopK = this.topK.get(item);
+				if (itemTopK == null) {
+					itemTopK = new PatternWithFreq[this.k];
+					itemTopK[0] = new PatternWithFreq(support, pattern);
+					this.topK.put(item, itemTopK);
 				}
-				// now compare with the valid entries to adjust position
-				int newPosition = lastNull;
-				while (newPosition >= 1) {
-					if (itemTopK[newPosition - 1].getSupportCount() < support) {
-						newPosition--;
-					} else {
-						break;
+				this.mapLock.writeLock().unlock();
+				this.mapLock.readLock().lock();
+			} else {
+				synchronized (itemTopK) {
+					// we do not have k patterns for this item yet
+					if (itemTopK[this.k - 1] == null) {
+						// find the position of the last null entry
+						int lastNull = k - 1;
+						while (lastNull > 0 && itemTopK[lastNull - 1] == null) {
+							lastNull--;
+						}
+						// now compare with the valid entries to adjust position
+						int newPosition = lastNull;
+						while (newPosition >= 1) {
+							if (itemTopK[newPosition - 1].getSupportCount() < support) {
+								newPosition--;
+							} else {
+								break;
+							}
+						}
+						// make room for the new pattern
+						for (int i = lastNull; i > newPosition; i--) {
+							itemTopK[i] = itemTopK[i - 1];
+						}
+						// insert the new pattern where previously computed
+						itemTopK[newPosition] = new PatternWithFreq(support,
+								pattern);
+					} else
+					// the support of the new pattern is higher than the kth
+					// previously
+					// known
+					if (itemTopK[this.k - 1].getSupportCount() < support) {
+						// find where the new pattern is going to be inserted in
+						// the
+						// sorted topk list
+						int newPosition = k - 1;
+						while (newPosition >= 1) {
+							if (itemTopK[newPosition - 1].getSupportCount() < support) {
+								newPosition--;
+							} else {
+								break;
+							}
+						}
+						// make room for the new pattern, evicting the one at
+						// the
+						// end
+						for (int i = this.k - 1; i > newPosition; i--) {
+							itemTopK[i] = itemTopK[i - 1];
+						}
+						// insert the new pattern where previously computed
+						itemTopK[newPosition] = new PatternWithFreq(support,
+								pattern);
 					}
+					// else not in top k for this item, do nothing
 				}
-				// make room for the new pattern
-				for (int i = lastNull; i > newPosition; i--) {
-					itemTopK[i] = itemTopK[i - 1];
-				}
-				// insert the new pattern where previously computed
-				itemTopK[newPosition] = new PatternWithFreq(support, pattern);
-			} else
-			// the support of the new pattern is higher than the kth previously
-			// known
-			if (itemTopK[this.k - 1].getSupportCount() < support) {
-				// find where the new pattern is going to be inserted in the
-				// sorted topk list
-				int newPosition = k - 1;
-				while (newPosition >= 1) {
-					if (itemTopK[newPosition - 1].getSupportCount() < support) {
-						newPosition--;
-					} else {
-						break;
-					}
-				}
-				// make room for the new pattern, evicting the one at the end
-				for (int i = this.k - 1; i > newPosition; i--) {
-					itemTopK[i] = itemTopK[i - 1];
-				}
-				// insert the new pattern where previously computed
-				itemTopK[newPosition] = new PatternWithFreq(support, pattern);
 			}
-			// else not in top k for this item, do nothing
 		}
+		this.mapLock.readLock().unlock();
 	}
 
 	public void close() {
@@ -142,48 +168,40 @@ public class PerItemTopKCollector extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public final boolean explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final int previousItem, final boolean resultForPreviousItem) {
-		
+	public boolean explore(final int[] currentPattern, final int extension,
+			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
 		if (currentPattern.length == 0) {
 			return true;
 		}
+
 		final int extensionSupport = supportCounts.get(extension);
-		if (!resultForPreviousItem) {
-			final int previousItemSupport = supportCounts.get(previousItem);
-			if (previousItemSupport >= extensionSupport) {
-				// awesome, we just need to check for the extension
-				final PatternWithFreq[] itemTopK = this.topK.get(extension);
-				if (itemTopK == null
-						|| itemTopK[this.k - 1] == null
-						|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
-					return true;
-				}
-				return false;
-			}
-		}
-		// previous item had explore=true or lower support, so we need to check
-		// it all again so
-		// that we might say no
+		this.mapLock.readLock().lock();
 		// start by checking the topk of items already in the pattern
 		for (int item : currentPattern) {
 			final PatternWithFreq[] itemTopK = this.topK.get(item);
 			// itemTopK == null should never happen in theory, as
 			// currentPattern should be in there at least
-			if (itemTopK == null
-					|| itemTopK[this.k - 1] == null
+			if (itemTopK == null) {
+				this.mapLock.readLock().unlock();
+				return true;
+			}
+			if (itemTopK[this.k - 1] == null
 					|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+				this.mapLock.readLock().unlock();
 				return true;
 			}
 		}
 		// check for extension
 		final PatternWithFreq[] itemTopK = this.topK.get(extension);
-		if (itemTopK == null || itemTopK[this.k - 1] == null
-				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+		if (itemTopK == null) {
+			this.mapLock.readLock().unlock();
 			return true;
 		}
-
+		if (itemTopK[this.k - 1] == null
+				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+			this.mapLock.readLock().unlock();
+			return true;
+		}
 		// check for items < extension
 		// keep in mind that their max support will be the min of their own
 		// support in current dataset and support of the extension
@@ -191,17 +209,20 @@ public class PerItemTopKCollector extends PatternsCollector {
 			if (item >= extension) {
 				break;
 			}
-
 			final PatternWithFreq[] potentialExtensionTopK = this.topK
 					.get(item);
-
-			if (potentialExtensionTopK == null
-					|| potentialExtensionTopK[this.k - 1] == null
+			if (potentialExtensionTopK == null) {
+				this.mapLock.readLock().unlock();
+				return true;
+			}
+			if (potentialExtensionTopK[this.k - 1] == null
 					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
 							.min(extensionSupport, supportCounts.get(item))) {
+				this.mapLock.readLock().unlock();
 				return true;
 			}
 		}
+		this.mapLock.readLock().unlock();
 		return false;
 	}
 
@@ -226,7 +247,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		return sb.toString();
 	}
 
-	public static final class PatternWithFreq {
+	private static final class PatternWithFreq {
 		private final int supportCount;
 		private final int[] pattern;
 
@@ -274,7 +295,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 	}
 
 	public static void main(String[] args) {
-		final PerItemTopKCollector topk = new PerItemTopKCollector(
+		final PerItemTopKCollectorRWLock topk = new PerItemTopKCollectorRWLock(
 				new StdOutCollector(), 3, true);
 		topk.collect(10, new int[] { 3, 1, 2 });
 		topk.collect(100, new int[] { 1 });

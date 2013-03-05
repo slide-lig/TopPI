@@ -1,7 +1,8 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.iterator.TIntIterator;
-
-public interface ExtensionsIterator extends TIntIterator {
+public interface ExtensionsIterator {
 	public int[] getSortedFrequents();
+
+	public int getExtension();
+
 }
