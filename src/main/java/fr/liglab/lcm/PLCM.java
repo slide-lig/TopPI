@@ -267,6 +267,7 @@ public class PLCM {
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
+		options.addOption("t", true, "How many threads will be launched (defaults to 8)");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -308,8 +309,13 @@ public class PLCM {
 				dataset);
 
 		long time = System.currentTimeMillis();
+		
+		int nbThreads = 8;
+		if (cmd.hasOption('t')) {
+			nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
+		}
 
-		PLCM miner = new PLCM(collector, 8);
+		PLCM miner = new PLCM(collector, nbThreads);
 		miner.lcm(dataset);
 
 		if (cmd.hasOption('b')) {
