@@ -4,74 +4,75 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 
-public class ItemAndSupportWritable implements Writable, 
-		WritableComparable<ItemAndSupportWritable>, Comparable<ItemAndSupportWritable> {
+public class ItemAndSupportWritable implements WritableComparable<ItemAndSupportWritable> {
 	
-	private IntWritable item;
-	private LongWritable support;
+	private int item;
+	private int support;
 	
-	public ItemAndSupportWritable() {
-		item = new IntWritable();
-		support = new LongWritable();
+	public ItemAndSupportWritable() {}
+	
+	public ItemAndSupportWritable(int i, int s) {
+		item = i;
+		support = s;
 	}
 	
-	public ItemAndSupportWritable(int i, long s) {
-		item = new IntWritable(i);
-		support = new LongWritable(s);
+	public void setItem(int i) {
+		item = i;
 	}
 	
 	public int getItem() {
-		return item.get();
+		return item;
 	}
 	
-	public long getSupport() {
-		return support.get();
+	public void setSupport(int s) {
+		support = s;
 	}
 	
-	public void set(int i, long s) {
-		item.set(i);
-		support.set(s);
+	public int getSupport() {
+		return support;
+	}
+	
+	public void set(int i, int s) {
+		item = i;
+		support = s;
 	}
 	
 	public void readFields(DataInput in) throws IOException {
-		item.readFields(in);
-		support.readFields(in);
+		item = in.readInt();
+		support = in.readInt();
 	}
 	
 	public void write(DataOutput out) throws IOException {
-		item.write(out);
-		support.write(out);
+		out.writeInt(item);
+		out.writeInt(support);
 	}
 	
 	@Override
 	public int hashCode() {
-		return item.hashCode() + support.hashCode();
+		return super.hashCode() + item + support;
 	}
 	
 	@Override
 	public String toString() {
-		return item.toString() + "\t" + support.toString();
+		return item + "\t" + support;
 	}
 	
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof ItemAndSupportWritable) {
 			ItemAndSupportWritable o = (ItemAndSupportWritable) obj;
-			return o.item.equals(item) && o.support.equals(support);
+			return o.item == this.item && o.support == this.support;
 		}
 		return false;
 	}
 
 	public int compareTo(ItemAndSupportWritable other) {
-		if (other.support.get() == this.support.get()) {
-			return this.item.get() - other.item.get();
+		if (other.item == this.item) {
+			return other.support - this.support;
 		} else {
-			return (int)(other.support.get() - this.support.get());
+			return this.item - other.item;
 		}
 	}
 }

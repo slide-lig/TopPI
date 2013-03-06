@@ -8,14 +8,14 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
-import gnu.trove.map.TIntLongMap;
-import gnu.trove.map.hash.TIntLongHashMap;
-import gnu.trove.procedure.TIntLongProcedure;
+import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
+import gnu.trove.procedure.TIntIntProcedure;
 
 public class ItemCountingMapper extends
 		Mapper<LongWritable, Text, NullWritable, ItemAndSupportWritable> {
 	
-	protected TIntLongMap combiner;
+	protected TIntIntMap combiner;
 	
 	protected final NullWritable nullKey = NullWritable.get();
 	protected final ItemAndSupportWritable valueW = new ItemAndSupportWritable();
@@ -23,12 +23,12 @@ public class ItemCountingMapper extends
 	@Override
 	protected void setup(Context context) throws IOException, InterruptedException {
 		
-		this.combiner = new TIntLongHashMap();
+		this.combiner = new TIntIntHashMap();
 	}
 	
 	@Override
 	protected void map(LongWritable key, Text value, Context context) 
-			throws java.io.IOException, InterruptedException {
+			throws IOException, InterruptedException {
 		
 		String[] tokens = value.toString().split("\\s+");
 		
@@ -41,9 +41,9 @@ public class ItemCountingMapper extends
 	@Override
 	protected void cleanup(final Context context) throws IOException, InterruptedException {
 		
-		this.combiner.forEachEntry(new TIntLongProcedure() {
+		this.combiner.forEachEntry(new TIntIntProcedure() {
 			
-			public boolean execute(int item, long support) {
+			public boolean execute(int item, int support) {
 				valueW.set(item, support);
 				
 				try {

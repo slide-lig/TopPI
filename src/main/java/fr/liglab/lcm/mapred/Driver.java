@@ -14,7 +14,6 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
 import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
-import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
 /**
@@ -145,8 +144,8 @@ public class Driver {
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(SupportAndTransactionWritable.class);
+		job.setOutputKeyClass(ItemAndSupportWritable.class);
+		job.setOutputValueClass(TransactionWritable.class);
 		
 		FileInputFormat.addInputPath(job, new Path(this.input) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
