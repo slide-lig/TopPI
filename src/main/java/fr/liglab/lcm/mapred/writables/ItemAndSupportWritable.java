@@ -56,7 +56,7 @@ public class ItemAndSupportWritable implements WritableComparable<ItemAndSupport
 	
 	@Override
 	public String toString() {
-		return item + "\t" + support;
+		return item + " (" + support + ")";
 	}
 	
 	@Override

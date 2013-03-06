@@ -8,6 +8,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
@@ -58,7 +59,7 @@ public class Driver {
 		
 		this.conf.setStrings(KEY_GROUPS_MAP, this.output + "/" + DistCache.GROUPSMAP_DIRNAME);
 		this.conf.setStrings(KEY_RAW_PATTERNS, this.output + "/" + "rawMinedPatterns");
-		this.conf.setStrings(KEY_AGGREGATED_PATTERNS, output + "/" + "patterns");
+		this.conf.setStrings(KEY_AGGREGATED_PATTERNS, output + "/" + "topPatterns");
 	}
 	
 	@Override
@@ -93,7 +94,17 @@ public class Driver {
 		System.out.println(toString());
 		
 		if (genItemMapToCache() && miningJob()) {
-			return 0;
+			int k = this.conf.getInt(KEY_DO_TOP_K, -1);
+			
+			if (k > 0) {
+				if (aggregateTopK()) {
+					return 0;
+				} else {
+					return 1;
+				}
+			} else {
+				return 0;
+			}
 		}
 		
 		return 1;
@@ -155,6 +166,30 @@ public class Driver {
 		job.setMapOutputValueClass(TransactionWritable.class);
 		
 		job.setReducerClass(MiningReducer.class);
+		
+		return job.waitForCompletion(true);
+	}
+	
+	protected boolean aggregateTopK() 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		String input  = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
+		String output = this.conf.getStrings(KEY_AGGREGATED_PATTERNS)[0];
+		
+		Job job = new Job(conf, "Aggregating top-K frequent itemsets from "+this.input);
+		
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(ItemAndSupportWritable.class);
+		job.setOutputValueClass(TransactionWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(input) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		job.setPartitionerClass(AggregationPartitioner.class);
+		job.setReducerClass(AggregationReducer.class);
 		
 		return job.waitForCompletion(true);
 	}

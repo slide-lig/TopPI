@@ -3,7 +3,9 @@ package fr.liglab.lcm.mapred;
 import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
 import fr.liglab.lcm.util.RebasingAndGroupID;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.io.IOException;
@@ -45,8 +47,7 @@ class DistCache {
 	 * @return a map which associates (to any frequent item) its group ID and its new item ID
 	 */
 	static TIntObjectMap<RebasingAndGroupID> readItemsDispatching(Configuration conf) throws IOException {
-		TIntObjectMap<RebasingAndGroupID> map = 
-				new TIntObjectHashMap<RebasingAndGroupID>();
+		TIntObjectMap<RebasingAndGroupID> map = new TIntObjectHashMap<RebasingAndGroupID>();
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		
@@ -93,5 +94,30 @@ class DistCache {
 		}
 		
 		return starters;
+	}
+	
+	/**
+	 * @return a map which associates a rebased item ID to its original ID
+	 */
+	static TIntIntMap readReverseRebasing(Configuration conf) throws IOException {
+		TIntIntMap map = new TIntIntHashMap();
+		
+		FileSystem fs = FileSystem.getLocal(conf);
+		
+		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
+			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+				Reader reader = new Reader(fs, path, conf);
+				IntWritable key = new IntWritable();
+				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				
+				while(reader.next(key, v)) {
+					map.put(v.getRebased(), key.get());
+				}
+				
+				reader.close();
+			}
+		}
+		
+		return map;
 	}
 }
