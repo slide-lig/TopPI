@@ -75,6 +75,10 @@ public class Main {
 				Integer k = null;
 				if (cmd.hasOption(OPTION_TOPK)) {
 					k = Integer.parseInt(cmd.getOptionValue(OPTION_TOPK));
+					
+					if (k <= 0) {
+						throw new RuntimeException("When provided, K must be greater or equal to 1");
+					}
 				}
 				
 				if (cmd.hasOption(OPTION_STANDALONE)) {
@@ -85,6 +89,10 @@ public class Main {
 					Integer g = 50;
 					if (cmd.hasOption(OPTION_GROUPS)) {
 						g = Integer.parseInt(cmd.getOptionValue(OPTION_GROUPS));
+						
+						if (g <= 1) {
+							throw new RuntimeException("When provided, G must be greater than 1");
+						}
 					}
 					
 					conf = hadoopCmd.getConfiguration();

@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>fr.liglab.lcm-over-hadoop</groupId>
   <artifactId>lcm-over-hadoop</artifactId>
-  <version>0.1</version>
+  <version>1.0</version>
   <name>LCM over Hadoop</name>
   <description>Standalone implementation of LCM algorithm and its adaptation to the Hadoop platform as a top-k-per-item frequent closed itemset miner.</description>
   
