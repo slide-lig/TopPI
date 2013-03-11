@@ -73,12 +73,12 @@ public class LCM {
 		while ((candidate = iterator.getExtension()) != -1) {
 			int explore = collector.explore(Q, candidate, sortedFreqs,
 					supportCounts, previousCandidate, previousExplore);
-			previousExplore = explore;
-			previousCandidate = candidate;
 			if (explore < 0) {
 				explored++;
 				lcm(Q, dataset, candidate);
 			} else {
+				previousExplore = explore;
+				previousCandidate = candidate;
 				cut++;
 			}
 		}

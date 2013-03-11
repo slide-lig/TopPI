@@ -195,8 +195,6 @@ public class PLCM {
 			} else {
 				explore = explore(sj.pattern, extension, sj.sortedfreqs,
 						supportCounts, sj.previousItem, sj.previousResult);
-				sj.previousItem = extension;
-				sj.previousResult = explore;
 			}
 			if (explore < 0) {
 				explored.incrementAndGet();
@@ -212,7 +210,8 @@ public class PLCM {
 				this.stackedJobs.add(nj);
 				this.lock.writeLock().unlock();
 			} else {
-				// System.out.println("cut");
+				sj.previousItem = extension;
+				sj.previousResult = explore;
 				cut.incrementAndGet();
 			}
 		}
@@ -267,7 +266,8 @@ public class PLCM {
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
-		options.addOption("t", true, "How many threads will be launched (defaults to 8)");
+		options.addOption("t", true,
+				"How many threads will be launched (defaults to 8)");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -309,7 +309,7 @@ public class PLCM {
 				dataset);
 
 		long time = System.currentTimeMillis();
-		
+
 		int nbThreads = 8;
 		if (cmd.hasOption('t')) {
 			nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
