@@ -56,7 +56,7 @@ public class ItemGroupingReducer extends
 		
 		this.itemSupports.forEachEntry(new TIntLongProcedure() {
 			public boolean execute(int item, long support) {
-				if (support > minSupport) {
+				if (support >= minSupport) {
 					heap.add(new ItemAndBigSupport(item, support));
 				}
 				return true;
