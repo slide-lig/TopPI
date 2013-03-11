@@ -9,6 +9,9 @@ import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
+/**
+ * TODO : this should become a RebaserCollector
+ */
 public class HadoopCollector extends PatternsCollector {
 
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
