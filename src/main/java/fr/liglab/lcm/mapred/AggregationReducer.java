@@ -35,8 +35,6 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, Transact
 	protected void reduce(ItemAndSupportWritable key, java.lang.Iterable<TransactionWritable> patterns, Context context)
 			throws java.io.IOException, InterruptedException {
 		
-		System.out.println("Hello reduce "+key.toString());
-		
 		if (key.getItem() != this.lastItem) {
 			this.lastCount = 0;
 			this.lastItem = key.getItem();
@@ -59,11 +57,8 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, Transact
 				this.valueW.set(transaction);
 				context.write(this.keyW, this.valueW);
 				this.lastCount++;
-				System.out.println("Got "+this.lastCount);
 			}
 		}
-		
-		System.out.println("========");
 	}
 	
 }
