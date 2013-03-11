@@ -52,13 +52,14 @@ public class MiningReducer extends
 		final Dataset dataset = new ConcatenatedDataset(this.minSupport, input);
 		
 		final LCM lcm = new LCM(collector);
-		final int[] emptyPattern = new int[0];
+		final int[] initPattern = dataset.getDiscoveredClosureItems();
 		
+		starters.removeAll(initPattern);
 		starters.sort();
 		TIntIterator startersIt = starters.iterator();
 		
 		while (startersIt.hasNext()) {
-			lcm.lcm(emptyPattern, dataset, startersIt.next());
+			lcm.lcm(initPattern, dataset, startersIt.next());
 		}
 		
 		collector.close();
