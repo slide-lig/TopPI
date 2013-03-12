@@ -26,6 +26,7 @@ public class ConcatenatedDataset extends Dataset {
 	protected final int[] concatenated;
 	protected final int coreItem;
 	protected final int transactionsCount;
+	protected final int[] frequentItems;
 
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
@@ -58,6 +59,9 @@ public class ConcatenatedDataset extends Dataset {
 				+ this.transactionsCount];
 
 		this.filter(transactionsCopier);
+		
+		this.frequentItems = occurrences.keys();
+		Arrays.sort(this.frequentItems);
 	}
 
 	protected void filter(final Iterable<int[]> transactions) {
@@ -90,10 +94,10 @@ public class ConcatenatedDataset extends Dataset {
 		this.minsup = parent.minsup;
 		this.coreItem = extension;
 
-		TIntArrayList occurrences = parent.occurrences.get(extension);
-		this.transactionsCount = occurrences.size();
+		TIntArrayList extOccurrences = parent.occurrences.get(extension);
+		this.transactionsCount = extOccurrences.size();
 
-		TIntIterator iterator = occurrences.iterator();
+		TIntIterator iterator = extOccurrences.iterator();
 		while (iterator.hasNext()) {
 			int tid = iterator.next();
 			int length = parent.concatenated[tid];
@@ -111,7 +115,10 @@ public class ConcatenatedDataset extends Dataset {
 		this.concatenated = new int[remainingItemsCount
 				+ this.transactionsCount];
 
-		filterParent(parent.concatenated, occurrences.iterator(), keeped);
+		filterParent(parent.concatenated, extOccurrences.iterator(), keeped);
+		
+		this.frequentItems = this.occurrences.keys();
+		Arrays.sort(this.frequentItems);
 	}
 
 	/**
@@ -161,6 +168,60 @@ public class ConcatenatedDataset extends Dataset {
 					new TIntArrayList(counts.value()));
 		}
 	}
+	
+
+	/**
+	 * @return true if there is no int j > candidate having the same support
+	 *         as candidate
+	 */
+	private boolean prefixPreservingTest(final int candidateIndex) {
+		final int candidate = frequentItems[candidateIndex];
+		final int candidateSupport = supportCounts.get(candidate);
+		TIntArrayList candidateOccurrences = occurrences.get(candidate);
+
+		for (int i = candidateIndex + 1; i < frequentItems.length; i++) {
+			int j = frequentItems[i];
+
+			if (supportCounts.get(j) >= candidateSupport) {
+				TIntArrayList jOccurrences = occurrences.get(j);
+				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Assumptions : - both contain array indexes appended in increasing
+	 * order - you already tested that B.size >= A.size
+	 * 
+	 * @return true if A is included in B
+	 */
+	private boolean isAincludedInB(final TIntArrayList a,
+			final TIntArrayList b) {
+		TIntIterator aIt = a.iterator();
+		TIntIterator bIt = b.iterator();
+
+		int tidA = 0;
+		int tidB = 0;
+
+		while (aIt.hasNext() && bIt.hasNext()) {
+			tidA = aIt.next();
+			tidB = bIt.next();
+
+			while (tidB < tidA && bIt.hasNext()) {
+				tidB = bIt.next();
+			}
+
+			if (tidB > tidA) {
+				return false;
+			}
+		}
+
+		return tidA == tidB;
+	}
 
 	@Override
 	public Dataset getProjection(int extension) {
@@ -171,12 +232,17 @@ public class ConcatenatedDataset extends Dataset {
 	public int getTransactionsCount() {
 		return transactionsCount;
 	}
-
+	
+	public int[] getSortedFrequents() {
+		return frequentItems;
+	}
+	
 	@Override
 	public ExtensionsIterator getCandidatesIterator() {
 		return new CandidatesIterator();
 	}
 
+	
 	/**
 	 * Iterates on candidates items such that - their support count is in
 	 * [minsup, transactionsCount[ , - candidate < coreItem - no item >
@@ -188,7 +254,6 @@ public class ConcatenatedDataset extends Dataset {
 		private AtomicInteger next_index;
 		private final int candidatesLength; // candidates is
 											// frequentItems[0:candidatesLength[
-		private final int[] frequentItems;
 
 		public int[] getSortedFrequents() {
 			return frequentItems;
@@ -201,12 +266,8 @@ public class ConcatenatedDataset extends Dataset {
 		 */
 		public CandidatesIterator() {
 			this.next_index = new AtomicInteger(-1);
-
-			this.frequentItems = occurrences.keys();
-			Arrays.sort(this.frequentItems);
-
-			int coreItemIndex = Arrays.binarySearch(this.frequentItems,
-					coreItem);
+			
+			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
 			if (coreItemIndex >= 0) {
 				throw new RuntimeException(
 						"Unexpected : coreItem appears in frequentItems !");
@@ -235,59 +296,5 @@ public class ConcatenatedDataset extends Dataset {
 				}
 			}
 		}
-
-		/**
-		 * @return true if there is no int j > candidate having the same support
-		 *         as candidate
-		 */
-		private boolean prefixPreservingTest(final int candidateIndex) {
-			final int candidate = frequentItems[candidateIndex];
-			final int candidateSupport = supportCounts.get(candidate);
-			TIntArrayList candidateOccurrences = occurrences.get(candidate);
-
-			for (int i = candidateIndex + 1; i < frequentItems.length; i++) {
-				int j = frequentItems[i];
-
-				if (supportCounts.get(j) >= candidateSupport) {
-					TIntArrayList jOccurrences = occurrences.get(j);
-					if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-						return false;
-					}
-				}
-			}
-
-			return true;
-		}
-
-		/**
-		 * Assumptions : - both contain array indexes appended in increasing
-		 * order - you already tested that B.size >= A.size
-		 * 
-		 * @return true if A is included in B
-		 */
-		private boolean isAincludedInB(final TIntArrayList a,
-				final TIntArrayList b) {
-			TIntIterator aIt = a.iterator();
-			TIntIterator bIt = b.iterator();
-
-			int tidA = 0;
-			int tidB = 0;
-
-			while (aIt.hasNext() && bIt.hasNext()) {
-				tidA = aIt.next();
-				tidB = bIt.next();
-
-				while (tidB < tidA && bIt.hasNext()) {
-					tidB = bIt.next();
-				}
-
-				if (tidB > tidA) {
-					return false;
-				}
-			}
-
-			return tidA == tidB;
-		}
-
 	}
 }
