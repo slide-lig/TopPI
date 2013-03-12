@@ -9,7 +9,6 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
-import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
@@ -49,7 +48,7 @@ public class MiningReducer extends
 		}
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
-		final Dataset dataset = new ConcatenatedDataset(this.minSupport, input);
+		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
 		
 		final LCM lcm = new LCM(collector);
 		final int[] initPattern = dataset.getDiscoveredClosureItems();
@@ -59,7 +58,11 @@ public class MiningReducer extends
 		TIntIterator startersIt = starters.iterator();
 		
 		while (startersIt.hasNext()) {
-			lcm.lcm(initPattern, dataset, startersIt.next());
+			int candidate = startersIt.next();
+			
+			if (dataset.prefixPreservingTest(candidate)) {
+				lcm.lcm(initPattern, dataset, candidate);
+			}
 		}
 		
 		collector.close();

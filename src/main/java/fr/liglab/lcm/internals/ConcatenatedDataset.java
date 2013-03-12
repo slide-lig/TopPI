@@ -169,12 +169,25 @@ public class ConcatenatedDataset extends Dataset {
 		}
 	}
 	
-
 	/**
 	 * @return true if there is no int j > candidate having the same support
 	 *         as candidate
 	 */
-	private boolean prefixPreservingTest(final int candidateIndex) {
+	public boolean prefixPreservingTest(final int candidate) {
+		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
+		if (candidateIdx < 0) {
+			throw new RuntimeException(
+					"Unexpected : prefixPreservingTest of an infrequent item, " + candidate);
+		}
+		
+		return ppTest(candidateIdx);
+	}
+
+	/**
+	 * @return true if there is no int j > candidate having the same support
+	 *         as candidate at the given index
+	 */
+	private boolean ppTest(final int candidateIndex) {
 		final int candidate = frequentItems[candidateIndex];
 		final int candidateSupport = supportCounts.get(candidate);
 		TIntArrayList candidateOccurrences = occurrences.get(candidate);
@@ -291,7 +304,7 @@ public class ConcatenatedDataset extends Dataset {
 				}
 				if (next_index_local >= this.candidatesLength) {
 					return -1;
-				} else if (prefixPreservingTest(next_index_local)) {
+				} else if (ppTest(next_index_local)) {
 					return frequentItems[next_index_local];
 				}
 			}
