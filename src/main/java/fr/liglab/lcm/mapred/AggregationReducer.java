@@ -51,7 +51,7 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, Transact
 				int[] transaction = it.next().get();
 				
 				for (int i = 0; i < transaction.length; i++) {
-					transaction[i] = transaction[i];
+					transaction[i] = this.reverseBase.get(transaction[i]);
 				}
 				
 				this.valueW.set(transaction);
