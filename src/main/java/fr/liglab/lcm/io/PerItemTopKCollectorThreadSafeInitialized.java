@@ -59,57 +59,67 @@ public final class PerItemTopKCollectorThreadSafeInitialized extends
 			if (itemTopK == null) {
 				throw new RuntimeException("item not initialied " + item);
 			} else {
-				synchronized (itemTopK) {
-					// we do not have k patterns for this item yet
-					if (itemTopK[this.k - 1] == null) {
-						// find the position of the last null entry
-						int lastNull = k - 1;
-						while (lastNull > 0 && itemTopK[lastNull - 1] == null) {
-							lastNull--;
-						}
-						// now compare with the valid entries to adjust position
-						int newPosition = lastNull;
-						while (newPosition >= 1) {
-							if (itemTopK[newPosition - 1].getSupportCount() < support) {
-								newPosition--;
-							} else {
-								break;
+				// avoid the synchronized if we can
+				if (itemTopK[this.k - 1] == null
+						|| itemTopK[this.k - 1].getSupportCount() < support) {
+					synchronized (itemTopK) {
+						// we do not have k patterns for this item yet
+						if (itemTopK[this.k - 1] == null) {
+							// find the position of the last null entry
+							int lastNull = k - 1;
+							while (lastNull > 0
+									&& itemTopK[lastNull - 1] == null) {
+								lastNull--;
 							}
-						}
-						// make room for the new pattern
-						for (int i = lastNull; i > newPosition; i--) {
-							itemTopK[i] = itemTopK[i - 1];
-						}
-						// insert the new pattern where previously computed
-						itemTopK[newPosition] = new PatternWithFreq(support,
-								pattern);
-					} else
-					// the support of the new pattern is higher than the kth
-					// previously
-					// known
-					if (itemTopK[this.k - 1].getSupportCount() < support) {
-						// find where the new pattern is going to be inserted in
-						// the
-						// sorted topk list
-						int newPosition = k - 1;
-						while (newPosition >= 1) {
-							if (itemTopK[newPosition - 1].getSupportCount() < support) {
-								newPosition--;
-							} else {
-								break;
+							// now compare with the valid entries to adjust
+							// position
+							int newPosition = lastNull;
+							while (newPosition >= 1) {
+								if (itemTopK[newPosition - 1].getSupportCount() < support) {
+									newPosition--;
+								} else {
+									break;
+								}
 							}
+							// make room for the new pattern
+							for (int i = lastNull; i > newPosition; i--) {
+								itemTopK[i] = itemTopK[i - 1];
+							}
+							// insert the new pattern where previously computed
+							itemTopK[newPosition] = new PatternWithFreq(
+									support, pattern);
+						} else
+						// the support of the new pattern is higher than the kth
+						// previously
+						// known
+						if (itemTopK[this.k - 1].getSupportCount() < support) {
+							// find where the new pattern is going to be
+							// inserted in
+							// the
+							// sorted topk list
+							int newPosition = k - 1;
+							while (newPosition >= 1) {
+								if (itemTopK[newPosition - 1].getSupportCount() < support) {
+									newPosition--;
+								} else {
+									break;
+								}
+							}
+							// make room for the new pattern, evicting the one
+							// at
+							// the
+							// end
+							for (int i = this.k - 1; i > newPosition; i--) {
+								itemTopK[i] = itemTopK[i - 1];
+							}
+							// insert the new pattern where previously computed
+							itemTopK[newPosition] = new PatternWithFreq(
+									support, pattern);
 						}
-						// make room for the new pattern, evicting the one at
-						// the
-						// end
-						for (int i = this.k - 1; i > newPosition; i--) {
-							itemTopK[i] = itemTopK[i - 1];
-						}
-						// insert the new pattern where previously computed
-						itemTopK[newPosition] = new PatternWithFreq(support,
-								pattern);
+						// else not in top k for this item, do nothing
+						// may happen if someone else updates it before the
+						// synchronized
 					}
-					// else not in top k for this item, do nothing
 				}
 			}
 		}
