@@ -1,9 +1,7 @@
 package fr.liglab.lcm.tests;
 
 import static fr.liglab.lcm.tests.matchers.ItemsetsAsArraysMatcher.arrayIsItemset;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
 
@@ -12,6 +10,7 @@ import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.tests.stubs.EmptyInputFile;
 import fr.liglab.lcm.util.ItemsetsFactory;
+import gnu.trove.list.array.TIntArrayList;
 
 public class ConcatenatedDatasetTest {
 
@@ -125,5 +124,37 @@ public class ConcatenatedDatasetTest {
 				arrayIsItemset(new int[] { 1, 3, 5 }));
 		assertFalse(dataset7_6.getCandidatesIterator().getExtension() != -1);
 
+	}
+	
+	/**
+	 * Take care of assumptions ! (see isAincludedInB's javadoc)
+	 */
+	@Test
+	public void testIsAIncludedInB() { 
+		
+		ConcatenatedDataset whatever = new ConcatenatedDataset(2,
+				FileReaderTest.getMicroReader());
+
+		TIntArrayList hole       = new TIntArrayList(new int[] {2,4});
+		TIntArrayList small      = new TIntArrayList(new int[] {2,3,4});
+		TIntArrayList smallPlus5 = new TIntArrayList(new int[] {2,3,4,5});
+		TIntArrayList big        = new TIntArrayList(new int[] {2,3,4,5,6});
+		TIntArrayList smallWith1 = new TIntArrayList(new int[] {1,2,3});
+		TIntArrayList bigPlus1   = new TIntArrayList(new int[] {1,2,3,4,5,6});
+		
+		assertTrue(whatever.isAincludedInB(small, smallPlus5));
+		
+		assertFalse(whatever.isAincludedInB(smallWith1, small));
+		assertFalse(whatever.isAincludedInB(small, smallWith1));
+		
+		assertTrue(whatever.isAincludedInB(big, bigPlus1));
+		assertFalse(whatever.isAincludedInB(smallWith1, big));
+		
+		assertTrue(whatever.isAincludedInB(smallPlus5, bigPlus1));
+		
+		assertTrue(whatever.isAincludedInB(hole, small));
+		assertTrue(whatever.isAincludedInB(hole, smallPlus5));
+		assertTrue(whatever.isAincludedInB(hole, bigPlus1));
+		assertFalse(whatever.isAincludedInB(hole, smallWith1));
 	}
 }
