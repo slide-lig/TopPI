@@ -212,7 +212,7 @@ public class ConcatenatedDataset extends Dataset {
 	 * 
 	 * @return true if A is included in B
 	 */
-	private boolean isAincludedInB(final TIntArrayList a,
+	public boolean isAincludedInB(final TIntArrayList a,
 			final TIntArrayList b) {
 		TIntIterator aIt = a.iterator();
 		TIntIterator bIt = b.iterator();
@@ -233,7 +233,7 @@ public class ConcatenatedDataset extends Dataset {
 			}
 		}
 
-		return tidA == tidB;
+		return tidA == tidB && !aIt.hasNext();
 	}
 
 	@Override
