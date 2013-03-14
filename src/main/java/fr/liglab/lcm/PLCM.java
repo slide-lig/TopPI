@@ -24,7 +24,7 @@ import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternsCollector;
-import fr.liglab.lcm.io.PerItemTopKCollectorRWLock;
+import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
 import fr.liglab.lcm.io.RebaserCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
@@ -306,7 +306,7 @@ public class PLCM {
 		}
 
 		PatternsCollector collector = instanciateCollector(cmd, outputPath,
-				dataset);
+				dataset, dataset);
 
 		long time = System.currentTimeMillis();
 
@@ -333,7 +333,7 @@ public class PLCM {
 	 * stand-alone mode we're always rebasing so we need the dataset
 	 */
 	private static PatternsCollector instanciateCollector(CommandLine cmd,
-			String outputPath, RebasedDataset dataset) {
+			String outputPath, RebasedDataset rebasedDataset, Dataset dataset) {
 
 		PatternsCollector collector = null;
 
@@ -352,12 +352,13 @@ public class PLCM {
 				collector = new StdOutCollector();
 			}
 
-			collector = new RebaserCollector(collector, dataset);
+			collector = new RebaserCollector(collector, rebasedDataset);
 		}
 
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
-			collector = new PerItemTopKCollectorRWLock(collector, k, true);
+			collector = new PerItemTopKCollectorThreadSafeInitialized(
+					collector, k, dataset, true);
 		}
 
 		return collector;
