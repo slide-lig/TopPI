@@ -40,7 +40,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		this.outputEachPatternOnce = outputEachPatternOnce;
 	}
 
-	public final void collect(final int support, final int[] pattern) {
+	public void collect(final int support, final int[] pattern) {
 		for (final int item : pattern) {
 			PatternWithFreq[] itemTopK = this.topK.get(item);
 			if (itemTopK == null) {

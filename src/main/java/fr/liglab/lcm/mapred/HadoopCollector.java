@@ -14,6 +14,9 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
  */
 public class HadoopCollector extends PatternsCollector {
 
+	protected static final int PING_EVERY = 1000;
+	protected int collected;
+	
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 	protected final ItemAndSupportWritable keyW = new ItemAndSupportWritable();
 	protected final TransactionWritable valueW = new TransactionWritable();
@@ -27,6 +30,12 @@ public class HadoopCollector extends PatternsCollector {
 	
 	@Override
 	public void collect(int support, int[] pattern) {
+		if (this.collected == PING_EVERY) {
+			this.collected = 0;
+			this.context.progress(); // ping master, otherwise long mining tasks get killed
+		} else {
+			this.collected++;
+		}
 		
 		this.keyW.set(0, support);
 		this.valueW.set(pattern);

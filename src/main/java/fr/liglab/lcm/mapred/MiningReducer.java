@@ -49,6 +49,8 @@ public class MiningReducer extends
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
 		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
+
+		context.progress(); // ping master, otherwise long mining tasks get killed
 		
 		final LCM lcm = new LCM(collector);
 		final int[] initPattern = dataset.getDiscoveredClosureItems();
