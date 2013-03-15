@@ -19,9 +19,8 @@ public class MiningReducer extends
 	Reducer<IntWritable, TransactionWritable, 
 		ItemAndSupportWritable, TransactionWritable> {
 	
-	
 	protected int minSupport;
-	protected int topK;
+	protected PatternsCollector collector;
 	
 	@Override
 	protected void setup(Context context)
@@ -30,7 +29,13 @@ public class MiningReducer extends
 		Configuration conf = context.getConfiguration();
 		
 		this.minSupport = conf.getInt(Driver.KEY_MINSUP, 10);
-		this.topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
+		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
+		
+		if (topK > 0) {
+			this.collector = new PerItemTopKHadoopCollector(topK, context);
+		} else {
+			this.collector = new HadoopCollector(context);
+		}
 	}
 	
 	protected void reduce(IntWritable gid, 
@@ -40,19 +45,14 @@ public class MiningReducer extends
 		final Configuration conf = context.getConfiguration();
 		final TIntArrayList starters = DistCache.readStartersFor(conf, gid.get());
 		
-		PatternsCollector collector;
-		if (this.topK > 0) {
-			collector = new PerItemTopKHadoopCollector(this.topK, context);
-		} else {
-			collector = new HadoopCollector(context);
-		}
+		
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
 		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
 
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
-		final LCM lcm = new LCM(collector);
+		final LCM lcm = new LCM(this.collector);
 		final int[] initPattern = dataset.getDiscoveredClosureItems();
 		
 		starters.removeAll(initPattern);
@@ -66,8 +66,10 @@ public class MiningReducer extends
 				lcm.lcm(initPattern, dataset, candidate);
 			}
 		}
-		
-		collector.close();
+	}
+	
+	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
+		this.collector.close();
 	}
 	
 	
