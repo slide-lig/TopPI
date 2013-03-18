@@ -5,6 +5,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import org.apache.hadoop.io.WritableComparable;
+import org.apache.hadoop.io.WritableComparator;
 
 public class ItemAndSupportWritable implements WritableComparable<ItemAndSupportWritable> {
 	
@@ -73,6 +74,68 @@ public class ItemAndSupportWritable implements WritableComparable<ItemAndSupport
 			return other.support - this.support;
 		} else {
 			return this.item - other.item;
+		}
+	}
+	
+	
+	
+	
+	public static class SortComparator extends WritableComparator {
+		
+		public SortComparator() {
+			super(ItemAndSupportWritable.class);
+		}
+		
+		@SuppressWarnings("rawtypes")
+		@Override
+		public int compare(WritableComparable one, WritableComparable other) {
+			if (one instanceof ItemAndSupportWritable && other instanceof ItemAndSupportWritable) {
+				ItemAndSupportWritable is1 = (ItemAndSupportWritable) one;
+				ItemAndSupportWritable is2 = (ItemAndSupportWritable) other;
+				return is1.compareTo(is2);
+			} else {
+				return super.compare(one, other);
+			}
+		}
+
+		public int compare(byte[] b1, int s1, int l1, byte[] b2, int s2, int l2) {
+			int item1 = readInt(b1, s1);
+			int item2 = readInt(b2, s2);
+			
+			if (item1 == item2) {
+				int support1 = readInt(b1, s1 + Integer.SIZE / Byte.SIZE);
+				int support2 = readInt(b2, s2 + Integer.SIZE / Byte.SIZE);
+				
+				return support2 - support1;
+			} else {
+				return item1 - item2;
+			}
+		}
+	}
+	
+	
+	public static class ItemOnlyComparator extends WritableComparator {
+		
+		public ItemOnlyComparator() {
+			super(ItemAndSupportWritable.class);
+		}
+		
+		@SuppressWarnings("rawtypes")
+		@Override
+		public int compare(WritableComparable one, WritableComparable other) {
+			if (one instanceof ItemAndSupportWritable && other instanceof ItemAndSupportWritable) {
+				ItemAndSupportWritable is1 = (ItemAndSupportWritable) one;
+				ItemAndSupportWritable is2 = (ItemAndSupportWritable) other;
+				return is1.getItem() - is2.getItem();
+			} else {
+				return super.compare(one, other);
+			}
+		}
+
+		public int compare(byte[] b1, int s1, int l1, byte[] b2, int s2, int l2) {
+			int item1 = readInt(b1, s1);
+			int item2 = readInt(b2, s2);
+			return item1 - item2;
 		}
 	}
 }

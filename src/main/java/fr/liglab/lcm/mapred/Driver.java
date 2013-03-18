@@ -187,7 +187,9 @@ public class Driver {
 		
 		FileInputFormat.addInputPath(job, new Path(input) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
-		
+
+		job.setSortComparatorClass(ItemAndSupportWritable.SortComparator.class);
+		job.setGroupingComparatorClass(ItemAndSupportWritable.ItemOnlyComparator.class);
 		job.setPartitionerClass(AggregationPartitioner.class);
 		job.setReducerClass(AggregationReducer.class);
 		
