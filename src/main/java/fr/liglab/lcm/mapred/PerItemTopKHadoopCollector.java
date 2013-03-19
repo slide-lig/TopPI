@@ -6,7 +6,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import gnu.trove.procedure.TIntObjectProcedure;
+import gnu.trove.iterator.TIntObjectIterator;
 
 public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	
@@ -26,7 +26,7 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	public void collect(int support, int[] pattern) {
 		if (this.collected == PING_EVERY) {
 			this.collected = 0;
-			this.context.progress(); // ping master, otherwise long mining tasks get killed
+			this.context.progress();
 		} else {
 			this.collected++;
 		}
@@ -35,32 +35,33 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	}
 	
 	@Override
-	public void close() {
+	public long close() {
 		final ItemAndSupportWritable keyW = new ItemAndSupportWritable();
 		final TransactionWritable valueW = new TransactionWritable();
+		long outputted = 0;
 		
-		this.topK.forEachEntry(new TIntObjectProcedure<PatternWithFreq[]>() {
+		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
+		
+		while(it.hasNext()) {
+			it.advance();
+			keyW.setItem(it.key());
+			final PatternWithFreq[] itemTopK = it.value();
 			
-			public boolean execute(final int item, final PatternWithFreq[] itemTopK) {
-				keyW.setItem(item);
+			for (int i = 0; i < itemTopK.length && itemTopK[i] != null; i++) {
+				PatternWithFreq entry = itemTopK[i];
 				
-				for (int i = 0; i < itemTopK.length && itemTopK[i] != null; i++) {
-					
-					PatternWithFreq entry = itemTopK[i];
-					
-					keyW.setSupport(entry.getSupportCount());
-					valueW.set(entry.getPattern());
-					
-					try {
-						context.write(keyW, valueW);
-					} catch (Exception e) {
-						e.printStackTrace();
-						return false;
-					}
+				keyW.setSupport(entry.getSupportCount());
+				valueW.set(entry.getPattern());
+				
+				try {
+					context.write(keyW, valueW);
+					outputted++;
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
-				
-				return true;
 			}
-		});
+		}
+		
+		return outputted;
 	}
 }

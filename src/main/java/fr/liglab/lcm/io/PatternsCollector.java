@@ -8,8 +8,10 @@ public abstract class PatternsCollector {
 	/**
 	 * Call this once mining has terminated. Behavior of the collect method is
 	 * undefined once close() has been called
+	 * 
+	 * @return outputted pattern count
 	 */
-	public abstract void close();
+	public abstract long close();
 
 	/*
 	 * @param currentPattern Pattern corresponding to the current dataset

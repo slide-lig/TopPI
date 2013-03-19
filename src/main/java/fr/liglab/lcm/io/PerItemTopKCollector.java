@@ -94,7 +94,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		}
 	}
 
-	public void close() {
+	public long close() {
 		if (this.outputEachPatternOnce) {
 			final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
 			for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
@@ -122,7 +122,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 				}
 			}
 		}
-		this.decorated.close();
+		return this.decorated.close();
 	}
 
 	/*

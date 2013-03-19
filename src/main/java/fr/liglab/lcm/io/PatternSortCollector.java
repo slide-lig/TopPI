@@ -3,9 +3,8 @@ package fr.liglab.lcm.io;
 import java.util.Arrays;
 
 /**
- * a PatternsCollector decorator : it will transmit everything, except that all
- * patterns are re-instanciated and translated according to the RebasedDataset
- * provided at instanciation.
+ * a PatternsCollector decorator : it will sort items in transactions before
+ * transmitting them to the enclosed PatternsCollector
  */
 public class PatternSortCollector extends PatternsCollector {
 
@@ -21,8 +20,8 @@ public class PatternSortCollector extends PatternsCollector {
 		this.decorated.collect(support, sorted);
 	}
 
-	public void close() {
-		this.decorated.close();
+	public long close() {
+		return this.decorated.close();
 	}
 
 }

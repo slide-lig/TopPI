@@ -22,6 +22,7 @@ import fr.liglab.lcm.io.PatternsCollector;
 public class StubPatternsCollector extends PatternsCollector {
 	
 	protected static Map<Integer, Set<Set<Integer>>> expected = new TreeMap<Integer, Set<Set<Integer>>>();
+	protected long collected = 0;
 	
 	public void expectCollect(Integer support, Integer... patternItems) {
 		Set<Set<Integer>> supportExpectation = null;
@@ -54,6 +55,7 @@ public class StubPatternsCollector extends PatternsCollector {
 				if (expectations.isEmpty()) {
 					expected.remove(support);
 				}
+				this.collected++;
 				return;
 			}
 		}
@@ -61,7 +63,7 @@ public class StubPatternsCollector extends PatternsCollector {
 		throw new RuntimeException("Unexpected support/pattern : " + p.toString() + " , support=" + support);
 	}
 
-	public void close() {
+	public long close() {
 		if (!isEmpty()) {
 			StringBuilder builder = new StringBuilder();
 			builder.append("Expected pattern(s) not found :\n");
@@ -75,6 +77,10 @@ public class StubPatternsCollector extends PatternsCollector {
 					builder.append("\n");
 				}
 			}
+			
+			throw new RuntimeException(builder.toString());
 		}
+		
+		return this.collected;
 	}
 }

@@ -18,6 +18,7 @@ public class FileCollector extends PatternsCollector {
 	// this should be profiled and tuned !
 	protected static final int BUFFER_CAPACITY = 4096;
 	
+	protected long collected = 0;
 	protected FileOutputStream stream;
 	protected FileChannel channel;
 	protected ByteBuffer buffer;
@@ -52,7 +53,8 @@ public class FileCollector extends PatternsCollector {
 			putInt(item);
 		}
 		
-		safePut((byte) '\n');	
+		safePut((byte) '\n');
+		this.collected++;
 	}
 	
 	protected void putInt(final int i) {
@@ -84,7 +86,7 @@ public class FileCollector extends PatternsCollector {
 		}
 	}
 
-	public void close() {
+	public long close() {
 		try {
 			flush();
 			channel.close();
@@ -92,6 +94,7 @@ public class FileCollector extends PatternsCollector {
 		} catch (IOException e) {
 			e.printStackTrace(System.err);
 		}
+		
+		return this.collected;
 	}
-
 }

@@ -29,8 +29,8 @@ public class RebaserCollector extends PatternsCollector {
 		this.decorated.collect(support, rebased);
 	}
 
-	public void close() {
-		this.decorated.close();
+	public long close() {
+		return this.decorated.close();
 	}
 
 }
