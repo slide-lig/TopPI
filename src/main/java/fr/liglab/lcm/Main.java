@@ -77,7 +77,7 @@ public class Main {
 					k = Integer.parseInt(cmd.getOptionValue(OPTION_TOPK));
 					
 					if (k <= 0) {
-						throw new RuntimeException("When provided, K must be greater or equal to 1");
+						throw new RuntimeException("When provided, K must be positive");
 					}
 				}
 				
@@ -90,8 +90,8 @@ public class Main {
 					if (cmd.hasOption(OPTION_GROUPS)) {
 						g = Integer.parseInt(cmd.getOptionValue(OPTION_GROUPS));
 						
-						if (g <= 1) {
-							throw new RuntimeException("When provided, G must be greater than 1");
+						if (g <= 0) {
+							throw new RuntimeException("When provided, G must be positive");
 						}
 					}
 					
