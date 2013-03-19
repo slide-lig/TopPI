@@ -1,5 +1,6 @@
 package fr.liglab.lcm.mapred;
 
+import java.io.IOException;
 import java.util.Iterator;
 import java.util.TreeSet;
 
@@ -11,9 +12,9 @@ import org.apache.hadoop.mapreduce.Reducer;
 import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.util.ItemAndBigSupport;
+import gnu.trove.iterator.TIntLongIterator;
 import gnu.trove.map.TIntLongMap;
 import gnu.trove.map.hash.TIntLongHashMap;
-import gnu.trove.procedure.TIntLongProcedure;
 
 public class ItemGroupingReducer extends
 		Reducer<NullWritable, ItemAndSupportWritable, IntWritable, GIDandRebaseWritable> {
@@ -53,17 +54,26 @@ public class ItemGroupingReducer extends
 	@Override
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
 		final TreeSet<ItemAndBigSupport> heap = new TreeSet<ItemAndBigSupport>();
+		long frequentWordsCount = 0;
 		
-		this.itemSupports.forEachEntry(new TIntLongProcedure() {
-			public boolean execute(int item, long support) {
-				if (support >= minSupport) {
-					heap.add(new ItemAndBigSupport(item, support));
-				}
-				return true;
+		TIntLongIterator it = this.itemSupports.iterator();
+		while(it.hasNext()) {
+			it.advance();
+			long support = it.value();
+			if (support >= this.minSupport) {
+				heap.add(new ItemAndBigSupport(it.key(), support));
+				frequentWordsCount += support;
 			}
-		});
+		}
 		
 		this.itemSupports = null;
+		computeGroupsFromFreqHeap(heap, frequentWordsCount, context);
+	}
+	
+	protected void computeGroupsFromFreqHeap(TreeSet<ItemAndBigSupport> heap, 
+			long frequentWordsCount, Context context) 
+			throws IOException, InterruptedException {
+		
 		int gid=0,rebased=0;
 		
 		for (ItemAndBigSupport entry : heap) {
