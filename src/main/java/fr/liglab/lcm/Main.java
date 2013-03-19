@@ -149,14 +149,16 @@ public class Main {
 		
 		LCM miner = new LCM(collector);
 		miner.lcm(dataset);
+		
+		time = System.currentTimeMillis() - time;
 
-		if (benchMode) {
-			time = System.currentTimeMillis() - time;
-			System.err.println(miner.toString() + " // mined in " + time + "ms");
+		reader.close();
+		long collected = collector.close();
+		
+		if (benchMode) {	
+			System.err.println(miner.toString() + " // mined in " + time + "ms // " + collected + " patterns outputted");
 		}
 		
-		reader.close();
-		collector.close();
 	}
 	
 	/**
