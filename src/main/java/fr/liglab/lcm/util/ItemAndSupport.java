@@ -19,7 +19,11 @@ public class ItemAndSupport implements Comparable<ItemAndSupport> {
 	 *  greater than the specified object's support. 
 	 */
 	public int compareTo(ItemAndSupport other) {
-		return other.support - this.support;
+		if (other.support == this.support) {
+			return this.item - other.item;
+		} else {
+			return other.support - this.support;
+		}
 	}
 
 }
