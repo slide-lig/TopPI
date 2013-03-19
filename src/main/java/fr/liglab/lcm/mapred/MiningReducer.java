@@ -53,7 +53,11 @@ public class MiningReducer extends
 		final LCM lcm = new LCM(this.collector);
 		final int[] initPattern = dataset.getDiscoveredClosureItems();
 		
-		starters.removeAll(initPattern);
+		if (initPattern.length > 0 ) {
+			starters.removeAll(initPattern);
+			this.collector.collect(dataset.getTransactionsCount(), initPattern);
+		}
+		
 		starters.sort();
 		TIntIterator startersIt = starters.iterator();
 		
