@@ -45,8 +45,6 @@ public class MiningReducer extends
 		final Configuration conf = context.getConfiguration();
 		final TIntArrayList starters = DistCache.readStartersFor(conf, gid.get());
 		
-		System.out.println("Hello from MiningReducer #"+gid.get()+" - s="+this.minSupport+" k="+conf.getInt(Driver.KEY_DO_TOP_K, -1));
-		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
 		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
 
@@ -58,7 +56,7 @@ public class MiningReducer extends
 		starters.removeAll(initPattern);
 		starters.sort();
 		TIntIterator startersIt = starters.iterator();
-		System.out.println("#" + gid.get()+" Starting mining over "+starters.toString());
+		
 		while (startersIt.hasNext()) {
 			int candidate = startersIt.next();
 			
@@ -66,13 +64,12 @@ public class MiningReducer extends
 				lcm.lcm(initPattern, dataset, candidate);
 			}
 		}
-		System.out.println("#" + gid.get()+" done - "+lcm.toString());
+		System.err.println("from system.err - #" + gid.get()+" done - "+lcm.toString());
+		context.setStatus("from context.setStatus - #" + gid.get()+" done - "+lcm.toString());
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
-		System.out.println("closing...");
 		this.collector.close();
-		System.out.println("... closed.");
 	}
 	
 	
