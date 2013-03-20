@@ -68,8 +68,8 @@ public class MiningReducer extends
 				lcm.lcm(initPattern, dataset, candidate);
 			}
 		}
-		System.err.println("from system.err - #" + gid.get()+" done - "+lcm.toString());
-		context.setStatus("from context.setStatus - #" + gid.get()+" done - "+lcm.toString());
+		
+		System.out.println("from system.err - #" + gid.get()+" done - "+lcm.toString());
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
