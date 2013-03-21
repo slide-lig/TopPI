@@ -237,7 +237,7 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) {
+	public ConcatenatedDataset getProjection(int extension) {
 		return new ConcatenatedDataset(this, extension);
 	}
 
@@ -304,7 +304,7 @@ public class ConcatenatedDataset extends Dataset {
 				}
 				if (next_index_local >= this.candidatesLength) {
 					return -1;
-				} else if (ppTest(next_index_local)) {
+				} else { // if (ppTest(next_index_local)) {
 					return frequentItems[next_index_local];
 				}
 			}

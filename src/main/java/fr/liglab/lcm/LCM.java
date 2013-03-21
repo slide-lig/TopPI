@@ -1,6 +1,6 @@
 package fr.liglab.lcm;
 
-import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
@@ -15,7 +15,8 @@ public class LCM {
 	private final PatternsCollector collector;
 
 	private int explored = 0;
-	private int cut = 0;
+	private int explorecut = 0;
+	private int pptestcut = 0;
 
 	public LCM(PatternsCollector patternsCollector) {
 		collector = patternsCollector;
@@ -24,7 +25,7 @@ public class LCM {
 	/**
 	 * Initial invocation
 	 */
-	public void lcm(final Dataset dataset) {
+	public void lcm(final ConcatenatedDataset dataset) {
 		// usually, it's empty
 		int[] pattern = dataset.getDiscoveredClosureItems();
 
@@ -35,8 +36,12 @@ public class LCM {
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int candidate;
 		while ((candidate = iterator.getExtension()) != -1) {
-			explored++;
-			lcm(pattern, dataset, candidate);
+			if (dataset.prefixPreservingTest(candidate)) {
+				explored++;
+				lcm(pattern, dataset, candidate);
+			} else {
+				pptestcut++;
+			}
 		}
 	}
 
@@ -54,10 +59,10 @@ public class LCM {
 	 * @param extension
 	 *            is an item known to yield a prefix-preserving extension of P
 	 */
-	public void lcm(final int[] pattern, final Dataset parent_dataset,
+	public void lcm(final int[] pattern, final ConcatenatedDataset parent_dataset,
 			int extension) {
 
-		final Dataset dataset = parent_dataset.getProjection(extension);
+		final ConcatenatedDataset dataset = parent_dataset.getProjection(extension);
 		int[] Q = ItemsetsFactory.extend(pattern, extension,
 				dataset.getDiscoveredClosureItems());
 
@@ -74,18 +79,22 @@ public class LCM {
 			int explore = collector.explore(Q, candidate, sortedFreqs,
 					supportCounts, previousCandidate, previousExplore);
 			if (explore < 0) {
-				explored++;
-				lcm(Q, dataset, candidate);
+				if (dataset.prefixPreservingTest(candidate)) {
+					explored++;
+					lcm(Q, dataset, candidate);
+				} else {
+					pptestcut++;
+				}
 			} else {
 				previousExplore = explore;
 				previousCandidate = candidate;
-				cut++;
+				explorecut++;
 			}
 		}
 	}
 
 	public String toString() {
-		return "LCM exploration : " + explored + " patterns explored / " + cut
-				+ " aborted ";
+		return "LCM exploration : " + explored + " patterns explored / " + explorecut
+				+ " aborted by explore() / " + pptestcut + " aborted by ppTest";
 	}
 }

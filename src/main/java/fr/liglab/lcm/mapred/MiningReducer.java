@@ -69,7 +69,7 @@ public class MiningReducer extends
 			}
 		}
 		
-		System.out.println("from system.err - #" + gid.get()+" done - "+lcm.toString());
+		System.out.println("#" + gid.get()+" done - "+lcm.toString());
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
