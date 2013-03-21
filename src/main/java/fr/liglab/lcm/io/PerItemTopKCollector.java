@@ -200,14 +200,6 @@ public class PerItemTopKCollector extends PatternsCollector {
 				break;
 			}
 			
-			int greatestFirstParent = failedPPTests.get(item);
-			
-			if (greatestFirstParent == extension) {
-				return -1;
-			} else if (greatestFirstParent > extension) {
-				continue;
-			}
-
 			final PatternWithFreq[] potentialExtensionTopK = this.topK
 					.get(item);
 
@@ -215,7 +207,11 @@ public class PerItemTopKCollector extends PatternsCollector {
 					|| potentialExtensionTopK[this.k - 1] == null
 					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
 							.min(extensionSupport, supportCounts.get(item))) {
-				return -1;
+				
+				if (failedPPTests.get(item) <= extension) {
+					return -1;
+				}
+
 			} else {
 				threshold = Math.min(threshold,
 						potentialExtensionTopK[this.k - 1].getSupportCount());
