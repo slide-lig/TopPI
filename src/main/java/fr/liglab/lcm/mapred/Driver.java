@@ -42,6 +42,11 @@ public class Driver {
 	 */
 	static final String KEY_AGGREGATED_PATTERNS = "fr.liglab.lcm.aggregated";
 	
+	/**
+	 * key for boolean property indicating if LCM should mine only 
+	 */
+	static final String KEY_MINE_GROUP_ONLY = "fr.liglab.lcm.groupOnly";
+	
 	
 	protected final Configuration conf;
 	protected final String input;
