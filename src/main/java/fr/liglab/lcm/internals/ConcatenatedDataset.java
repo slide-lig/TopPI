@@ -170,10 +170,10 @@ public class ConcatenatedDataset extends Dataset {
 	}
 	
 	/**
-	 * @return true if there is no int j > candidate having the same support
-	 *         as candidate
+	 * @return greatest j > candidate having the same support
+	 *         as candidate, -1 if not such item exists
 	 */
-	public boolean prefixPreservingTest(final int candidate) {
+	public int prefixPreservingTest(final int candidate) {
 		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
 		if (candidateIdx < 0) {
 			throw new RuntimeException(
@@ -184,26 +184,26 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	/**
-	 * @return true if there is no int j > candidate having the same support
-	 *         as candidate at the given index
+	 * @return greatest j > candidate having the same support
+	 *         as candidate at the given index, -1 if not such item exists
 	 */
-	private boolean ppTest(final int candidateIndex) {
+	private int ppTest(final int candidateIndex) {
 		final int candidate = frequentItems[candidateIndex];
 		final int candidateSupport = supportCounts.get(candidate);
 		TIntArrayList candidateOccurrences = occurrences.get(candidate);
 
-		for (int i = candidateIndex + 1; i < frequentItems.length; i++) {
+		for (int i = frequentItems.length-1; i > candidateIndex ; i--) {
 			int j = frequentItems[i];
 
 			if (supportCounts.get(j) >= candidateSupport) {
 				TIntArrayList jOccurrences = occurrences.get(j);
 				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-					return false;
+					return j;
 				}
 			}
 		}
 
-		return true;
+		return -1;
 	}
 
 	/**

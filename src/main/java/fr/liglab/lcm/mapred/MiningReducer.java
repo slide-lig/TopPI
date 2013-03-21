@@ -64,7 +64,7 @@ public class MiningReducer extends
 		while (startersIt.hasNext()) {
 			int candidate = startersIt.next();
 			
-			if (dataset.prefixPreservingTest(candidate)) {
+			if (dataset.prefixPreservingTest(candidate) < 0) {
 				lcm.lcm(initPattern, dataset, candidate);
 			}
 		}

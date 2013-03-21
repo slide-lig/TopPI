@@ -170,6 +170,7 @@ public final class PerItemTopKCollectorRWLock extends PatternsCollector {
 	@Override
 	public int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final TIntIntMap failedPPTests,
 			final int previousItem, final int resultForPreviousItem) {
 		if (currentPattern.length == 0) {
 			return -1;

@@ -68,7 +68,7 @@ public class PLCM {
 			int[] sortedFreqItems, TIntIntMap supportCounts, int previousItem,
 			int previousResult) {
 		return this.collector.explore(currentPattern, extension,
-				sortedFreqItems, supportCounts, previousItem, previousResult);
+				sortedFreqItems, supportCounts, null, previousItem, previousResult);
 	}
 
 	/**

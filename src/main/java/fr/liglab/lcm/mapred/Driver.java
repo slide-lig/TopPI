@@ -132,7 +132,7 @@ public class Driver {
 		job.setMapOutputKeyClass(NullWritable.class);
 		job.setMapOutputValueClass(ItemAndSupportWritable.class);
 		
-		job.setReducerClass(ItemContigousReducer.class);
+		job.setReducerClass(ItemGroupingReducer.class);
 		job.setNumReduceTasks(1);
 		
 		boolean success = job.waitForCompletion(true);

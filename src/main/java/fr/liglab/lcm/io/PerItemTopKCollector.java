@@ -136,6 +136,9 @@ public class PerItemTopKCollector extends PatternsCollector {
 	 * @param supportCounts Map giving the support for each item present in the
 	 * current dataset
 	 * 
+	 * @param failedPPTests Map in which items previously rejected by PPTest are 
+	 * associated to their greatest first parent
+	 * 
 	 * @return true if it is possible to generate patterns that make it into
 	 * topK by exploring this extension
 	 */
@@ -144,6 +147,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 	@Override
 	public final int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final TIntIntMap failedPPTests,
 			final int previousItem, final int resultForPreviousItem) {
 
 		if (currentPattern.length == 0) {
@@ -194,6 +198,14 @@ public class PerItemTopKCollector extends PatternsCollector {
 			int item = sortedFreqItems[i];
 			if (item >= extension) {
 				break;
+			}
+			
+			int greatestFirstParent = failedPPTests.get(item);
+			
+			if (greatestFirstParent == extension) {
+				return -1;
+			} else if (greatestFirstParent > extension) {
+				continue;
 			}
 
 			final PatternWithFreq[] potentialExtensionTopK = this.topK

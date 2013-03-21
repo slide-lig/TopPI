@@ -5,6 +5,7 @@ import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 /**
  * LCM implementation, based on UnoAUA04 :
@@ -36,7 +37,7 @@ public class LCM {
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int candidate;
 		while ((candidate = iterator.getExtension()) != -1) {
-			if (dataset.prefixPreservingTest(candidate)) {
+			if (dataset.prefixPreservingTest(candidate) < 0) {
 				explored++;
 				lcm(pattern, dataset, candidate);
 			} else {
@@ -72,17 +73,21 @@ public class LCM {
 		int[] sortedFreqs = iterator.getSortedFrequents();
 		TIntIntMap supportCounts = dataset.getSupportCounts();
 
+		TIntIntMap failedPPTests = new TIntIntHashMap();
 		int candidate;
 		int previousExplore = -1;
 		int previousCandidate = -1;
+		
 		while ((candidate = iterator.getExtension()) != -1) {
 			int explore = collector.explore(Q, candidate, sortedFreqs,
-					supportCounts, previousCandidate, previousExplore);
+					supportCounts, failedPPTests, previousCandidate, previousExplore);
 			if (explore < 0) {
-				if (dataset.prefixPreservingTest(candidate)) {
+				int firstParent = dataset.prefixPreservingTest(candidate);
+				if (firstParent < 0) {
 					explored++;
 					lcm(Q, dataset, candidate);
 				} else {
+					failedPPTests.put(candidate, firstParent);
 					pptestcut++;
 				}
 			} else {

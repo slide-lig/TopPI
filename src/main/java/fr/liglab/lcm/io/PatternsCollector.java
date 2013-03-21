@@ -28,9 +28,10 @@ public abstract class PatternsCollector {
 	 * topK by exploring this extension
 	 */
 	public int explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts) {
+			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final TIntIntMap failedPPTests) {
 		return this.explore(currentPattern, extension, sortedFreqItems,
-				supportCounts, -1, -1);
+				supportCounts, failedPPTests, -1, -1);
 	}
 
 	/*
@@ -39,6 +40,7 @@ public abstract class PatternsCollector {
 	 */
 	public int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
+			final TIntIntMap failedPPTest,
 			final int previousItem, final int resultForPreviousItem) {
 		return -1;
 	}
