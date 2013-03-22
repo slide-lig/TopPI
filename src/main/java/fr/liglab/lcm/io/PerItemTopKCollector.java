@@ -206,8 +206,9 @@ public class PerItemTopKCollector extends PatternsCollector {
 			if (item >= extension) {
 				break;
 			}
-			int itemTest = this.checkExploreOtherItem(item, extension,
-					extensionSupport, supportCounts, failedPPTests);
+			int itemTest = this.checkExploreOtherItem(item,
+					supportCounts.get(item), extension, extensionSupport,
+					failedPPTests);
 			if (itemTest == -1) {
 				return -1;
 			} else {
@@ -217,15 +218,15 @@ public class PerItemTopKCollector extends PatternsCollector {
 		return threshold;
 	}
 
-	protected int checkExploreOtherItem(final int item, int extension,
-			final int extensionSupport, final TIntIntMap supportCounts,
+	protected int checkExploreOtherItem(final int item, int itemSupport,
+			int extension, final int extensionSupport,
 			final TIntIntMap failedPPTests) {
 		final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
 
 		if (potentialExtensionTopK == null
 				|| potentialExtensionTopK[this.k - 1] == null
 				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
-						.min(extensionSupport, supportCounts.get(item))) {
+						.min(extensionSupport, itemSupport)) {
 
 			if (failedPPTests.get(item) <= extension) {
 				return -1;
