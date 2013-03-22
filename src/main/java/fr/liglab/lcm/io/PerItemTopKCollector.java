@@ -1,7 +1,9 @@
 package fr.liglab.lcm.io;
 
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
@@ -42,56 +44,61 @@ public class PerItemTopKCollector extends PatternsCollector {
 
 	public void collect(final int support, final int[] pattern) {
 		for (final int item : pattern) {
-			PatternWithFreq[] itemTopK = this.topK.get(item);
-			if (itemTopK == null) {
-				itemTopK = new PatternWithFreq[this.k];
-				this.topK.put(item, itemTopK);
-			}
-			// we do not have k patterns for this item yet
-			if (itemTopK[this.k - 1] == null) {
-				// find the position of the last null entry
-				int lastNull = k - 1;
-				while (lastNull > 0 && itemTopK[lastNull - 1] == null) {
-					lastNull--;
-				}
-				// now compare with the valid entries to adjust position
-				int newPosition = lastNull;
-				while (newPosition >= 1) {
-					if (itemTopK[newPosition - 1].getSupportCount() < support) {
-						newPosition--;
-					} else {
-						break;
-					}
-				}
-				// make room for the new pattern
-				for (int i = lastNull; i > newPosition; i--) {
-					itemTopK[i] = itemTopK[i - 1];
-				}
-				// insert the new pattern where previously computed
-				itemTopK[newPosition] = new PatternWithFreq(support, pattern);
-			} else
-			// the support of the new pattern is higher than the kth previously
-			// known
-			if (itemTopK[this.k - 1].getSupportCount() < support) {
-				// find where the new pattern is going to be inserted in the
-				// sorted topk list
-				int newPosition = k - 1;
-				while (newPosition >= 1) {
-					if (itemTopK[newPosition - 1].getSupportCount() < support) {
-						newPosition--;
-					} else {
-						break;
-					}
-				}
-				// make room for the new pattern, evicting the one at the end
-				for (int i = this.k - 1; i > newPosition; i--) {
-					itemTopK[i] = itemTopK[i - 1];
-				}
-				// insert the new pattern where previously computed
-				itemTopK[newPosition] = new PatternWithFreq(support, pattern);
-			}
-			// else not in top k for this item, do nothing
+			insertPatternInTop(support, pattern, item);
 		}
+	}
+
+	protected void insertPatternInTop(final int support, final int[] pattern,
+			final int item) {
+		PatternWithFreq[] itemTopK = this.topK.get(item);
+		if (itemTopK == null) {
+			itemTopK = new PatternWithFreq[this.k];
+			this.topK.put(item, itemTopK);
+		}
+		// we do not have k patterns for this item yet
+		if (itemTopK[this.k - 1] == null) {
+			// find the position of the last null entry
+			int lastNull = k - 1;
+			while (lastNull > 0 && itemTopK[lastNull - 1] == null) {
+				lastNull--;
+			}
+			// now compare with the valid entries to adjust position
+			int newPosition = lastNull;
+			while (newPosition >= 1) {
+				if (itemTopK[newPosition - 1].getSupportCount() < support) {
+					newPosition--;
+				} else {
+					break;
+				}
+			}
+			// make room for the new pattern
+			for (int i = lastNull; i > newPosition; i--) {
+				itemTopK[i] = itemTopK[i - 1];
+			}
+			// insert the new pattern where previously computed
+			itemTopK[newPosition] = new PatternWithFreq(support, pattern);
+		} else
+		// the support of the new pattern is higher than the kth previously
+		// known
+		if (itemTopK[this.k - 1].getSupportCount() < support) {
+			// find where the new pattern is going to be inserted in the
+			// sorted topk list
+			int newPosition = k - 1;
+			while (newPosition >= 1) {
+				if (itemTopK[newPosition - 1].getSupportCount() < support) {
+					newPosition--;
+				} else {
+					break;
+				}
+			}
+			// make room for the new pattern, evicting the one at the end
+			for (int i = this.k - 1; i > newPosition; i--) {
+				itemTopK[i] = itemTopK[i - 1];
+			}
+			// insert the new pattern where previously computed
+			itemTopK[newPosition] = new PatternWithFreq(support, pattern);
+		}
+		// else not in top k for this item, do nothing
 	}
 
 	public long close() {
@@ -136,7 +143,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 	 * @param supportCounts Map giving the support for each item present in the
 	 * current dataset
 	 * 
-	 * @param failedPPTests Map in which items previously rejected by PPTest are 
+	 * @param failedPPTests Map in which items previously rejected by PPTest are
 	 * associated to their greatest first parent
 	 * 
 	 * @return true if it is possible to generate patterns that make it into
@@ -147,8 +154,8 @@ public class PerItemTopKCollector extends PatternsCollector {
 	@Override
 	public final int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final TIntIntMap failedPPTests,
-			final int previousItem, final int resultForPreviousItem) {
+			final TIntIntMap failedPPTests, final int previousItem,
+			final int resultForPreviousItem) {
 
 		if (currentPattern.length == 0) {
 			return -1;
@@ -199,25 +206,36 @@ public class PerItemTopKCollector extends PatternsCollector {
 			if (item >= extension) {
 				break;
 			}
-			
-			final PatternWithFreq[] potentialExtensionTopK = this.topK
-					.get(item);
-
-			if (potentialExtensionTopK == null
-					|| potentialExtensionTopK[this.k - 1] == null
-					|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
-							.min(extensionSupport, supportCounts.get(item))) {
-				
-				if (failedPPTests.get(item) <= extension) {
-					return -1;
-				}
-
+			int itemTest = this.checkExploreOtherItem(item, extension,
+					extensionSupport, supportCounts, failedPPTests);
+			if (itemTest == -1) {
+				return -1;
 			} else {
-				threshold = Math.min(threshold,
-						potentialExtensionTopK[this.k - 1].getSupportCount());
+				threshold = Math.min(threshold, itemTest);
 			}
 		}
 		return threshold;
+	}
+
+	protected int checkExploreOtherItem(final int item, int extension,
+			final int extensionSupport, final TIntIntMap supportCounts,
+			final TIntIntMap failedPPTests) {
+		final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
+
+		if (potentialExtensionTopK == null
+				|| potentialExtensionTopK[this.k - 1] == null
+				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
+						.min(extensionSupport, supportCounts.get(item))) {
+
+			if (failedPPTests.get(item) <= extension) {
+				return -1;
+			} else {
+				return Integer.MAX_VALUE;
+			}
+
+		} else {
+			return potentialExtensionTopK[this.k - 1].getSupportCount();
+		}
 	}
 
 	@Override
@@ -286,6 +304,20 @@ public class PerItemTopKCollector extends PatternsCollector {
 			return true;
 		}
 
+	}
+
+	public TIntIntMap getTopKBounds() {
+		final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
+		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
+		while (it.hasNext()) {
+			it.advance();
+			int bound = 0;
+			if (it.value()[this.k - 1] != null) {
+				bound = it.value()[this.k - 1].supportCount;
+			}
+			bounds.put(it.key(), bound);
+		}
+		return bounds;
 	}
 
 	public static void main(String[] args) {
