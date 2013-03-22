@@ -40,6 +40,10 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 		this.collected = 0;
 	}
 
+	public final void setGroup(TIntSet group) {
+		this.group = group;
+	}
+
 	@Override
 	protected void insertPatternInTop(int support, int[] pattern, int item) {
 		if (!this.mineInGroup && this.group.contains(item)) {
