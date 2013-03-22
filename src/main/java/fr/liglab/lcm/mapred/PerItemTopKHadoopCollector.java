@@ -20,6 +20,7 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	protected final boolean mineInGroup;
 	protected final boolean mineOutGroup;
 	protected TIntSet group;
+	protected TIntIntMap knownBounds;
 
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 
@@ -44,6 +45,10 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 		this.group = group;
 	}
 
+	public final void setKnownBounds(TIntIntMap knownBounds) {
+		this.knownBounds = knownBounds;
+	}
+
 	@Override
 	protected void insertPatternInTop(int support, int[] pattern, int item) {
 		if (!this.mineInGroup && this.group.contains(item)) {
@@ -56,17 +61,23 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	}
 
 	@Override
-	protected int checkExploreOtherItem(int item, int extension,
-			int extensionSupport, TIntIntMap supportCounts,
-			TIntIntMap failedPPTests) {
+	protected int checkExploreOtherItem(final int item, int itemSupport,
+			int extension, final int extensionSupport,
+			final TIntIntMap failedPPTests) {
 		if (!this.mineInGroup && this.group.contains(item)) {
 			return Integer.MAX_VALUE;
 		}
 		if (!this.mineOutGroup && !this.group.contains(item)) {
 			return Integer.MAX_VALUE;
 		}
-		return super.checkExploreOtherItem(item, extension, extensionSupport,
-				supportCounts, failedPPTests);
+		if (this.knownBounds != null) {
+			int knownBound = this.knownBounds.get(item);
+			if (knownBound >= Math.min(extensionSupport, itemSupport)) {
+				return knownBound;
+			}
+		}
+		return super.checkExploreOtherItem(item, itemSupport, extension,
+				extensionSupport, failedPPTests);
 	}
 
 	@Override
