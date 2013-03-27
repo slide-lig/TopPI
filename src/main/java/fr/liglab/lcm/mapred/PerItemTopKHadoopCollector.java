@@ -3,24 +3,15 @@ package fr.liglab.lcm.mapred;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
-import fr.liglab.lcm.io.PerItemTopKCollector;
+import fr.liglab.lcm.io.PerItemGroupTopKCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.iterator.TIntObjectIterator;
-import gnu.trove.map.TIntIntMap;
-import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.set.TIntSet;
 
-public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
+public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 
 	protected static final int PING_EVERY = 1000;
 	protected int collected;
-
-	protected final boolean mineInGroup;
-	protected final boolean mineOutGroup;
-	protected TIntSet group;
-	protected TIntIntMap knownBounds;
 
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 
@@ -34,62 +25,9 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 			int k,
 			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context currentContext,
 			boolean mineInGroup, boolean mineOutGroup) {
-		super(null, k, false);
-		this.mineInGroup = mineInGroup;
-		this.mineOutGroup = mineOutGroup;
+		super(null, k, mineInGroup, mineOutGroup);
 		this.context = currentContext;
 		this.collected = 0;
-	}
-
-	public final void setGroup(TIntSet group) {
-		this.group = group;
-	}
-
-	public final void setKnownBounds(TIntIntMap knownBounds) {
-		this.knownBounds = knownBounds;
-	}
-
-	@Override
-	protected void insertPatternInTop(int support, int[] pattern, int item) {
-		if (!this.mineInGroup && this.group.contains(item)) {
-			return;
-		}
-		if (!this.mineOutGroup && !this.group.contains(item)) {
-			return;
-		}
-		super.insertPatternInTop(support, pattern, item);
-	}
-
-	@Override
-	protected int checkExploreOtherItem(final int item, int itemSupport,
-			int extension, final int extensionSupport,
-			final TIntIntMap failedPPTests) {
-		if (!this.mineInGroup && this.group.contains(item)) {
-			return Integer.MAX_VALUE;
-		}
-		if (!this.mineOutGroup && !this.group.contains(item)) {
-			return Integer.MAX_VALUE;
-		}
-		if (this.knownBounds != null) {
-			int knownBound = this.knownBounds.get(item);
-			if (knownBound >= Math.min(extensionSupport, itemSupport)) {
-				return knownBound;
-			}
-		}
-		return super.checkExploreOtherItem(item, itemSupport, extension,
-				extensionSupport, failedPPTests);
-	}
-
-	@Override
-	public void collect(int support, int[] pattern) {
-		if (this.collected == PING_EVERY) {
-			this.collected = 0;
-			this.context.progress();
-		} else {
-			this.collected++;
-		}
-
-		super.collect(support, pattern);
 	}
 
 	@Override
@@ -121,44 +59,4 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 		}
 		return outputted;
 	}
-
-	@Override
-	public TIntIntMap getTopKBounds() {
-		if (this.mineInGroup && this.mineOutGroup) {
-			return super.getTopKBounds();
-		} else if (this.mineInGroup) {
-			final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
-			TIntIterator it = this.group.iterator();
-			while (it.hasNext()) {
-				int item = it.next();
-				int bound = 0;
-				PatternWithFreq[] itemTop = this.topK.get(item);
-				if (itemTop != null) {
-					if (itemTop[this.k - 1] != null) {
-						bound = itemTop[this.k - 1].getSupportCount();
-					}
-					bounds.put(item, bound);
-				}
-			}
-			return bounds;
-		} else if (this.mineOutGroup) {
-			final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
-			TIntIterator it = this.topK.keySet().iterator();
-			while (it.hasNext()) {
-				int item = it.next();
-				if (!this.group.contains(item)) {
-					int bound = 0;
-					PatternWithFreq[] itemTop = this.topK.get(item);
-					if (itemTop[this.k - 1] != null) {
-						bound = itemTop[this.k - 1].getSupportCount();
-					}
-					bounds.put(item, bound);
-				}
-			}
-			return bounds;
-		} else {
-			return new TIntIntHashMap();
-		}
-	}
-
 }

@@ -167,27 +167,23 @@ public class PerItemTopKCollector extends PatternsCollector {
 			threshold = Math.min(resultForPreviousItem, threshold);
 		} else {
 			for (int item : currentPattern) {
-				final PatternWithFreq[] itemTopK = this.topK.get(item);
-				// itemTopK == null should never happen in theory, as
-				// currentPattern should be in there at least
-				if (itemTopK == null
-						|| itemTopK[this.k - 1] == null
-						|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
+				int itemTest = this.checkExploreInCurrentPattern(item, extensionSupport);
+				if (itemTest == -1) {
 					return -1;
 				} else {
-					threshold = Math.min(threshold,
-							itemTopK[this.k - 1].getSupportCount());
+					threshold = Math.min(threshold, itemTest);
 				}
 			}
 		}
 		// check for extension
-		final PatternWithFreq[] itemTopK = this.topK.get(extension);
-		if (itemTopK == null || itemTopK[this.k - 1] == null
-				|| itemTopK[this.k - 1].getSupportCount() < extensionSupport) {
-			return -1;
-		} else {
-			threshold = Math.min(threshold,
-					itemTopK[this.k - 1].getSupportCount());
+		{
+			int itemTest = this
+					.checkExploreInCurrentPattern(extension, extensionSupport);
+			if (itemTest == -1) {
+				return -1;
+			} else {
+				threshold = Math.min(threshold, itemTest);
+			}
 		}
 		int i = 0;
 		if (shortcut) {
@@ -218,8 +214,20 @@ public class PerItemTopKCollector extends PatternsCollector {
 		return threshold;
 	}
 
-	protected int checkExploreOtherItem(final int item, int itemSupport,
-			int extension, final int extensionSupport,
+	protected int checkExploreInCurrentPattern(final int item, final int itemSupport) {
+		final PatternWithFreq[] itemTopK = this.topK.get(item);
+		// itemTopK == null should never happen in theory, as
+		// currentPattern should be in there at least
+		if (itemTopK == null || itemTopK[this.k - 1] == null
+				|| itemTopK[this.k - 1].getSupportCount() < itemSupport) {
+			return -1;
+		} else {
+			return itemTopK[this.k - 1].getSupportCount();
+		}
+	}
+
+	protected int checkExploreOtherItem(final int item, final int itemSupport,
+			final int extension, final int extensionSupport,
 			final TIntIntMap failedPPTests) {
 		final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
 

@@ -189,7 +189,7 @@ public class Main {
 		}
 		
 		if (k != null) {
-			collector = new PerItemTopKCollector(collector, k, true);
+			collector = new PerItemTopKCollector(collector, k, false);
 		}
 		
 		return collector;
