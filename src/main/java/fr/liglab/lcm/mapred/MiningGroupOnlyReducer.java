@@ -11,10 +11,9 @@ import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import gnu.trove.iterator.TIntIterator;
-import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.set.TIntSet;
 
-public class MiningReducer extends 
+public class MiningGroupOnlyReducer extends 
 	Reducer<IntWritable, TransactionWritable, 
 		ItemAndSupportWritable, TransactionWritable> {
 	
@@ -30,7 +29,7 @@ public class MiningReducer extends
 		this.minSupport = conf.getInt(Driver.KEY_MINSUP, 10);
 		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
-		this.collector = new PerItemTopKHadoopCollector(topK, context);
+		this.collector = new PerItemTopKHadoopCollector(topK, context, true, false);
 	}
 	
 	protected void reduce(IntWritable gid, 
@@ -38,31 +37,16 @@ public class MiningReducer extends
 			throws java.io.IOException, InterruptedException {
 		
 		final Configuration conf = context.getConfiguration();
-		final TIntArrayList starters = DistCache.readStartersFor(conf, gid.get());
+		final TIntSet starters = DistCache.readGroupItemsFor(conf, gid.get());
+		this.collector.setGroup(starters);
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
 		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
-
+		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
 		final LCM lcm = new LCM(this.collector);
-		final int[] initPattern = dataset.getDiscoveredClosureItems();
-		
-		if (initPattern.length > 0 ) {
-			starters.removeAll(initPattern);
-			this.collector.collect(dataset.getTransactionsCount(), initPattern);
-		}
-		
-		starters.sort();
-		TIntIterator startersIt = starters.iterator();
-		
-		while (startersIt.hasNext()) {
-			int candidate = startersIt.next();
-			
-			if (dataset.prefixPreservingTest(candidate) < 0) {
-				lcm.lcm(initPattern, dataset, candidate);
-			}
-		}
+		lcm.lcm(dataset);
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {

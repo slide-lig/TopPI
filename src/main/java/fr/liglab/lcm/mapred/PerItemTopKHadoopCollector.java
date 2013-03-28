@@ -9,10 +9,7 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 
 public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
-
-	protected static final int PING_EVERY = 1000;
-	protected int collected;
-
+	
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 
 	public PerItemTopKHadoopCollector(
@@ -27,7 +24,6 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 			boolean mineInGroup, boolean mineOutGroup) {
 		super(null, k, mineInGroup, mineOutGroup);
 		this.context = currentContext;
-		this.collected = 0;
 	}
 
 	@Override

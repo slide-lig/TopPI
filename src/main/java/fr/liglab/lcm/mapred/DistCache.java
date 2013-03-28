@@ -7,6 +7,8 @@ import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 
 import java.io.IOException;
 
@@ -94,6 +96,33 @@ class DistCache {
 		}
 		
 		return starters;
+	}
+
+	/**
+	 * @return list of (rebased) items for given group ID  
+	 */
+	static TIntSet readGroupItemsFor(Configuration conf, int gid) throws IOException {
+		TIntSet groupItems = new TIntHashSet();
+		
+		FileSystem fs = FileSystem.getLocal(conf);
+		
+		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
+			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+				Reader reader = new Reader(fs, path, conf);
+				IntWritable key = new IntWritable();
+				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				
+				while(reader.next(key, v)) {
+					if (v.getGid() == gid) {
+						groupItems.add(v.getRebased());
+					}
+				}
+				
+				reader.close();
+			}
+		}
+		
+		return groupItems;
 	}
 	
 	/**

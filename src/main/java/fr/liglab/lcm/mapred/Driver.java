@@ -27,11 +27,12 @@ public class Driver {
 	public static final String KEY_OUTPUT   = "fr.liglab.lcm.output";
 	public static final String KEY_MINSUP   = "fr.liglab.lcm.minsup";
 	public static final String KEY_NBGROUPS = "fr.liglab.lcm.nbGroups";
+	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
 	
 	//////////////////// OPTIONAL CONFIGURATION PROPERTIES ////////////////////
 	
-	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
 	public static final String KEY_GROUPER_CLASS = "fr.liglab.lcm.class.grouper";
+	public static final String KEY_MINING_ALGO = "fr.liglab.lcm.mapred.algo";
 	
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
@@ -107,17 +108,18 @@ public class Driver {
 	public int run() throws Exception {
 		System.out.println(toString());
 		
-		if (genItemMapToCache() && miningJob()) {
-			int k = this.conf.getInt(KEY_DO_TOP_K, -1);
+		if (genItemMapToCache()) {
 			
-			if (k > 0) {
-				if (aggregateTopK()) {
+			String miningAlgo = this.conf.get(KEY_MINING_ALGO, "");
+			
+			if (miningAlgo == "1") {
+				if (miningJob(false) && aggregateTopK()) {
 					return 0;
-				} else {
-					return 1;
 				}
 			} else {
-				return 0;
+				if (miningJob(true) && aggregateTopK()) {
+					return 0;
+				}
 			}
 		}
 		
@@ -167,7 +169,7 @@ public class Driver {
 		return success;
 	}
 	
-	protected boolean miningJob() 
+	protected boolean miningJob(boolean useGroupOnly) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
 		String output = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
@@ -188,7 +190,11 @@ public class Driver {
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(TransactionWritable.class);
 		
-		job.setReducerClass(MiningReducer.class);
+		if (useGroupOnly) {
+			job.setReducerClass(MiningGroupOnlyReducer.class);
+		} else {
+			job.setReducerClass(MiningReducer.class);
+		}
 		
 		return job.waitForCompletion(true);
 	}

@@ -33,17 +33,8 @@ public class LCM {
 		if (pattern.length > 0) {
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
-
-		ExtensionsIterator iterator = dataset.getCandidatesIterator();
-		int candidate;
-		while ((candidate = iterator.getExtension()) != -1) {
-			if (dataset.prefixPreservingTest(candidate) < 0) {
-				explored++;
-				lcm(pattern, dataset, candidate);
-			} else {
-				pptestcut++;
-			}
-		}
+		
+		extensionLoop(pattern, dataset);
 	}
 
 	/**
@@ -68,7 +59,11 @@ public class LCM {
 				dataset.getDiscoveredClosureItems());
 
 		collector.collect(dataset.getTransactionsCount(), Q);
-
+		
+		extensionLoop(Q, dataset);
+	}
+	
+	private void extensionLoop(final int[] pattern, final ConcatenatedDataset dataset) {
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int[] sortedFreqs = iterator.getSortedFrequents();
 		TIntIntMap supportCounts = dataset.getSupportCounts();
@@ -79,13 +74,13 @@ public class LCM {
 		int previousCandidate = -1;
 		
 		while ((candidate = iterator.getExtension()) != -1) {
-			int explore = collector.explore(Q, candidate, sortedFreqs,
+			int explore = collector.explore(pattern, candidate, sortedFreqs,
 					supportCounts, failedPPTests, previousCandidate, previousExplore);
 			if (explore < 0) {
 				int firstParent = dataset.prefixPreservingTest(candidate);
 				if (firstParent < 0) {
 					explored++;
-					lcm(Q, dataset, candidate);
+					lcm(pattern, dataset, candidate);
 				} else {
 					failedPPTests.put(candidate, firstParent);
 					pptestcut++;
