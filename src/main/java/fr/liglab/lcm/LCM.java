@@ -102,4 +102,16 @@ public class LCM {
 		return "LCM exploration : " + explored + " patterns explored / " + explorecut
 				+ " aborted by explore() / " + pptestcut + " aborted by ppTest";
 	}
+	
+	public int getExplorecut() {
+		return explorecut;
+	}
+	
+	public int getExplored() {
+		return explored;
+	}
+	
+	public int getPptestcut() {
+		return pptestcut;
+	}
 }

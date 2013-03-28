@@ -21,13 +21,20 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
  * Driver methods for our 3 map-reduce jobs
  */
 public class Driver {
+	//////////////////// MANDATORY CONFIGURATION PROPERTIES ////////////////////
+	
 	public static final String KEY_INPUT    = "fr.liglab.lcm.input";
 	public static final String KEY_OUTPUT   = "fr.liglab.lcm.output";
 	public static final String KEY_MINSUP   = "fr.liglab.lcm.minsup";
 	public static final String KEY_NBGROUPS = "fr.liglab.lcm.nbGroups";
-	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
 	
+	//////////////////// OPTIONAL CONFIGURATION PROPERTIES ////////////////////
+	
+	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
 	public static final String KEY_GROUPER_CLASS = "fr.liglab.lcm.class.grouper";
+	
+	
+	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
 	/**
 	 * property key for item-counter-n-grouper output path
