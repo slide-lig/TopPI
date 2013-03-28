@@ -112,7 +112,7 @@ public class Driver {
 			
 			String miningAlgo = this.conf.get(KEY_MINING_ALGO, "");
 			
-			if (miningAlgo == "1") {
+			if ("1".equals(miningAlgo)) {
 				if (miningJob(false) && aggregateTopK()) {
 					return 0;
 				}
