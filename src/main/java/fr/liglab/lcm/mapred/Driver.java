@@ -27,6 +27,8 @@ public class Driver {
 	public static final String KEY_NBGROUPS = "fr.liglab.lcm.nbGroups";
 	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
 	
+	public static final String KEY_GROUPER_CLASS = "fr.liglab.lcm.class.grouper";
+	
 	/**
 	 * property key for item-counter-n-grouper output path
 	 */
@@ -137,7 +139,16 @@ public class Driver {
 		job.setMapOutputKeyClass(NullWritable.class);
 		job.setMapOutputValueClass(ItemAndSupportWritable.class);
 		
-		job.setReducerClass(ItemGroupingReducer.class);
+		String grouperName = conf.get(KEY_GROUPER_CLASS, "");
+		
+		if ("ItemContigousBalancedReducer".equals(grouperName)) {
+			job.setReducerClass(ItemContigousBalancedReducer.class);
+		} else if ("ItemContigousReducer".equals(grouperName)) {
+			job.setReducerClass(ItemContigousReducer.class);
+		} else {
+			job.setReducerClass(ItemGroupingReducer.class);
+		}
+		
 		job.setNumReduceTasks(1);
 		
 		boolean success = job.waitForCompletion(true);
