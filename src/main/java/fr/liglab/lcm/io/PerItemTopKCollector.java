@@ -55,6 +55,11 @@ public class PerItemTopKCollector extends PatternsCollector {
 			itemTopK = new PatternWithFreq[this.k];
 			this.topK.put(item, itemTopK);
 		}
+		updateTop(support, pattern, itemTopK);
+	}
+
+	protected void updateTop(final int support, final int[] pattern,
+			PatternWithFreq[] itemTopK) {
 		// we do not have k patterns for this item yet
 		if (itemTopK[this.k - 1] == null) {
 			// find the position of the last null entry
