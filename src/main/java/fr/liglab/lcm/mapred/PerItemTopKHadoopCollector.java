@@ -10,6 +10,9 @@ import gnu.trove.iterator.TIntObjectIterator;
 
 public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	
+	protected final static int PING_EVERY = 100000;
+	protected int collected = 0;
+	
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 
 	public PerItemTopKHadoopCollector(
@@ -24,6 +27,17 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 			boolean mineInGroup, boolean mineOutGroup) {
 		super(null, k, mineInGroup, mineOutGroup);
 		this.context = currentContext;
+	}
+	
+	@Override
+	public void collect(int support, int[] pattern) {
+		super.collect(support, pattern);
+		
+		this.collected++;
+		if (this.collected >= PING_EVERY) {
+			this.collected = 0;
+			this.context.progress();
+		}
 	}
 
 	@Override
