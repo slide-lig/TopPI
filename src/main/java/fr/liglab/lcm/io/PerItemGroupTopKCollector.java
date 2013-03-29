@@ -38,6 +38,9 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 		if (!this.mineOutGroup && !this.group.contains(item)) {
 			return;
 		}
+		if (this.knownBounds != null && this.knownBounds.get(item) >= support) {
+			return;
+		}
 		super.insertPatternInTop(support, pattern, item);
 	}
 

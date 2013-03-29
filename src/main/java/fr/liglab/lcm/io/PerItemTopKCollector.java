@@ -49,12 +49,17 @@ public class PerItemTopKCollector extends PatternsCollector {
 	}
 
 	protected void insertPatternInTop(final int support, final int[] pattern,
-			final int item) {
+			int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 		if (itemTopK == null) {
 			itemTopK = new PatternWithFreq[this.k];
 			this.topK.put(item, itemTopK);
 		}
+		updateTop(support, pattern, itemTopK);
+	}
+
+	protected void updateTop(final int support, final int[] pattern,
+			PatternWithFreq[] itemTopK) {
 		// we do not have k patterns for this item yet
 		if (itemTopK[this.k - 1] == null) {
 			// find the position of the last null entry
@@ -152,7 +157,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public final int explore(final int[] currentPattern, final int extension,
+	public int explore(final int[] currentPattern, final int extension,
 			final int[] sortedFreqItems, final TIntIntMap supportCounts,
 			final TIntIntMap failedPPTests, final int previousItem,
 			final int resultForPreviousItem) {
@@ -167,7 +172,8 @@ public class PerItemTopKCollector extends PatternsCollector {
 			threshold = Math.min(resultForPreviousItem, threshold);
 		} else {
 			for (int item : currentPattern) {
-				int itemTest = this.checkExploreInCurrentPattern(item, extensionSupport);
+				int itemTest = this.checkExploreInCurrentPattern(item,
+						extensionSupport);
 				if (itemTest == -1) {
 					return -1;
 				} else {
@@ -177,8 +183,8 @@ public class PerItemTopKCollector extends PatternsCollector {
 		}
 		// check for extension
 		{
-			int itemTest = this
-					.checkExploreInCurrentPattern(extension, extensionSupport);
+			int itemTest = this.checkExploreInCurrentPattern(extension,
+					extensionSupport);
 			if (itemTest == -1) {
 				return -1;
 			} else {
@@ -214,7 +220,8 @@ public class PerItemTopKCollector extends PatternsCollector {
 		return threshold;
 	}
 
-	protected int checkExploreInCurrentPattern(final int item, final int itemSupport) {
+	protected int checkExploreInCurrentPattern(final int item,
+			final int itemSupport) {
 		final PatternWithFreq[] itemTopK = this.topK.get(item);
 		// itemTopK == null should never happen in theory, as
 		// currentPattern should be in there at least
