@@ -52,10 +52,6 @@ public class Driver {
 	 */
 	static final String KEY_AGGREGATED_PATTERNS = "fr.liglab.lcm.aggregated";
 	
-	/**
-	 * key for boolean property indicating if LCM should mine only 
-	 */
-	static final String KEY_MINE_GROUP_ONLY = "fr.liglab.lcm.groupOnly";
 	
 	
 	protected final Configuration conf;
@@ -116,8 +112,8 @@ public class Driver {
 				if (miningJob(false) && aggregateTopK()) {
 					return 0;
 				}
-			} else {
-				if (miningJob(true) && aggregateTopK()) {
+			} else { // algo "2"
+				if (miningJob(true)) {
 					return 0;
 				}
 			}
@@ -172,8 +168,6 @@ public class Driver {
 	protected boolean miningJob(boolean useGroupOnly) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		String output = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
-		
 		Job job = new Job(conf, "Mining frequent itemsets from "+this.input);
 		
 		job.setJarByClass(this.getClass());
@@ -184,17 +178,21 @@ public class Driver {
 		job.setOutputValueClass(TransactionWritable.class);
 		
 		FileInputFormat.addInputPath(job, new Path(this.input) );
-		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setMapperClass(MiningMapper.class);
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(TransactionWritable.class);
 		
+		String outputPath;
 		if (useGroupOnly) {
+			outputPath = this.conf.getStrings(KEY_AGGREGATED_PATTERNS)[0];
 			job.setReducerClass(MiningGroupOnlyReducer.class);
 		} else {
+			outputPath = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
 			job.setReducerClass(MiningReducer.class);
 		}
+		
+		FileOutputFormat.setOutputPath(job, new Path(outputPath));
 		
 		return job.waitForCompletion(true);
 	}
