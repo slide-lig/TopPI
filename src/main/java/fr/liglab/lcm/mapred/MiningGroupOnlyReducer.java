@@ -11,6 +11,7 @@ import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.set.TIntSet;
 
 public class MiningGroupOnlyReducer extends 
@@ -50,7 +51,10 @@ public class MiningGroupOnlyReducer extends
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
-		this.collector.close();
+		Configuration conf = context.getConfiguration();
+		TIntIntMap reverse = DistCache.readReverseRebasing(conf);
+		
+		this.collector.close(reverse);
 	}
 	
 	
