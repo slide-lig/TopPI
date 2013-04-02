@@ -243,7 +243,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
 						.min(extensionSupport, itemSupport)) {
 
-			if (failedPPTests.get(item) <= extension) {
+			if (failedPPTests == null || failedPPTests.get(item) <= extension) {
 				return -1;
 			} else {
 				return Integer.MAX_VALUE;
