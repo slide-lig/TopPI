@@ -34,6 +34,7 @@ public class Driver {
 	public static final String KEY_GROUPER_CLASS = "fr.liglab.lcm.class.grouper";
 	public static final String KEY_MINING_ALGO = "fr.liglab.lcm.mapred.algo";
 	public static final String KEY_SINGLE_GROUP_ID = "fr.liglab.lcm.single-group";
+	public static final String KEY_DUMP_ON_HEAP_EXN = "fr.liglab.lcm.dump-path";
 	
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////

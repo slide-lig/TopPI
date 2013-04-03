@@ -5,6 +5,7 @@ import java.util.Arrays;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
+import fr.liglab.lcm.util.HeapDumper;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -66,6 +67,9 @@ public class LCM {
 			
 			extensionLoop(Q, dataset);
 		} catch (OutOfMemoryError e) {
+			if (HeapDumper.basePath != null) {
+				HeapDumper.dumpThemAll();
+			}
 			throw new RuntimeException("OutOfMemoryError while extending pattern "+Arrays.toString(pattern)+ " with "+extension);
 		}
 	}
