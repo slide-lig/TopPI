@@ -492,4 +492,16 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		}
 		return sb.toString();
 	}
+
+	public int getRealSize() {
+		int i = 0;
+		int size = 0;
+		while (i < this.concatenated.length) {
+			if (this.concatenated[i] > 0) {
+				size += 2 + this.concatenated[i + 1];
+			}
+			i += 2 + this.concatenated[i + 1];
+		}
+		return size;
+	}
 }
