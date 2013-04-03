@@ -1,5 +1,7 @@
 package fr.liglab.lcm;
 
+import java.util.Arrays;
+
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
@@ -54,13 +56,18 @@ public class LCM {
 	public void lcm(final int[] pattern, final ConcatenatedDataset parent_dataset,
 			int extension) {
 
-		final ConcatenatedDataset dataset = parent_dataset.getProjection(extension);
-		int[] Q = ItemsetsFactory.extend(pattern, extension,
-				dataset.getDiscoveredClosureItems());
-
-		collector.collect(dataset.getTransactionsCount(), Q);
-		
-		extensionLoop(Q, dataset);
+		try	{
+			final ConcatenatedDataset dataset = parent_dataset.getProjection(extension);
+			
+			int[] Q = ItemsetsFactory.extend(pattern, extension,
+					dataset.getDiscoveredClosureItems());
+	
+			collector.collect(dataset.getTransactionsCount(), Q);
+			
+			extensionLoop(Q, dataset);
+		} catch (OutOfMemoryError e) {
+			throw new RuntimeException("OutOfMemoryError while extending pattern "+Arrays.toString(pattern)+ " with "+extension);
+		}
 	}
 	
 	private void extensionLoop(final int[] pattern, final ConcatenatedDataset dataset) {

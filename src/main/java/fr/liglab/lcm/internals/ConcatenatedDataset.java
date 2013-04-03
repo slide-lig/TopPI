@@ -250,6 +250,10 @@ public class ConcatenatedDataset extends Dataset {
 		return frequentItems;
 	}
 	
+	public int getRealSize() {
+		return concatenated.length;
+	}
+	
 	@Override
 	public ExtensionsIterator getCandidatesIterator() {
 		return new CandidatesIterator();

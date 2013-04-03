@@ -60,11 +60,15 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		this.transactionsCount = transactionsCopier.size();
 
 		int remainingItemsCount = genClosureAndFilterCount();
+		
 		this.prepareOccurences();
 		this.concatenated = new int[remainingItemsCount + 2
 				* this.transactionsCount];
+		
 		TIntArrayList transactionsList = this.filter(transactionsCopier);
+		
 		this.compress(transactionsList);
+		
 		this.frequentItems = occurrences.keys();
 		Arrays.sort(this.frequentItems);
 	}
@@ -223,8 +227,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 				sortedList.add(iter.next());
 			}
 			Collections.sort(sortedList, new Comparator<Integer>() {
-
-				@Override
+				
 				public int compare(Integer t1, Integer t2) {
 					if (concatenated[t1 - 1] == 0 || concatenated[t2 - 1] == 0) {
 						throw new RuntimeException(
@@ -499,11 +502,28 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		while (i < this.concatenated.length) {
 			if (this.concatenated[i] > 0) {
 				size += 2;
-				for (int j = i + 2; j < this.concatenated[i + 1]; j++) {
+				for (int j = i + 2; j < i+2+this.concatenated[i + 1]; j++) {
 					if (this.concatenated[j] >= 0) {
 						size++;
 					}
 				}
+				
+			}
+			i += 2 + this.concatenated[i + 1];
+		}
+		return size;
+	}
+	
+	public int transactionsAtZero;
+	
+	public int computeTransactionsCount() {
+		int i = 0;
+		int size = 0;
+		while (i < this.concatenated.length) {
+			if (this.concatenated[i] > 0) {
+				size += this.concatenated[i];
+			} else {
+				transactionsAtZero++;
 			}
 			i += 2 + this.concatenated[i + 1];
 		}
