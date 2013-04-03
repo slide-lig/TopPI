@@ -498,7 +498,12 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		int size = 0;
 		while (i < this.concatenated.length) {
 			if (this.concatenated[i] > 0) {
-				size += 2 + this.concatenated[i + 1];
+				size += 2;
+				for (int j = i + 2; j < this.concatenated[i + 1]; j++) {
+					if (this.concatenated[j] >= 0) {
+						size++;
+					}
+				}
 			}
 			i += 2 + this.concatenated[i + 1];
 		}
