@@ -24,7 +24,7 @@ import org.omg.CORBA.IntHolder;
  * prefix-preserving test (see inner class CandidatesIterator)
  */
 public class VIntConcatenatedDataset extends Dataset {
-
+	protected static int nbBytesForTransSize = 5;
 	protected final byte[] concatenated;
 	protected final int coreItem;
 	protected final int transactionsCount;
@@ -65,13 +65,18 @@ public class VIntConcatenatedDataset extends Dataset {
 		// over estimating the space taken by transaction sizes ... if we had a
 		// better bound we could make it lower. I think 2 bytes are already a
 		// lot (4k items in transaction)
-		this.concatenated = new byte[remainingItemsSize + 5
+		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
 				* this.transactionsCount];
 
 		this.filter(transactionsCopier);
 
 		this.frequentItems = occurrences.keys();
 		Arrays.sort(this.frequentItems);
+	}
+
+	public static void setMaxTransactionLength(int length) {
+		int nbBits = ((int) Math.floor(Math.log(length) / (Math.log(2)))) + 1;
+		nbBytesForTransSize = (int) Math.ceil(nbBits / 7.);
 	}
 
 	protected void filter(final Iterable<int[]> transactions) {
@@ -328,13 +333,13 @@ public class VIntConcatenatedDataset extends Dataset {
 	static public int getVIntSize(int val) {
 		if (val < 0) {
 			return 5;
-		} else if (val < 0x0000007F) {
+		} else if (val < 0x00000080) {
 			return 1;
-		} else if (val < 0x00003FFF) {
+		} else if (val < 0x00004000) {
 			return 2;
-		} else if (val < 0x00001FFFFF) {
+		} else if (val < 0x00200000) {
 			return 3;
-		} else if (val < 0x0FFFFFFF) {
+		} else if (val < 0x10000000) {
 			return 4;
 		} else {
 			return 5;
@@ -397,6 +402,12 @@ public class VIntConcatenatedDataset extends Dataset {
 	}
 
 	public static void main(String[] args) {
+		int[] tests = { 127, 128, 2097152 - 1, 2097152 };
+		for (int t : tests) {
+			setMaxTransactionLength(t);
+			System.out.println(nbBytesForTransSize + " " + getVIntSize(t));
+			System.out.println(String.format("%X", t));
+		}
 		IntHolder ih = new IntHolder(0);
 		byte[] tab = new byte[5];
 		int val = 127;
