@@ -11,8 +11,9 @@ import gnu.trove.map.TIntIntMap;
 
 public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	
-	protected final static int PING_EVERY = 100000;
-	protected int collected = 0;
+	// minimum interval between pokes to job tracker, in milliseconds
+	protected final static int PING_AT_MOST_EVERY = 60000;
+	private static long latestPing = 0;
 	
 	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
 
@@ -34,10 +35,9 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	public void collect(int support, int[] pattern) {
 		super.collect(support, pattern);
 		
-		this.collected++;
-		if (this.collected >= PING_EVERY) {
-			this.collected = 0;
+		if ( (System.currentTimeMillis()-latestPing) > PING_AT_MOST_EVERY) {
 			this.context.progress();
+			latestPing = System.currentTimeMillis();
 		}
 	}
 
