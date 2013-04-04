@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
@@ -27,7 +28,6 @@ import org.omg.CORBA.IntHolder;
 public class VIntConcatenatedDataset extends Dataset {
 	protected static int nbBytesForTransSize = 5;
 	protected final byte[] concatenated;
-	protected final int coreItem;
 	protected final int transactionsCount;
 	protected final int[] frequentItems;
 
@@ -44,19 +44,19 @@ public class VIntConcatenatedDataset extends Dataset {
 	 * "transactions" iterator will be traversed only once. Though, references
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.
+	 * @throws DontExploreThisBranchException 
 	 */
 	public VIntConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) {
+			final Iterator<int[]> transactions) throws DontExploreThisBranchException {
 		// in initial dataset, all items are candidate => all items < coreItem
-		this.coreItem = Integer.MAX_VALUE;
-		this.minsup = minimumsupport;
+		super(minimumsupport, Integer.MAX_VALUE);
 
 		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
 				transactions);
 		this.genSupportCounts(transactionsCopier);
 		this.transactionsCount = transactionsCopier.size();
 
-		int remainingItemsCount = genClosureAndFilterCount();
+		genClosureAndFilterCount();
 		int remainingItemsSize = this.prepareOccurences();
 		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
 				* this.transactionsCount];
@@ -98,11 +98,11 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
-	protected VIntConcatenatedDataset(VIntConcatenatedDataset parent,
-			int extension) {
+	protected VIntConcatenatedDataset(VIntConcatenatedDataset parent, 
+			int extension) throws DontExploreThisBranchException {
+		
+		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
-		this.minsup = parent.minsup;
-		this.coreItem = extension;
 
 		TIntArrayList extOccurrences = parent.occurrences.get(extension);
 		this.transactionsCount = extOccurrences.size();
@@ -263,7 +263,7 @@ public class VIntConcatenatedDataset extends Dataset {
 	}
 
 	@Override
-	public VIntConcatenatedDataset getProjection(int extension) {
+	public VIntConcatenatedDataset getProjection(int extension) throws DontExploreThisBranchException {
 		return new VIntConcatenatedDataset(this, extension);
 	}
 
