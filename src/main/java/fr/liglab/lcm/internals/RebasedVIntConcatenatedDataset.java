@@ -3,6 +3,7 @@ package fr.liglab.lcm.internals;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Iterator;
 
@@ -33,12 +34,12 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 	}
 
 	@Override
-	protected void prepareOccurences() {
+	protected int prepareOccurences() {
 
 		// Rebaser instanciation will nullify supportCounts - grab it while it's
 		// there !
 		TIntIntIterator counts = this.supportCounts.iterator();
-
+		int totalSize = 0;
 		this.rebaser = new Rebaser(this);
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
 
@@ -47,7 +48,9 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 			int rebasedItem = rebasing.get(counts.key());
 			this.occurrences
 					.put(rebasedItem, new TIntArrayList(counts.value()));
+			totalSize += getVIntSize(rebasedItem) * counts.value();
 		}
+		return totalSize;
 	}
 
 	@Override

@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
@@ -56,15 +57,7 @@ public class VIntConcatenatedDataset extends Dataset {
 		this.transactionsCount = transactionsCopier.size();
 
 		int remainingItemsCount = genClosureAndFilterCount();
-		int remainingItemsSize = 0;
-		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();) {
-			count.advance();
-			remainingItemsSize += count.value() * getVIntSize(count.key());
-		}
-		this.prepareOccurences();
-		// over estimating the space taken by transaction sizes ... if we had a
-		// better bound we could make it lower. I think 2 bytes are already a
-		// lot (4k items in transaction)
+		int remainingItemsSize = this.prepareOccurences();
 		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
 				* this.transactionsCount];
 
@@ -140,7 +133,7 @@ public class VIntConcatenatedDataset extends Dataset {
 		// over estimating the space taken by transaction sizes ... if we had a
 		// better bound we could make it lower. I think 2 bytes are already a
 		// lot (4k items in transaction)
-		this.concatenated = new byte[remainingItemsSize + 4
+		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
 				* this.transactionsCount];
 
 		filterParent(parent.concatenated, extOccurrences.iterator(), kept);
@@ -190,13 +183,16 @@ public class VIntConcatenatedDataset extends Dataset {
 	/**
 	 * Pre-instanciate occurrences ArrayLists according to this.supportCounts
 	 */
-	protected void prepareOccurences() {
+	protected int prepareOccurences() {
+		int totalSize = 0;
 		TIntIntIterator counts = this.supportCounts.iterator();
 		while (counts.hasNext()) {
 			counts.advance();
 			this.occurrences.put(counts.key(),
 					new TIntArrayList(counts.value()));
+			totalSize += getVIntSize(counts.key()) * counts.value();
 		}
+		return totalSize;
 	}
 
 	/**
@@ -401,26 +397,46 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
-	public static void main(String[] args) {
-		int[] tests = { 127, 128, 2097152 - 1, 2097152 };
-		for (int t : tests) {
-			setMaxTransactionLength(t);
-			System.out.println(nbBytesForTransSize + " " + getVIntSize(t));
-			System.out.println(String.format("%X", t));
-		}
-		IntHolder ih = new IntHolder(0);
-		byte[] tab = new byte[5];
-		int val = 127;
-		System.out.println(String.format("%X", val));
-		System.out.println(val);
-		writeVInt(tab, ih, val);
-		for (byte b : tab) {
-			System.out.print(String.format("%X", b));
-		}
-		System.out.println();
-		System.out.println(ih.value);
-		ih.value = 0;
-		System.out.println(readVInt(tab, ih));
-		System.out.println(ih.value);
-	}
+	// public static void main(String[] args) {
+	// int[] tests = { 127, 128, 2097152 - 1, 2097152 };
+	// for (int t : tests) {
+	// setMaxTransactionLength(t);
+	// System.out.println(nbBytesForTransSize + " " + getVIntSize(t));
+	// System.out.println(String.format("%X", t));
+	// }
+	// IntHolder ih = new IntHolder(0);
+	// byte[] tab = new byte[5];
+	// int val = 127;
+	// System.out.println(String.format("%X", val));
+	// System.out.println(val);
+	// writeVInt(tab, ih, val);
+	// for (byte b : tab) {
+	// System.out.print(String.format("%X", b));
+	// }
+	// System.out.println();
+	// System.out.println(ih.value);
+	// ih.value = 0;
+	// System.out.println(readVInt(tab, ih));
+	// System.out.println(ih.value);
+	// RebasedVIntConcatenatedDataset d = new RebasedVIntConcatenatedDataset(
+	// 5, new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d.concatenated.length);
+	// d = null;
+	// VIntConcatenatedDataset d2 = new VIntConcatenatedDataset(5,
+	// new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d2.concatenated.length);
+	// d2 = null;
+	// VIntConcatenatedDataset.setMaxTransactionLength(200);
+	// d = new RebasedVIntConcatenatedDataset(5, new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d.concatenated.length);
+	// d = null;
+	// RebasedConcatenatedDataset d3 = new RebasedConcatenatedDataset(5,
+	// new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d3.concatenated.length * 4);
+	// d3 = null;
+	// }
 }
