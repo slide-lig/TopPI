@@ -71,8 +71,8 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 				// know the transId at the end, we need a new loop
 				// also size is in bytes and not number of items
 				while (addIndex.value < newTransId) {
-					this.occurrences.get(readVInt(this.concatenated, addIndex))
-							.add(newTransId);
+					int rebased = readVInt(this.concatenated, addIndex);
+					this.occurrences.get(rebased).add(newTransId);
 				}
 			}
 		}

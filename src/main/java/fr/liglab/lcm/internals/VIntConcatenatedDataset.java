@@ -308,7 +308,7 @@ public class VIntConcatenatedDataset extends Dataset {
 
 	static public void writeVInt(byte[] array, IntHolder pointer, int value) {
 		while (true) {
-			if (value >= 0 && value < 0x0000007F) {
+			if (value >= 0 && value < 0x00000080) {
 				array[pointer.value] = (byte) value;
 				// System.out.println("encoding "
 				// + String.format("%X", (byte) value));
@@ -396,20 +396,20 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
-	// public static void main(String[] args) {
-	// IntHolder ih = new IntHolder(0);
-	// byte[] tab = new byte[5];
-	// int val = 56654648;
-	// System.out.println(String.format("%X", val));
-	// System.out.println(val);
-	// writeVInt(tab, ih, val);
-	// for (byte b : tab) {
-	// System.out.print(String.format("%X", b));
-	// }
-	// System.out.println();
-	// System.out.println(ih.value);
-	// ih.value = 0;
-	// System.out.println(readVInt(tab, ih));
-	// System.out.println(ih.value);
-	// }
+	public static void main(String[] args) {
+		IntHolder ih = new IntHolder(0);
+		byte[] tab = new byte[5];
+		int val = 127;
+		System.out.println(String.format("%X", val));
+		System.out.println(val);
+		writeVInt(tab, ih, val);
+		for (byte b : tab) {
+			System.out.print(String.format("%X", b));
+		}
+		System.out.println();
+		System.out.println(ih.value);
+		ih.value = 0;
+		System.out.println(readVInt(tab, ih));
+		System.out.println(ih.value);
+	}
 }
