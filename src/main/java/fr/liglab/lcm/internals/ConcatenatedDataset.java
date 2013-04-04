@@ -4,6 +4,7 @@ import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -12,6 +13,8 @@ import gnu.trove.set.TIntSet;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Here all transactions are prefixed by their length and concatenated in a
@@ -22,10 +25,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * occurrences are stored as indexes in the concatenated array - fast
  * prefix-preserving test (see inner class CandidatesIterator)
  */
-public class ConcatenatedDataset extends Dataset {
+public class ConcatenatedDataset extends IterableDataset {
 
 	final int[] concatenated;
-	
+
 	protected final int transactionsCount;
 	protected final int[] frequentItems;
 
@@ -42,15 +45,16 @@ public class ConcatenatedDataset extends Dataset {
 	 * "transactions" iterator will be traversed only once. Though, references
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.
-	 * @throws DontExploreThisBranchException 
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
 	public ConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) 
-					throws DontExploreThisBranchException {
-		
+			final Iterator<int[]> transactions)
+			throws DontExploreThisBranchException {
+
 		// in initial dataset, all items are candidate => all items < coreItem
 		super(minimumsupport, Integer.MAX_VALUE);
-		
+
 		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
 				transactions);
 		this.genSupportCounts(transactionsCopier);
@@ -62,7 +66,7 @@ public class ConcatenatedDataset extends Dataset {
 				+ this.transactionsCount];
 
 		this.filter(transactionsCopier);
-		
+
 		this.frequentItems = occurrences.keys();
 		Arrays.sort(this.frequentItems);
 	}
@@ -92,51 +96,55 @@ public class ConcatenatedDataset extends Dataset {
 		}
 	}
 
-	protected ConcatenatedDataset(ConcatenatedDataset parent, int extension) throws DontExploreThisBranchException {
+	protected ConcatenatedDataset(IterableDataset parent, int extension)
+			throws DontExploreThisBranchException {
 		this(parent, extension, null, null);
 	}
 
 	/**
-	 * extensionTids may be null - if it's not, it must contain indexes in parent's concatenated field
-	 * @throws DontExploreThisBranchException 
+	 * extensionTids may be null - if it's not, it must contain indexes in
+	 * parent's concatenated field
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
-	public ConcatenatedDataset(ConcatenatedDataset parent, int extension,
-			TIntArrayList extensionTids, int[] ignoreItems) 
-					throws DontExploreThisBranchException {
-		
+	public ConcatenatedDataset(IterableDataset parent, int extension,
+			TIntList extensionTids, int[] ignoreItems)
+			throws DontExploreThisBranchException {
+
 		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
-		
-		TIntArrayList extOccurrences = (extensionTids != null) ? extensionTids : parent.occurrences.get(extension);
+
+		TIntList extOccurrences = (extensionTids != null) ? extensionTids
+				: parent.getTidList(extension);
 		this.transactionsCount = extOccurrences.size();
 
 		TIntIterator iterator = extOccurrences.iterator();
 		while (iterator.hasNext()) {
 			int tid = iterator.next();
-			int length = parent.concatenated[tid];
-			for (int i = tid + 1; i <= tid + length; i++) {
-				this.supportCounts.adjustOrPutValue(parent.concatenated[i], 1,
-						1);
+			TIntIterator parentIterator = parent.readTransaction(tid);
+			while (parentIterator.hasNext()) {
+				this.supportCounts
+						.adjustOrPutValue(parentIterator.next(), 1, 1);
 			}
 		}
 
 		supportCounts.remove(extension);
-		
+
 		if (ignoreItems != null) {
 			for (int item : ignoreItems) {
 				supportCounts.remove(item);
 			}
 		}
-		
+
 		int remainingItemsCount = genClosureAndFilterCount();
 		this.prepareOccurences();
 
-		TIntSet keeped = this.supportCounts.keySet();
+		TIntSet kept = this.supportCounts.keySet();
 		this.concatenated = new int[remainingItemsCount
 				+ this.transactionsCount];
 
-		filterParent(parent.concatenated, extOccurrences.iterator(), keeped);
-		
+		filterParent(parent, extOccurrences.iterator(), kept);
+
 		this.frequentItems = this.occurrences.keys();
 		Arrays.sort(this.frequentItems);
 	}
@@ -148,18 +156,17 @@ public class ConcatenatedDataset extends Dataset {
 	 * @param keeped
 	 *            items that will remain in our transactions
 	 */
-	protected void filterParent(int[] parent, TIntIterator occIterator,
+	protected void filterParent(IterableDataset parent, TIntIterator occIterator,
 			TIntSet keeped) {
 		int i = 1;
 		int tIndex = 0;
 
 		while (occIterator.hasNext()) {
 			int parentTid = occIterator.next();
-			int parentLength = parent[parentTid];
+			TIntIterator parentIterator = parent.readTransaction(parentTid);
 			int length = 0;
-
-			for (int j = parentTid + 1; j <= parentTid + parentLength; j++) {
-				int item = parent[j];
+			while (parentIterator.hasNext()) {
+				int item = parentIterator.next();
 
 				if (keeped.contains(item)) {
 					this.concatenated[i] = item;
@@ -188,31 +195,37 @@ public class ConcatenatedDataset extends Dataset {
 					new TIntArrayList(counts.value()));
 		}
 	}
-	
+
+	@Override
+	protected TIntList getTidList(int item) {
+		return this.occurrences.get(item);
+	}
+
 	/**
-	 * @return greatest j > candidate having the same support
-	 *         as candidate, -1 if not such item exists
+	 * @return greatest j > candidate having the same support as candidate, -1
+	 *         if not such item exists
 	 */
 	public int prefixPreservingTest(final int candidate) {
 		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
 		if (candidateIdx < 0) {
 			throw new RuntimeException(
-					"Unexpected : prefixPreservingTest of an infrequent item, " + candidate);
+					"Unexpected : prefixPreservingTest of an infrequent item, "
+							+ candidate);
 		}
-		
+
 		return ppTest(candidateIdx);
 	}
 
 	/**
-	 * @return greatest j > candidate having the same support
-	 *         as candidate at the given index, -1 if not such item exists
+	 * @return greatest j > candidate having the same support as candidate at
+	 *         the given index, -1 if not such item exists
 	 */
 	private int ppTest(final int candidateIndex) {
 		final int candidate = frequentItems[candidateIndex];
 		final int candidateSupport = supportCounts.get(candidate);
 		TIntArrayList candidateOccurrences = occurrences.get(candidate);
 
-		for (int i = frequentItems.length-1; i > candidateIndex ; i--) {
+		for (int i = frequentItems.length - 1; i > candidateIndex; i--) {
 			int j = frequentItems[i];
 
 			if (supportCounts.get(j) >= candidateSupport) {
@@ -227,13 +240,12 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	/**
-	 * Assumptions : - both contain array indexes appended in increasing
-	 * order - you already tested that B.size >= A.size
+	 * Assumptions : - both contain array indexes appended in increasing order -
+	 * you already tested that B.size >= A.size
 	 * 
 	 * @return true if A is included in B
 	 */
-	public boolean isAincludedInB(final TIntArrayList a,
-			final TIntArrayList b) {
+	public boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
 		TIntIterator aIt = a.iterator();
 		TIntIterator bIt = b.iterator();
 
@@ -257,10 +269,11 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
-		
+	public Dataset getProjection(int extension)
+			throws DontExploreThisBranchException {
+
 		double extensionSupport = this.supportCounts.get(extension);
-		
+
 		if ((extensionSupport / this.transactionsCount) > ConcatenatedUnfilteredDataset.FILTERING_THRESHOLD) {
 			return new ConcatenatedUnfilteredDataset(this, extension);
 		} else {
@@ -272,21 +285,25 @@ public class ConcatenatedDataset extends Dataset {
 	public int getTransactionsCount() {
 		return transactionsCount;
 	}
-	
+
 	public int[] getSortedFrequents() {
 		return frequentItems;
 	}
-	
+
 	public int getRealSize() {
 		return concatenated.length;
 	}
-	
+
 	@Override
 	public ExtensionsIterator getCandidatesIterator() {
 		return new CandidatesIterator();
 	}
 
-	
+	@Override
+	protected TIntIterator readTransaction(int tid) {
+		return new ItemsIterator(tid);
+	}
+
 	/**
 	 * Iterates on candidates items such that - their support count is in
 	 * [minsup, transactionsCount[ , - candidate < coreItem - no item >
@@ -310,7 +327,7 @@ public class ConcatenatedDataset extends Dataset {
 		 */
 		public CandidatesIterator() {
 			this.next_index = new AtomicInteger(-1);
-			
+
 			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
 			if (coreItemIndex >= 0) {
 				throw new RuntimeException(
@@ -322,7 +339,7 @@ public class ConcatenatedDataset extends Dataset {
 			// a.length
 			candidatesLength = -coreItemIndex - 1;
 		}
-		
+
 		public int getExtension() {
 			if (candidatesLength < 0) {
 				return -1;
@@ -340,5 +357,34 @@ public class ConcatenatedDataset extends Dataset {
 				}
 			}
 		}
+	}
+
+	private class ItemsIterator implements TIntIterator {
+		private int max;
+		private int index;
+
+		public ItemsIterator(int tid) {
+			int length = concatenated[tid];
+			this.max = tid + length;
+			this.index = tid + 1;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.index != this.max;
+		}
+
+		@Override
+		public void remove() {
+			throw new NotImplementedException();
+		}
+
+		@Override
+		public int next() {
+			int val = concatenated[this.index];
+			this.index++;
+			return val;
+		}
+
 	}
 }

@@ -1,10 +1,10 @@
 package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -16,6 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.omg.CORBA.IntHolder;
 
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+
 /**
  * Here all transactions are prefixed by their length and concatenated in a
  * single int[]
@@ -25,7 +27,7 @@ import org.omg.CORBA.IntHolder;
  * occurrences are stored as indexes in the concatenated array - fast
  * prefix-preserving test (see inner class CandidatesIterator)
  */
-public class VIntConcatenatedDataset extends Dataset {
+public class VIntConcatenatedDataset extends IterableDataset {
 	protected static int nbBytesForTransSize = 5;
 	protected final byte[] concatenated;
 	protected final int transactionsCount;
@@ -100,31 +102,29 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
-	protected VIntConcatenatedDataset(VIntConcatenatedDataset parent,
-			int extension) throws DontExploreThisBranchException {
+	protected VIntConcatenatedDataset(IterableDataset parent, int extension)
+			throws DontExploreThisBranchException {
 		this(parent, extension, null, null);
 	}
 
-	public VIntConcatenatedDataset(VIntConcatenatedDataset parent,
-			int extension, TIntArrayList extensionTids, int[] ignoreItems)
+	public VIntConcatenatedDataset(IterableDataset parent, int extension,
+			TIntList extensionTids, int[] ignoreItems)
 			throws DontExploreThisBranchException {
 
 		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
 
-		TIntArrayList extOccurrences = (extensionTids != null) ? extensionTids
-				: parent.occurrences.get(extension);
+		TIntList extOccurrences = (extensionTids != null) ? extensionTids
+				: parent.getTidList(extension);
 		this.transactionsCount = extOccurrences.size();
 
 		TIntIterator iterator = extOccurrences.iterator();
 		while (iterator.hasNext()) {
 			int tid = iterator.next();
-			IntHolder transactionIndex = new IntHolder(tid);
-			int length = readVInt(parent.concatenated, transactionIndex);
-			transactionIndex.value = tid - length;
-			while (transactionIndex.value < tid) {
-				this.supportCounts.adjustOrPutValue(
-						readVInt(parent.concatenated, transactionIndex), 1, 1);
+			TIntIterator transactionIterator = parent.readTransaction(tid);
+			while (transactionIterator.hasNext()) {
+				this.supportCounts.adjustOrPutValue(transactionIterator.next(),
+						1, 1);
 			}
 		}
 
@@ -144,7 +144,7 @@ public class VIntConcatenatedDataset extends Dataset {
 		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
 				* this.transactionsCount];
 
-		filterParent(parent.concatenated, extOccurrences.iterator(), kept);
+		filterParent(parent, extOccurrences.iterator(), kept);
 
 		this.frequentItems = this.occurrences.keys();
 		Arrays.sort(this.frequentItems);
@@ -157,17 +157,15 @@ public class VIntConcatenatedDataset extends Dataset {
 	 * @param keeped
 	 *            items that will remain in our transactions
 	 */
-	protected void filterParent(byte[] parent, TIntIterator occIterator,
-			TIntSet keeped) {
+	protected void filterParent(IterableDataset parent,
+			TIntIterator occIterator, TIntSet keeped) {
 		IntHolder concIndex = new IntHolder(0);
 		while (occIterator.hasNext()) {
 			int parentTid = occIterator.next();
-			IntHolder parentIterator = new IntHolder(parentTid);
-			int parentLength = readVInt(parent, parentIterator);
-			parentIterator.value = parentTid - parentLength;
+			TIntIterator parentIterator = parent.readTransaction(parentTid);
 			int startAt = concIndex.value;
-			while (parentIterator.value < parentTid) {
-				int item = readVInt(parent, parentIterator);
+			while (parentIterator.hasNext()) {
+				int item = parentIterator.next();
 				if (keeped.contains(item)) {
 					writeVInt(this.concatenated, concIndex, item);
 				}
@@ -348,6 +346,16 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
+	@Override
+	protected TIntIterator readTransaction(int tid) {
+		return new ItemsIterator(tid);
+	}
+
+	@Override
+	protected TIntList getTidList(int item) {
+		return this.occurrences.get(item);
+	}
+
 	/**
 	 * Iterates on candidates items such that - their support count is in
 	 * [minsup, transactionsCount[ , - candidate < coreItem - no item >
@@ -403,47 +411,75 @@ public class VIntConcatenatedDataset extends Dataset {
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
-		// int[] tests = { 127, 128, 2097152 - 1, 2097152, Integer.MAX_VALUE,
-		// Integer.MIN_VALUE };
-		// for (int t : tests) {
-		// setMaxTransactionLength(t);
-		// System.out.println(nbBytesForTransSize + " " + getVIntSize(t));
-		// System.out.println(String.format("%X", t));
-		// }
-		// IntHolder ih = new IntHolder(0);
-		// byte[] tab = new byte[5];
-		// int val = 127;
-		// System.out.println(String.format("%X", val));
-		// System.out.println(val);
-		// writeVInt(tab, ih, val);
-		// for (byte b : tab) {
-		// System.out.print(String.format("%X", b));
-		// }
-		// System.out.println();
-		// System.out.println(ih.value);
-		// ih.value = 0;
-		// System.out.println(readVInt(tab, ih));
-		// System.out.println(ih.value);
-		RebasedVIntConcatenatedDataset d = new RebasedVIntConcatenatedDataset(
-				5, new FileReader(
-						"/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-		System.out.println(d.concatenated.length);
-		d = null;
-		VIntConcatenatedDataset d2 = new VIntConcatenatedDataset(5,
-				new FileReader(
-						"/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-		System.out.println(d2.concatenated.length);
-		d2 = null;
-		VIntConcatenatedDataset.setMaxTransactionLength(200);
-		d = new RebasedVIntConcatenatedDataset(5, new FileReader(
-				"/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-		System.out.println(d.concatenated.length);
-		d = null;
-		RebasedConcatenatedDataset d3 = new RebasedConcatenatedDataset(5,
-				new FileReader(
-						"/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-		System.out.println(d3.concatenated.length * 4);
-		d3 = null;
+	private class ItemsIterator implements TIntIterator {
+		private int tid;
+		private IntHolder index;
+
+		public ItemsIterator(int tid) {
+			this.tid = tid;
+			this.index = new IntHolder(tid);
+			int length = readVInt(concatenated, this.index);
+			this.index.value = tid - length;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return index.value < tid;
+		}
+
+		@Override
+		public void remove() {
+			throw new NotImplementedException();
+		}
+
+		@Override
+		public int next() {
+			return readVInt(concatenated, this.index);
+		}
+
 	}
+
+	// public static void main(String[] args) throws Exception {
+	// // int[] tests = { 127, 128, 2097152 - 1, 2097152, Integer.MAX_VALUE,
+	// // Integer.MIN_VALUE };
+	// // for (int t : tests) {
+	// // setMaxTransactionLength(t);
+	// // System.out.println(nbBytesForTransSize + " " + getVIntSize(t));
+	// // System.out.println(String.format("%X", t));
+	// // }
+	// // IntHolder ih = new IntHolder(0);
+	// // byte[] tab = new byte[5];
+	// // int val = 127;
+	// // System.out.println(String.format("%X", val));
+	// // System.out.println(val);
+	// // writeVInt(tab, ih, val);
+	// // for (byte b : tab) {
+	// // System.out.print(String.format("%X", b));
+	// // }
+	// // System.out.println();
+	// // System.out.println(ih.value);
+	// // ih.value = 0;
+	// // System.out.println(readVInt(tab, ih));
+	// // System.out.println(ih.value);
+	// RebasedVIntConcatenatedDataset d = new RebasedVIntConcatenatedDataset(
+	// 5, new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d.concatenated.length);
+	// d = null;
+	// VIntConcatenatedDataset d2 = new VIntConcatenatedDataset(5,
+	// new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d2.concatenated.length);
+	// d2 = null;
+	// VIntConcatenatedDataset.setMaxTransactionLength(200);
+	// d = new RebasedVIntConcatenatedDataset(5, new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d.concatenated.length);
+	// d = null;
+	// RebasedConcatenatedDataset d3 = new RebasedConcatenatedDataset(5,
+	// new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d3.concatenated.length * 4);
+	// d3 = null;
+	// }
 }

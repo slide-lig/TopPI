@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * prefix-preserving test (see inner class CandidatesIterator)
  */
 public class BasicDataset extends Dataset {
-	
+
 	protected final int transactionsCount;
 
 	/**
@@ -39,15 +39,16 @@ public class BasicDataset extends Dataset {
 	 * "transactions" iterator will be traversed only once. Though, references
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.
-	 * @throws DontExploreThisBranchException 
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
 	public BasicDataset(final int minimumsupport,
 			final Iterator<int[]> transactions)
-					throws DontExploreThisBranchException {
-		
+			throws DontExploreThisBranchException {
+
 		// in initial dataset, all items are candidate => all items < coreItem
 		super(minimumsupport, Integer.MAX_VALUE);
-		
+
 		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
 				transactions);
 		genSupportCounts(transactionsCopier);
@@ -63,12 +64,13 @@ public class BasicDataset extends Dataset {
 	 * Projection constructor projectedSupport is supposed to be projectedItem
 	 * support items in coreSupport's transactions are assumed to be already
 	 * sorted projectedItem will never re-appear or be outputted by this object
-	 * @throws DontExploreThisBranchException 
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
 	protected BasicDataset(final int minimumsupport,
-			final ArrayList<int[]> projectedSupport, final int projectedItem) 
-					throws DontExploreThisBranchException {
-		
+			final ArrayList<int[]> projectedSupport, final int projectedItem)
+			throws DontExploreThisBranchException {
+
 		super(minimumsupport, projectedItem);
 		transactionsCount = projectedSupport.size();
 
@@ -123,7 +125,8 @@ public class BasicDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension)
+			throws DontExploreThisBranchException {
 		return new BasicDataset(minsup, occurrences.get(extension), extension);
 	}
 
@@ -171,7 +174,7 @@ public class BasicDataset extends Dataset {
 			// a.length
 			candidatesLength = -coreItemIndex - 1;
 		}
-		
+
 		public int getExtension() {
 			if (candidatesLength < 0) {
 				return -1;
