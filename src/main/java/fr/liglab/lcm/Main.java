@@ -123,7 +123,12 @@ public class Main {
 	public static void printMan(Options options) {
 		String syntax = "hadoop jar [path/to/lcm.jar] [GENERIC_OPTIONS] [OPTIONS] INPUT_PATH MINSUP OUTPUT_PATH";
 		String header = "\nOUTPUT_PATH is optional in standalone mode. When missing, patterns are printed to standard output.\n\nOptions are :";
-		String footer = "\n\nTweaking properties : "+Driver.KEY_GROUPER_CLASS+","+Driver.KEY_MINING_ALGO;
+		String footer = "\n\nTweaking properties : \n"+
+				Driver.KEY_GROUPER_CLASS+"\n"+
+				Driver.KEY_MINING_ALGO+"\n"+
+				Driver.KEY_SINGLE_GROUP_ID+"\n"+
+				Driver.KEY_DUMP_ON_HEAP_EXN+"\n";
+		
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(syntax, header, options, footer);
 		

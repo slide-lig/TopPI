@@ -55,9 +55,12 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Transa
 			
 			TIntIterator it = this.destinations.iterator();
 			while (it.hasNext()) {
-				this.keyW.set(it.next());
-				
-				context.write(this.keyW, this.valueW);
+				int gid = it.next();
+				if (gid >= 0) {
+					this.keyW.set(gid);
+					
+					context.write(this.keyW, this.valueW);
+				}
 			}
 			
 			this.destinations.clear();

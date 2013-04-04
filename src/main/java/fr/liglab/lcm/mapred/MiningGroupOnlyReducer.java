@@ -11,6 +11,7 @@ import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import fr.liglab.lcm.util.HeapDumper;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.set.TIntSet;
 
@@ -29,6 +30,11 @@ public class MiningGroupOnlyReducer extends
 		
 		this.minSupport = conf.getInt(Driver.KEY_MINSUP, 10);
 		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
+		
+		String dumpPath = conf.get(Driver.KEY_DUMP_ON_HEAP_EXN, "");
+		if (dumpPath.length() > 0) {
+			HeapDumper.basePath = dumpPath;
+		}
 		
 		this.collector = new PerItemTopKHadoopCollector(topK, context, true, false);
 	}
