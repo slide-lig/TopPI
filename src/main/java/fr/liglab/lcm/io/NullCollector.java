@@ -1,6 +1,5 @@
 package fr.liglab.lcm.io;
 
-import fr.liglab.lcm.io.PatternsCollector;
 
 /**
  * The collector that doesn't care at all about outputting

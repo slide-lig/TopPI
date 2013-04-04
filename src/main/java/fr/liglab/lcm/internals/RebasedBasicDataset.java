@@ -1,10 +1,11 @@
 package fr.liglab.lcm.internals;
 
-import fr.liglab.lcm.util.ItemsetsFactory;
-import gnu.trove.map.TIntIntMap;
-
 import java.util.ArrayList;
 import java.util.Iterator;
+
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import fr.liglab.lcm.util.ItemsetsFactory;
+import gnu.trove.map.TIntIntMap;
 
 /**
  * A dataset where items are re-indexed by frequency (only at first loading) 
@@ -19,7 +20,7 @@ public class RebasedBasicDataset extends BasicDataset implements RebasedDataset 
 	
 	protected Rebaser rebaser; 
 	
-	public RebasedBasicDataset(int minimumsupport, Iterator<int[]> transactions) {
+	public RebasedBasicDataset(int minimumsupport, Iterator<int[]> transactions) throws DontExploreThisBranchException {
 		super(minimumsupport, transactions);
 	}
 	

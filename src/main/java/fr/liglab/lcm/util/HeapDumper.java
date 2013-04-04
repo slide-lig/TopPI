@@ -1,7 +1,9 @@
 package fr.liglab.lcm.util;
 
-import javax.management.MBeanServer;
 import java.lang.management.ManagementFactory;
+
+import javax.management.MBeanServer;
+
 import com.sun.management.HotSpotDiagnosticMXBean;
 
 public class HeapDumper {

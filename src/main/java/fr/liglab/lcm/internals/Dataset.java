@@ -1,5 +1,7 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.LCM;
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.map.TIntIntMap;
@@ -16,10 +18,12 @@ import java.util.Iterator;
  * Sub-classes are instanciated explicitely or by applying a projection.
  */
 public abstract class Dataset {
-	protected int minsup;
+	public final int minsup;
+	final int coreItem;
 	
-	public int getMinsup() {
-		return minsup;
+	Dataset(final int minimum_support, final int core_item) {
+		this.minsup = minimum_support;
+		this.coreItem = core_item;
 	}
 	
 	/// YES these two are package-visible. See Rebaser.
@@ -55,8 +59,9 @@ public abstract class Dataset {
 	 * from UnoAUA04-Lemma 3 : "extension" is Q's core index
 	 * 
 	 * the projected dataset won't forget that !
+	 * @throws DontExploreThisBranchException 
 	 */
-	public abstract Dataset getProjection(int extension);
+	public abstract Dataset getProjection(int extension) throws DontExploreThisBranchException;
 	
 	/**
 	 * @return candidates items known to be frequent, preserving prefix and not in closure's extension
@@ -69,11 +74,13 @@ public abstract class Dataset {
 	 * Find (in supportCounts) current dataset's closure (ie. items with 100% support)
 	 * By the way, unfrequent items (having a value < minsup) are removed from supportCounts
 	 * @return sum of remaining items' support counts
+	 * @throws DontExploreThisBranchException 
 	 */
-	protected int genClosureAndFilterCount() {
+	protected int genClosureAndFilterCount() throws DontExploreThisBranchException {
 		ItemsetsFactory builder = new ItemsetsFactory();
 		int closureSupport = getTransactionsCount();
 		int remainingsSupportsSum = 0;
+		int greatestClosureItem = Integer.MIN_VALUE;
 		
 		for (TIntIntIterator count = supportCounts.iterator(); count.hasNext();){
 			count.advance();
@@ -81,11 +88,21 @@ public abstract class Dataset {
 			if (count.value() < minsup) {
 				count.remove();
 			} else if (count.value() == closureSupport) {
-				builder.add(count.key());
+				int closureItem = count.key();
+				
+				if (closureItem > greatestClosureItem) {
+					greatestClosureItem = closureItem;
+				}
+				
+				builder.add(closureItem);
 				count.remove();
 			} else {
 				remainingsSupportsSum += count.value();
 			}
+		}
+		
+		if (greatestClosureItem > this.coreItem) {
+			throw new LCM.DontExploreThisBranchException(greatestClosureItem);
 		}
 		
 		discoveredClosure = builder.get();

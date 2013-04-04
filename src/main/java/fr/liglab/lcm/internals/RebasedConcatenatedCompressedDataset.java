@@ -1,11 +1,12 @@
 package fr.liglab.lcm.internals;
 
+import java.util.Arrays;
+import java.util.Iterator;
+
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
-
-import java.util.Arrays;
-import java.util.Iterator;
 
 /**
  * a ConcatenatedDataset rebased at first-loading time use it with a
@@ -25,9 +26,12 @@ public class RebasedConcatenatedCompressedDataset extends
 	 * 
 	 * the difference with parent class is in the overloaded sub-function
 	 * "filter"
+	 * @throws DontExploreThisBranchException 
 	 */
 	public RebasedConcatenatedCompressedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) {
+			final Iterator<int[]> transactions) 
+					throws DontExploreThisBranchException {
+		
 		super(minimumsupport, transactions);
 	}
 

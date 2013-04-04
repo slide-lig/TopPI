@@ -12,6 +12,7 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.internals.RebasedDataset;
 import fr.liglab.lcm.io.FileCollector;
@@ -146,24 +147,28 @@ public class Main {
 			Integer k, boolean benchMode) {
 		
 		FileReader reader = new FileReader(input);
-		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(minSupport, reader);
-		
-		PatternsCollector collector = instanciateCollector(output, k, benchMode, dataset);
-		
-		long time = System.currentTimeMillis();
-		
-		LCM miner = new LCM(collector);
-		miner.lcm(dataset);
-		
-		time = System.currentTimeMillis() - time;
+		RebasedConcatenatedDataset dataset;
+		try {
+			dataset = new RebasedConcatenatedDataset(minSupport, reader);
+			
+			PatternsCollector collector = instanciateCollector(output, k, benchMode, dataset);
+			
+			long time = System.currentTimeMillis();
+			
+			LCM miner = new LCM(collector);
+			miner.lcm(dataset);
+			
+			time = System.currentTimeMillis() - time;
 
-		reader.close();
-		long collected = collector.close();
-		
-		if (benchMode) {	
-			System.err.println(miner.toString() + " // mined in " + time + "ms // " + collected + " patterns outputted");
+			reader.close();
+			long collected = collector.close();
+			
+			if (benchMode) {	
+				System.err.println(miner.toString() + " // mined in " + time + "ms // " + collected + " patterns outputted");
+			}
+		} catch (DontExploreThisBranchException e) {
+			e.printStackTrace();
 		}
-		
 	}
 	
 	/**

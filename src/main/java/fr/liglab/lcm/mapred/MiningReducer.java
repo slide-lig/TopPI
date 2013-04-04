@@ -8,6 +8,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.LCM;
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
@@ -41,7 +42,13 @@ public class MiningReducer extends
 		final TIntArrayList starters = DistCache.readStartersFor(conf, gid.get());
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
-		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
+		ConcatenatedDataset dataset = null;
+		try {
+			dataset = new ConcatenatedDataset(this.minSupport, input);
+		} catch (DontExploreThisBranchException e) {
+			// with initial support coreItem = MAX_ITEM , this won't happen
+			e.printStackTrace();
+		}
 
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
@@ -60,7 +67,11 @@ public class MiningReducer extends
 			int candidate = startersIt.next();
 			
 			if (dataset.prefixPreservingTest(candidate) < 0) {
-				lcm.lcm(initPattern, dataset, candidate);
+				try {
+					lcm.lcm(initPattern, dataset, candidate);
+				} catch (DontExploreThisBranchException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
