@@ -56,4 +56,16 @@ public class ItemsetsFactory {
 		
 		return extended;
 	}
+
+	/**
+	 * @return a new array concatenating each of its arguments
+	 */
+	public static int[] extend(final int[] closure, final int extension) {
+		int[] extended = new int[closure.length + 1];
+		
+		System.arraycopy(closure, 0, extended, 0, closure.length);
+		extended[closure.length] = extension;
+		
+		return extended;
+	}
 }

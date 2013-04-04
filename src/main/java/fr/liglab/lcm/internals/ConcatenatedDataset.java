@@ -23,8 +23,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class ConcatenatedDataset extends Dataset {
 
-	protected final int[] concatenated;
-	protected final int coreItem;
+	final int[] concatenated;
+	final int coreItem;
+	
 	protected final int transactionsCount;
 	protected final int[] frequentItems;
 
@@ -33,7 +34,7 @@ public class ConcatenatedDataset extends Dataset {
 	 * Transactions are added in the same order in all occurences-arrays. This
 	 * property is used in CandidatesIterator's prefix-preserving test
 	 */
-	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
+	final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
 
 	/**
 	 * Initial dataset constructor
@@ -90,11 +91,20 @@ public class ConcatenatedDataset extends Dataset {
 	}
 
 	protected ConcatenatedDataset(ConcatenatedDataset parent, int extension) {
+		this(parent, extension, null, null);
+	}
+
+	/**
+	 * extensionTids may be null - if it's not, it must contain indexes in parent's concatenated field
+	 */
+	public ConcatenatedDataset(ConcatenatedDataset parent, int extension,
+			TIntArrayList extensionTids, int[] ignoreItems) {
+		
 		this.supportCounts = new TIntIntHashMap();
 		this.minsup = parent.minsup;
 		this.coreItem = extension;
 
-		TIntArrayList extOccurrences = parent.occurrences.get(extension);
+		TIntArrayList extOccurrences = (extensionTids != null) ? extensionTids : parent.occurrences.get(extension);
 		this.transactionsCount = extOccurrences.size();
 
 		TIntIterator iterator = extOccurrences.iterator();
@@ -108,6 +118,13 @@ public class ConcatenatedDataset extends Dataset {
 		}
 
 		supportCounts.remove(extension);
+		
+		if (ignoreItems != null) {
+			for (int item : ignoreItems) {
+				supportCounts.remove(item);
+			}
+		}
+		
 		int remainingItemsCount = genClosureAndFilterCount();
 		this.prepareOccurences();
 
