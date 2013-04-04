@@ -8,6 +8,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.LCM;
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
@@ -48,7 +49,13 @@ public class MiningGroupOnlyReducer extends
 		this.collector.setGroup(starters);
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
-		final ConcatenatedDataset dataset = new ConcatenatedDataset(this.minSupport, input);
+		ConcatenatedDataset dataset = null;
+		try {
+			dataset = new ConcatenatedDataset(this.minSupport, input);
+		} catch (DontExploreThisBranchException e) {
+			// with initial support coreItem = MAX_ITEM , this won't happen
+			e.printStackTrace();
+		}
 		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		

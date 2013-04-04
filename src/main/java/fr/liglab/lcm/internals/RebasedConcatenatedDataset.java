@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
@@ -23,8 +24,11 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 	 * Initial dataset constructor
 	 * 
 	 * the difference with parent class is in the overloaded sub-function "filter"
+	 * @throws DontExploreThisBranchException 
 	 */
-	public RebasedConcatenatedDataset(final int minimumsupport, final Iterator<int[]> transactions) {
+	public RebasedConcatenatedDataset(final int minimumsupport, final Iterator<int[]> transactions)
+			throws DontExploreThisBranchException {
+		
 		super(minimumsupport, transactions);
 	}
 	

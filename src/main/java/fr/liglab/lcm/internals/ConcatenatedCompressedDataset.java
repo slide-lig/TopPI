@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.CopyIteratorDecorator;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
@@ -30,7 +31,6 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	 * compression occurs AFTER their construction
 	 */
 	protected final int[] concatenated;
-	protected final int coreItem;
 	protected final int transactionsCount;
 	protected final int[] frequentItems;
 
@@ -47,13 +47,15 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	 * "transactions" iterator will be traversed only once. Though, references
 	 * to provided transactions will be kept and re-used during instanciation.
 	 * None will be kept after.
+	 * @throws DontExploreThisBranchException 
 	 */
 	public ConcatenatedCompressedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) {
+			final Iterator<int[]> transactions) 
+					throws DontExploreThisBranchException {
+		
 		// in initial dataset, all items are candidate => all items < coreItem
-		this.coreItem = Integer.MAX_VALUE;
-		this.minsup = minimumsupport;
-
+		super(minimumsupport, Integer.MAX_VALUE);
+		
 		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
 				transactions);
 		this.genSupportCounts(transactionsCopier);
@@ -106,11 +108,10 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	}
 
 	protected ConcatenatedCompressedDataset(
-			ConcatenatedCompressedDataset parent, int extension) {
+			ConcatenatedCompressedDataset parent, int extension) throws DontExploreThisBranchException {
+		
+		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
-		this.minsup = parent.minsup;
-		this.coreItem = extension;
-
 		TIntArrayList extOccurrences = parent.occurrences.get(extension);
 		TIntIterator iterator = extOccurrences.iterator();
 		int validTransactionEntries = 0;
@@ -394,7 +395,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) {
+	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
 		return new ConcatenatedCompressedDataset(this, extension);
 	}
 

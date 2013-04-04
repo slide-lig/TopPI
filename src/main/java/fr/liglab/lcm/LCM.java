@@ -3,6 +3,7 @@ package fr.liglab.lcm;
 import java.util.Arrays;
 
 import fr.liglab.lcm.internals.ConcatenatedDataset;
+import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.util.HeapDumper;
@@ -53,12 +54,13 @@ public class LCM {
 	 *            - pattern's support
 	 * @param extension
 	 *            is an item known to yield a prefix-preserving extension of P
+	 * @throws DontExploreThisBranchException 
 	 */
-	public void lcm(final int[] pattern, final ConcatenatedDataset parent_dataset,
-			int extension) {
+	public void lcm(final int[] pattern, final Dataset parent_dataset,
+			int extension) throws DontExploreThisBranchException {
 
 		try	{
-			final ConcatenatedDataset dataset = parent_dataset.getProjection(extension);
+			final Dataset dataset = parent_dataset.getProjection(extension);
 			
 			int[] Q = ItemsetsFactory.extend(pattern, extension,
 					dataset.getDiscoveredClosureItems());
@@ -74,7 +76,7 @@ public class LCM {
 		}
 	}
 	
-	private void extensionLoop(final int[] pattern, final ConcatenatedDataset dataset) {
+	private void extensionLoop(final int[] pattern, final Dataset dataset) {
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int[] sortedFreqs = iterator.getSortedFrequents();
 		TIntIntMap supportCounts = dataset.getSupportCounts();
@@ -88,19 +90,36 @@ public class LCM {
 			int explore = collector.explore(pattern, candidate, sortedFreqs,
 					supportCounts, failedPPTests, previousCandidate, previousExplore);
 			if (explore < 0) {
-				int firstParent = dataset.prefixPreservingTest(candidate);
-				if (firstParent < 0) {
-					explored++;
+				try {
 					lcm(pattern, dataset, candidate);
-				} else {
-					failedPPTests.put(candidate, firstParent);
+					explored++;
+				} catch (DontExploreThisBranchException e) {
+					failedPPTests.put(candidate, e.firstParent);
 					pptestcut++;
 				}
+				
 			} else {
 				previousExplore = explore;
 				previousCandidate = candidate;
 				explorecut++;
 			}
+		}
+	}
+	
+	/**
+	 * This exception must be thrown by methods invoked directly or not by 
+	 * lcm() when they find out that their search branch is uninteresting  
+	 */
+	public static class DontExploreThisBranchException extends Exception {
+		private static final long serialVersionUID = 2969583589161047791L;
+		
+		public final int firstParent;
+		
+		/**
+		 * @param foundFirstParent a item found in closure > coreItem 
+		 */
+		public DontExploreThisBranchException(int foundFirstParent) {
+			this.firstParent = foundFirstParent;
 		}
 	}
 

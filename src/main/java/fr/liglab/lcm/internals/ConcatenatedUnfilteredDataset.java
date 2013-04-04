@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
@@ -12,16 +13,16 @@ public class ConcatenatedUnfilteredDataset extends Dataset {
 	
 	protected final ConcatenatedDataset parent;
 	protected final TIntArrayList tids; // indexes in parent_concatenated
-	protected final int coreItem;
 	protected final int[] frequentItems;
 	protected final int[] ignoreItems; // items known to have a 100% support
 	
 	/**
 	 * builds an unfiltered projection of parentDataset over "extension"
+	 * @throws DontExploreThisBranchException 
 	 */
-	public ConcatenatedUnfilteredDataset(ConcatenatedDataset parentDataset, int extension) {
-		this.coreItem = extension;
-		this.minsup = parentDataset.minsup;
+	public ConcatenatedUnfilteredDataset(ConcatenatedDataset parentDataset, int extension) 
+			throws DontExploreThisBranchException {
+		super(parentDataset.minsup, extension);
 		
 		this.parent = parentDataset;
 		this.tids = parentDataset.occurrences.get(extension);
@@ -37,10 +38,10 @@ public class ConcatenatedUnfilteredDataset extends Dataset {
 	}
 	
 	public ConcatenatedUnfilteredDataset(ConcatenatedUnfilteredDataset upper, 
-			int extension, TIntArrayList extensionTids) {
+			int extension, TIntArrayList extensionTids) 
+					throws DontExploreThisBranchException {
 		
-		this.coreItem = extension;
-		this.minsup = upper.minsup;
+		super(upper.minsup, extension);
 		
 		this.parent = upper.parent;
 		this.tids = extensionTids;
@@ -82,17 +83,61 @@ public class ConcatenatedUnfilteredDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) {
-		// extensionTids = current Tids intersected with extension's occurrences
-		TIntArrayList extensionTids = new TIntArrayList(tids);
-		extensionTids.retainAll(this.parent.occurrences.get(extension));
+	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
 		
+		TIntArrayList extensionTids = buildExtensionTIDs(extension);
 		double extensionSupport = this.supportCounts.get(extension);
 		
 		if ((extensionSupport / this.parent.getTransactionsCount()) > FILTERING_THRESHOLD) {
 			return new ConcatenatedUnfilteredDataset(this, extension, extensionTids);
 		} else {
 			return new ConcatenatedDataset(this.parent, extension, extensionTids, this.ignoreItems);
+		}
+	}
+	
+	/**
+	 * assumes all theses TID-lists contain indexes in increasing order
+	 * @return current Tids intersected with extension's occurrences
+	 */
+	private TIntArrayList buildExtensionTIDs(int extension) {
+		TIntArrayList extensionTids = new TIntArrayList();
+		
+		TIntIterator myTidsIt = this.tids.iterator();
+		TIntIterator parentExtTidsIt = this.parent.occurrences.get(extension).iterator();
+		
+		int myTid = myTidsIt.next();
+		int parentExtTid = parentExtTidsIt.next();
+		
+		while (true) {
+			
+			while (myTid < parentExtTid) {
+				if (!myTidsIt.hasNext()) {
+					return extensionTids;
+				}
+				myTid = myTidsIt.next();
+			}
+			
+			while (parentExtTid < myTid) {
+				if (!parentExtTidsIt.hasNext()) {
+					return extensionTids;
+				}
+				parentExtTid = parentExtTidsIt.next();
+			}
+			
+			if (parentExtTid == myTid) {
+				extensionTids.add(myTid);
+				
+				if (myTidsIt.hasNext()) {
+					myTid = myTidsIt.next();
+				} else {
+					return extensionTids;
+				}
+				if (parentExtTidsIt.hasNext()) {
+					parentExtTid = parentExtTidsIt.next();
+				} else {
+					return extensionTids;
+				}
+			}
 		}
 	}
 
@@ -104,13 +149,28 @@ public class ConcatenatedUnfilteredDataset extends Dataset {
 	public class CandidatesIterator implements ExtensionsIterator {
 		
 		private int i = 0;
+		private final int candidatesLength; // candidates is
+		// frequentItems[0:candidatesLength[
+		
+		public CandidatesIterator() {
+			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
+			if (coreItemIndex >= 0) {
+				throw new RuntimeException(
+						"Unexpected : coreItem appears in frequentItems !");
+			}
+
+			// binarySearch returns -(insertion_point)-1
+			// where insertion_point == index of first element greater OR
+			// a.length
+			this.candidatesLength = -coreItemIndex - 1;
+		}
 		
 		public int[] getSortedFrequents() {
 			return frequentItems;
 		}
 
 		public int getExtension() {
-			if (i < frequentItems.length) {
+			if (i < this.candidatesLength) {
 				return frequentItems[i++];
 			} else {
 				return -1;

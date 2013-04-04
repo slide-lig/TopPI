@@ -1,5 +1,6 @@
 package fr.liglab.lcm;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedCompressedDataset;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.io.FileReader;
@@ -8,8 +9,9 @@ public class TestCompression {
 
 	/**
 	 * @param args
+	 * @throws DontExploreThisBranchException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws DontExploreThisBranchException {
 		int minsup = Integer.parseInt(args[1]);
 		FileReader reader = new FileReader(args[0]);
 		

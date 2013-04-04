@@ -16,6 +16,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
@@ -198,17 +199,22 @@ public class PLCM {
 			}
 			if (explore < 0) {
 				explored.incrementAndGet();
-				Dataset dataset = sj.dataset.getProjection(extension);
-				int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
-						dataset.getDiscoveredClosureItems());
-				collect(dataset.getTransactionsCount(), Q);
-				ExtensionsIterator iterator = dataset.getCandidatesIterator();
-				int[] sortedFreqs = iterator.getSortedFrequents();
-				StackedJob nj = new StackedJob(iterator, dataset, Q,
-						sortedFreqs);
-				this.lock.writeLock().lock();
-				this.stackedJobs.add(nj);
-				this.lock.writeLock().unlock();
+				try {
+					Dataset dataset = sj.dataset.getProjection(extension);
+					int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
+							dataset.getDiscoveredClosureItems());
+					collect(dataset.getTransactionsCount(), Q);
+					ExtensionsIterator iterator = dataset.getCandidatesIterator();
+					int[] sortedFreqs = iterator.getSortedFrequents();
+					StackedJob nj = new StackedJob(iterator, dataset, Q,
+							sortedFreqs);
+					this.lock.writeLock().lock();
+					this.stackedJobs.add(nj);
+					this.lock.writeLock().unlock();
+				} catch (DontExploreThisBranchException e) {
+					// may happen in getProjection, in which case we should just continue with next candidate
+				}
+				
 			} else {
 				sj.previousItem = extension;
 				sj.previousResult = explore;
@@ -297,8 +303,13 @@ public class PLCM {
 		FileReader reader = new FileReader(args[0]);
 		int minsup = Integer.parseInt(args[1]);
 
-		RebasedConcatenatedDataset dataset = new RebasedConcatenatedDataset(
-				minsup, reader);
+		RebasedConcatenatedDataset dataset = null;
+		try {
+			dataset = new RebasedConcatenatedDataset(minsup, reader);
+		} catch (DontExploreThisBranchException e) {
+			// this won't ever happen with initial constructor
+			e.printStackTrace();
+		}
 
 		String outputPath = null;
 		if (args.length >= 3) {
