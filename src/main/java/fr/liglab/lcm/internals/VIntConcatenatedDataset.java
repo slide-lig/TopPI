@@ -1,22 +1,13 @@
 package fr.liglab.lcm.internals;
 
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import fr.liglab.lcm.util.CopyIteratorDecorator;
-import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
-import gnu.trove.list.TIntList;
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
-import gnu.trove.set.TIntSet;
-
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.omg.CORBA.IntHolder;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.iterator.TIntIterator;
 
 /**
  * Here all transactions are prefixed by their length and concatenated in a
@@ -27,258 +18,51 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  * occurrences are stored as indexes in the concatenated array - fast
  * prefix-preserving test (see inner class CandidatesIterator)
  */
-public class VIntConcatenatedDataset extends IterableDataset {
+public class VIntConcatenatedDataset extends FilteredDataset {
 	protected static int nbBytesForTransSize = 5;
-	protected final byte[] concatenated;
-	protected final int transactionsCount;
-	protected final int[] frequentItems;
-
-	/**
-	 * frequent item => array of occurrences indexes in "concatenated"
-	 * Transactions are added in the same order in all occurences-arrays. This
-	 * property is used in CandidatesIterator's prefix-preserving test
-	 */
-	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
-
-	/**
-	 * Initial dataset constructor
-	 * 
-	 * "transactions" iterator will be traversed only once. Though, references
-	 * to provided transactions will be kept and re-used during instanciation.
-	 * None will be kept after.
-	 * 
-	 * @throws DontExploreThisBranchException
-	 */
-	public VIntConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions)
-			throws DontExploreThisBranchException {
-		// in initial dataset, all items are candidate => all items < coreItem
-		super(minimumsupport, Integer.MAX_VALUE);
-
-		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
-				transactions);
-		this.genSupportCounts(transactionsCopier);
-		this.transactionsCount = transactionsCopier.size();
-
-		genClosureAndFilterCount();
-		int remainingItemsSize = this.prepareOccurences();
-		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
-				* this.transactionsCount];
-
-		this.filter(transactionsCopier);
-
-		this.frequentItems = occurrences.keys();
-		Arrays.sort(this.frequentItems);
-	}
+	protected byte[] concatenated;
 
 	public static void setMaxTransactionLength(int length) {
 		int nbBits = ((int) Math.floor(Math.log(length) / (Math.log(2)))) + 1;
 		nbBytesForTransSize = (int) Math.ceil(nbBits / 7.);
 	}
 
-	protected void filter(final Iterable<int[]> transactions) {
-		TIntSet retained = this.supportCounts.keySet();
-		IntHolder concIndex = new IntHolder(0);
-		for (int[] transaction : transactions) {
-			int startAt = concIndex.value;
-			for (int item : transaction) {
-				if (retained.contains(item)) {
-					writeVInt(this.concatenated, concIndex, item);
-				}
-			}
-			if (concIndex.value != startAt) {
-				int newTransId = concIndex.value;
-				writeVInt(this.concatenated, concIndex, concIndex.value
-						- startAt);
-				IntHolder addIndex = new IntHolder(startAt);
-				// new format sets transaction length after the data, so we only
-				// know the transId at the end, we need a new loop
-				// also size is in bytes and not number of items
-				while (addIndex.value < newTransId) {
-					this.occurrences.get(readVInt(this.concatenated, addIndex))
-							.add(newTransId);
-				}
-			}
-		}
-	}
-
-	protected VIntConcatenatedDataset(IterableDataset parent, int extension)
-			throws DontExploreThisBranchException {
-		this(parent, extension, null);
+	public VIntConcatenatedDataset(int minimumsupport,
+			Iterator<int[]> transactions) throws DontExploreThisBranchException {
+		super(minimumsupport, transactions);
 	}
 
 	public VIntConcatenatedDataset(IterableDataset parent, int extension,
 			int[] ignoreItems) throws DontExploreThisBranchException {
-
-		super(parent.minsup, extension);
-		this.supportCounts = new TIntIntHashMap();
-
-		TIntList extOccurrences = parent.getTidList(extension);
-		this.transactionsCount = extOccurrences.size();
-
-		TIntIterator iterator = extOccurrences.iterator();
-		while (iterator.hasNext()) {
-			int tid = iterator.next();
-			TIntIterator transactionIterator = parent.readTransaction(tid);
-			while (transactionIterator.hasNext()) {
-				this.supportCounts.adjustOrPutValue(transactionIterator.next(),
-						1, 1);
-			}
-		}
-
-		supportCounts.remove(extension);
-		if (ignoreItems != null) {
-			for (int item : ignoreItems) {
-				supportCounts.remove(item);
-			}
-		}
-		/* int remainingItemsCount = */genClosureAndFilterCount();
-		int remainingItemsSize = this.prepareOccurences();
-
-		TIntSet kept = this.supportCounts.keySet();
-		// over estimating the space taken by transaction sizes ... if we had a
-		// better bound we could make it lower. I think 2 bytes are already a
-		// lot (4k items in transaction)
-		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
-				* this.transactionsCount];
-
-		filterParent(parent, extOccurrences.iterator(), kept);
-
-		this.frequentItems = this.occurrences.keys();
-		Arrays.sort(this.frequentItems);
+		super(parent, extension, ignoreItems);
 	}
 
-	/**
-	 * @param parent
-	 * @param occIterator
-	 *            iterator on occurences iterator (giving indexes in parent)
-	 * @param keeped
-	 *            items that will remain in our transactions
-	 */
-	protected void filterParent(IterableDataset parent,
-			TIntIterator occIterator, TIntSet keeped) {
-		IntHolder concIndex = new IntHolder(0);
-		while (occIterator.hasNext()) {
-			int parentTid = occIterator.next();
-			TIntIterator parentIterator = parent.readTransaction(parentTid);
-			int startAt = concIndex.value;
-			while (parentIterator.hasNext()) {
-				int item = parentIterator.next();
-				if (keeped.contains(item)) {
-					writeVInt(this.concatenated, concIndex, item);
-				}
-			}
-			if (concIndex.value != startAt) {
-				int newTransId = concIndex.value;
-				writeVInt(this.concatenated, concIndex, concIndex.value
-						- startAt);
-				IntHolder addIndex = new IntHolder(startAt);
-				// new format sets transaction length after the data, so we only
-				// know the transId at the end, we need a new loop
-				// also size is in bytes and not number of items
-				while (addIndex.value < newTransId) {
-					this.occurrences.get(readVInt(this.concatenated, addIndex))
-							.add(newTransId);
-				}
-			}
-		}
+	public VIntConcatenatedDataset(IterableDataset parent, int extension)
+			throws DontExploreThisBranchException {
+		super(parent, extension);
 	}
 
-	/**
-	 * Pre-instanciate occurrences ArrayLists according to this.supportCounts
-	 */
-	protected int prepareOccurences() {
-		int totalSize = 0;
+	@Override
+	protected void prepareTransactionsStructure(int remainingItemsCount) {
+		int remainingItemsSize = 0;
 		TIntIntIterator counts = this.supportCounts.iterator();
 		while (counts.hasNext()) {
 			counts.advance();
-			this.occurrences.put(counts.key(),
-					new TIntArrayList(counts.value()));
-			totalSize += getVIntSize(counts.key()) * counts.value();
+			remainingItemsSize += getVIntSize(counts.key()) * counts.value();
 		}
-		return totalSize;
-	}
-
-	/**
-	 * @return greatest j > candidate having the same support as candidate, -1
-	 *         if not such item exists
-	 */
-	public int prefixPreservingTest(final int candidate) {
-		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
-		if (candidateIdx < 0) {
-			throw new RuntimeException(
-					"Unexpected : prefixPreservingTest of an infrequent item, "
-							+ candidate);
-		}
-
-		return ppTest(candidateIdx);
-	}
-
-	/**
-	 * @return greatest j > candidate having the same support as candidate at
-	 *         the given index, -1 if not such item exists
-	 */
-	private int ppTest(final int candidateIndex) {
-		final int candidate = frequentItems[candidateIndex];
-		final int candidateSupport = supportCounts.get(candidate);
-		TIntArrayList candidateOccurrences = occurrences.get(candidate);
-
-		for (int i = frequentItems.length - 1; i > candidateIndex; i--) {
-			int j = frequentItems[i];
-
-			if (supportCounts.get(j) >= candidateSupport) {
-				TIntArrayList jOccurrences = occurrences.get(j);
-				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-					return j;
-				}
-			}
-		}
-
-		return -1;
-	}
-
-	/**
-	 * Assumptions : - both contain array indexes appended in increasing order -
-	 * you already tested that B.size >= A.size
-	 * 
-	 * @return true if A is included in B
-	 */
-	public boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
-		TIntIterator aIt = a.iterator();
-		TIntIterator bIt = b.iterator();
-
-		int tidA = 0;
-		int tidB = 0;
-
-		while (aIt.hasNext() && bIt.hasNext()) {
-			tidA = aIt.next();
-			tidB = bIt.next();
-
-			while (tidB < tidA && bIt.hasNext()) {
-				tidB = bIt.next();
-			}
-
-			if (tidB > tidA) {
-				return false;
-			}
-		}
-
-		return tidA == tidB && !aIt.hasNext();
+		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
+				* this.transactionsCount];
 	}
 
 	@Override
-	public VIntConcatenatedDataset getProjection(int extension)
+	public Dataset getProjection(int extension)
 			throws DontExploreThisBranchException {
-		return new VIntConcatenatedDataset(this, extension);
-	}
-
-	@Override
-	public int getTransactionsCount() {
-		return transactionsCount;
-	}
-
-	public int[] getSortedFrequents() {
-		return frequentItems;
+		double extensionSupport = this.supportCounts.get(extension);
+		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
+			return new VIntConcatenatedUnfilteredDataset(this, extension);
+		} else {
+			return new VIntConcatenatedDataset(this, extension);
+		}
 	}
 
 	@Override
@@ -350,63 +134,8 @@ public class VIntConcatenatedDataset extends IterableDataset {
 	}
 
 	@Override
-	protected TIntList getTidList(int item) {
-		return this.occurrences.get(item);
-	}
-
-	/**
-	 * Iterates on candidates items such that - their support count is in
-	 * [minsup, transactionsCount[ , - candidate < coreItem - no item >
-	 * candidate has the same support as candidate (aka fast-prefix-preservation
-	 * test) => assuming items from previously found patterns (including
-	 * coreItem) have been removed !! coreItem = extension item (if it exists)
-	 */
-	protected class CandidatesIterator implements ExtensionsIterator {
-		private AtomicInteger next_index;
-		private final int candidatesLength; // candidates is
-											// frequentItems[0:candidatesLength[
-
-		public int[] getSortedFrequents() {
-			return frequentItems;
-		}
-
-		/**
-		 * @param original
-		 *            an iterator on frequent items
-		 * @param min
-		 */
-		public CandidatesIterator() {
-			this.next_index = new AtomicInteger(-1);
-
-			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
-			if (coreItemIndex >= 0) {
-				throw new RuntimeException(
-						"Unexpected : coreItem appears in frequentItems !");
-			}
-
-			// binarySearch returns -(insertion_point)-1
-			// where insertion_point == index of first element greater OR
-			// a.length
-			candidatesLength = -coreItemIndex - 1;
-		}
-
-		public int getExtension() {
-			if (candidatesLength < 0) {
-				return -1;
-			}
-			while (true) {
-				int next_index_local = this.next_index.incrementAndGet();
-				if (next_index_local < 0) {
-					// overflow, just in case
-					return -1;
-				}
-				if (next_index_local >= this.candidatesLength) {
-					return -1;
-				} else { // if (ppTest(next_index_local)) {
-					return frequentItems[next_index_local];
-				}
-			}
-		}
+	protected TransactionsWriter getTransactionsWriter() {
+		return new TransWriter();
 	}
 
 	private class ItemsIterator implements TIntIterator {
@@ -433,6 +162,29 @@ public class VIntConcatenatedDataset extends IterableDataset {
 		@Override
 		public int next() {
 			return readVInt(concatenated, this.index);
+		}
+
+	}
+
+	private class TransWriter implements TransactionsWriter {
+		IntHolder index = new IntHolder(0);
+		int transactionStart = 0;
+
+		public TransWriter() {
+		}
+
+		@Override
+		public void addItem(int item) {
+			writeVInt(concatenated, this.index, item);
+		}
+
+		@Override
+		public int endTransaction() {
+			int transId = this.index.value;
+			writeVInt(concatenated, this.index, this.index.value
+					- this.transactionStart);
+			this.transactionStart = this.index.value;
+			return transId;
 		}
 
 	}
@@ -480,4 +232,9 @@ public class VIntConcatenatedDataset extends IterableDataset {
 	// System.out.println(d3.concatenated.length * 4);
 	// d3 = null;
 	// }
+
+	@Override
+	public int getRealSize() {
+		return this.concatenated.length * Byte.SIZE;
+	}
 }

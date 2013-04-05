@@ -17,6 +17,7 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 		implements RebasedDataset {
 
 	private Rebaser rebaser;
+	private int totalSize = 0;
 
 	public int[] getReverseMap() {
 		return this.rebaser.getReverseMap();
@@ -27,31 +28,35 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 	 * 
 	 * the difference with parent class is in the overloaded sub-function
 	 * "filter"
-	 * @throws DontExploreThisBranchException 
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
 	public RebasedVIntConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) throws DontExploreThisBranchException {
+			final Iterator<int[]> transactions)
+			throws DontExploreThisBranchException {
 		super(minimumsupport, transactions);
 	}
 
 	@Override
-	protected int prepareOccurences() {
-
+	protected void prepareOccurences() {
 		// Rebaser instanciation will nullify supportCounts - grab it while it's
 		// there !
 		TIntIntIterator counts = this.supportCounts.iterator();
-		int totalSize = 0;
 		this.rebaser = new Rebaser(this);
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
 			this.occurrences
 					.put(rebasedItem, new TIntArrayList(counts.value()));
-			totalSize += getVIntSize(rebasedItem) * counts.value();
+			this.totalSize += getVIntSize(rebasedItem) * counts.value();
 		}
-		return totalSize;
+	}
+
+	@Override
+	protected void prepareTransactionsStructure(int remainingItemsCount) {
+		this.concatenated = new byte[this.totalSize + nbBytesForTransSize
+				* this.transactionsCount];
 	}
 
 	@Override

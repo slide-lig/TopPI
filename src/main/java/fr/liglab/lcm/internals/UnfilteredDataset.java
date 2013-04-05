@@ -75,7 +75,6 @@ public abstract class UnfilteredDataset extends IterableDataset {
 
 		TIntIterator myTidsIt = this.tids.iterator();
 		TIntIterator parentExtTidsIt = this.parent.getTidList(item).iterator();
-
 		int myTid = myTidsIt.next();
 		int parentExtTid = parentExtTidsIt.next();
 
@@ -147,8 +146,8 @@ public abstract class UnfilteredDataset extends IterableDataset {
 		if ((extensionSupport / this.parent.getTransactionsCount()) > FILTERING_THRESHOLD) {
 			return this.createUnfilteredDataset(this, extension);
 		} else {
-			return this.createFilteredDataset(this.parent, extension,
-					this.ignoreItems);
+			return this
+					.createFilteredDataset(this, extension, this.ignoreItems);
 		}
 	}
 
