@@ -1,7 +1,6 @@
 package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import gnu.trove.list.array.TIntArrayList;
 
 public class VIntConcatenatedUnfilteredDataset extends UnfilteredDataset {
 
@@ -11,25 +10,20 @@ public class VIntConcatenatedUnfilteredDataset extends UnfilteredDataset {
 	}
 
 	public VIntConcatenatedUnfilteredDataset(UnfilteredDataset upper,
-			int extension, TIntArrayList extensionTids)
-			throws DontExploreThisBranchException {
-		super(upper, extension, extensionTids);
+			int extension) throws DontExploreThisBranchException {
+		super(upper, extension);
 	}
 
 	@Override
 	public Dataset createUnfilteredDataset(UnfilteredDataset upper,
-			int extension, TIntArrayList extensionTid)
-			throws DontExploreThisBranchException {
-		return new VIntConcatenatedUnfilteredDataset(upper, extension,
-				extensionTid);
+			int extension) throws DontExploreThisBranchException {
+		return new VIntConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
 	public Dataset createFilteredDataset(IterableDataset upper, int extension,
-			TIntArrayList extensionTids, int[] ignoredItems)
-			throws DontExploreThisBranchException {
-		return new VIntConcatenatedDataset(upper, extension, extensionTids,
-				ignoredItems);
+			int[] ignoredItems) throws DontExploreThisBranchException {
+		return new VIntConcatenatedDataset(upper, extension, ignoredItems);
 	}
 
 }

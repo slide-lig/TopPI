@@ -104,18 +104,16 @@ public class VIntConcatenatedDataset extends IterableDataset {
 
 	protected VIntConcatenatedDataset(IterableDataset parent, int extension)
 			throws DontExploreThisBranchException {
-		this(parent, extension, null, null);
+		this(parent, extension, null);
 	}
 
 	public VIntConcatenatedDataset(IterableDataset parent, int extension,
-			TIntList extensionTids, int[] ignoreItems)
-			throws DontExploreThisBranchException {
+			int[] ignoreItems) throws DontExploreThisBranchException {
 
 		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
 
-		TIntList extOccurrences = (extensionTids != null) ? extensionTids
-				: parent.getTidList(extension);
+		TIntList extOccurrences = parent.getTidList(extension);
 		this.transactionsCount = extOccurrences.size();
 
 		TIntIterator iterator = extOccurrences.iterator();

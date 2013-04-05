@@ -98,7 +98,7 @@ public class ConcatenatedDataset extends IterableDataset {
 
 	protected ConcatenatedDataset(IterableDataset parent, int extension)
 			throws DontExploreThisBranchException {
-		this(parent, extension, null, null);
+		this(parent, extension, null);
 	}
 
 	/**
@@ -108,14 +108,12 @@ public class ConcatenatedDataset extends IterableDataset {
 	 * @throws DontExploreThisBranchException
 	 */
 	public ConcatenatedDataset(IterableDataset parent, int extension,
-			TIntList extensionTids, int[] ignoreItems)
-			throws DontExploreThisBranchException {
+			int[] ignoreItems) throws DontExploreThisBranchException {
 
 		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
 
-		TIntList extOccurrences = (extensionTids != null) ? extensionTids
-				: parent.getTidList(extension);
+		TIntList extOccurrences = parent.getTidList(extension);
 		this.transactionsCount = extOccurrences.size();
 
 		TIntIterator iterator = extOccurrences.iterator();
@@ -156,8 +154,8 @@ public class ConcatenatedDataset extends IterableDataset {
 	 * @param keeped
 	 *            items that will remain in our transactions
 	 */
-	protected void filterParent(IterableDataset parent, TIntIterator occIterator,
-			TIntSet keeped) {
+	protected void filterParent(IterableDataset parent,
+			TIntIterator occIterator, TIntSet keeped) {
 		int i = 1;
 		int tIndex = 0;
 
