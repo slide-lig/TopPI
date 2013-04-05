@@ -54,7 +54,8 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport, int distinctTransactionsLength,
 			int distinctTransactionsCount) {
 		this.transactionsList = new TIntArrayList(this.transactionsCount);
-		this.concatenated = new int[distinctTransactionsLength + 2 * distinctTransactionsCount];
+		int maxItemSize = Math.min(sumOfRemainingItemsSupport, distinctTransactionsLength);
+		this.concatenated = new int[maxItemSize + 2 * distinctTransactionsCount];
 	}
 
 	@Override
