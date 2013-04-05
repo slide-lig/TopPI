@@ -13,6 +13,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.internals.RebasedDataset;
 import fr.liglab.lcm.io.FileCollector;
@@ -26,87 +27,96 @@ import fr.liglab.lcm.mapred.Driver;
 
 /**
  * Program entry
+ * 
  * @author Martin Kirchgessner
  */
 public class Main {
-	
+
 	private static final String OPTION_BENCHMARK = "b";
 	private static final String OPTION_TOPK = "k";
 	private static final String OPTION_STANDALONE = "a";
 	private static final String OPTION_GROUPS = "g";
-	
+
 	public static Options getOptions() {
 		Options options = new Options();
-		
+
 		options.addOption("h", false, "Show help");
-		options.addOption(Main.OPTION_STANDALONE, "alone", false, 
+		options.addOption(Main.OPTION_STANDALONE, "alone", false,
 				"Run in standalone mode (otherwise runs in map-reduce jobs)");
-		options.addOption(Main.OPTION_BENCHMARK, false, 
+		options.addOption(
+				Main.OPTION_BENCHMARK,
+				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
-		options.addOption(Main.OPTION_GROUPS, true,
+		options.addOption(
+				Main.OPTION_GROUPS,
+				true,
 				"(only for map-reduce) Number of groups in which frequent items are dispatched (defaults to 50)");
-		options.addOption(Main.OPTION_TOPK, true, 
-				"Run in top-k-per-item mode");
-		
+		options.addOption(Main.OPTION_TOPK, true, "Run in top-k-per-item mode");
+
 		return options;
 	}
-	
+
 	public static void main(String[] args) {
-		
+
 		Options options = getOptions();
 		CommandLineParser parser = new PosixParser();
-		
+
 		try {
 			Configuration conf = new Configuration();
-			GenericOptionsParser hadoopCmd = new GenericOptionsParser(conf, args);
-			CommandLine cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
+			GenericOptionsParser hadoopCmd = new GenericOptionsParser(conf,
+					args);
+			CommandLine cmd = parser.parse(options,
+					hadoopCmd.getRemainingArgs());
 			String[] remainingArgs = cmd.getArgs();
-			
-			if (remainingArgs.length == 3 || 
-					(remainingArgs.length ==2 && cmd.hasOption(OPTION_STANDALONE)) ) {
-				
+
+			if (remainingArgs.length == 3
+					|| (remainingArgs.length == 2 && cmd
+							.hasOption(OPTION_STANDALONE))) {
+
 				String input = remainingArgs[0];
 				int minSupport = Integer.parseInt(remainingArgs[1]);
-				
+
 				String output = null;
 				if (remainingArgs.length == 3) {
 					output = remainingArgs[2];
 				}
-				
+
 				Integer k = null;
 				if (cmd.hasOption(OPTION_TOPK)) {
 					k = Integer.parseInt(cmd.getOptionValue(OPTION_TOPK));
-					
+
 					if (k <= 0) {
-						throw new RuntimeException("When provided, K must be positive");
+						throw new RuntimeException(
+								"When provided, K must be positive");
 					}
 				}
-				
+
 				if (cmd.hasOption(OPTION_STANDALONE)) {
 					boolean benchMode = cmd.hasOption(OPTION_BENCHMARK);
 					standalone(input, minSupport, output, k, benchMode);
-					
+
 				} else {
 					Integer g = 50;
 					if (cmd.hasOption(OPTION_GROUPS)) {
 						g = Integer.parseInt(cmd.getOptionValue(OPTION_GROUPS));
-						
+
 						if (g <= 0) {
-							throw new RuntimeException("When provided, G must be positive");
+							throw new RuntimeException(
+									"When provided, G must be positive");
 						}
 					}
-					
+
 					conf = hadoopCmd.getConfiguration();
-					
+
 					conf.setStrings(Driver.KEY_INPUT, input);
 					conf.setStrings(Driver.KEY_OUTPUT, output);
 					conf.setInt(Driver.KEY_MINSUP, minSupport);
 					conf.setInt(Driver.KEY_NBGROUPS, g);
-					
+
 					if (k != null) {
 						conf.setInt(Driver.KEY_DO_TOP_K, k);
 					}
-					
+
 					Driver driver = new Driver(conf);
 					System.exit(driver.run());
 				}
@@ -120,67 +130,70 @@ public class Main {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public static void printMan(Options options) {
 		String syntax = "hadoop jar [path/to/lcm.jar] [GENERIC_OPTIONS] [OPTIONS] INPUT_PATH MINSUP OUTPUT_PATH";
 		String header = "\nOUTPUT_PATH is optional in standalone mode. When missing, patterns are printed to standard output.\n\nOptions are :";
-		String footer = "\n\nTweaking properties : \n"+
-				Driver.KEY_GROUPER_CLASS+"\n"+
-				Driver.KEY_MINING_ALGO+"\n"+
-				Driver.KEY_SINGLE_GROUP_ID+"\n"+
-				Driver.KEY_DUMP_ON_HEAP_EXN+"\n";
-		
+		String footer = "\n\nTweaking properties : \n"
+				+ Driver.KEY_GROUPER_CLASS + "\n" + Driver.KEY_MINING_ALGO
+				+ "\n" + Driver.KEY_SINGLE_GROUP_ID + "\n"
+				+ Driver.KEY_DUMP_ON_HEAP_EXN + "\n";
+
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(syntax, header, options, footer);
-		
+
 		GenericOptionsParser.printGenericCommandUsage(System.out);
 	}
-	
+
 	/**
 	 * @param input
 	 * @param minSupport
-	 * @param output may be null
-	 * @param k may be null
+	 * @param output
+	 *            may be null
+	 * @param k
+	 *            may be null
 	 * @param benchMode
 	 */
 	public static void standalone(String input, int minSupport, String output,
 			Integer k, boolean benchMode) {
-		
+
 		FileReader reader = new FileReader(input);
-		RebasedConcatenatedDataset dataset;
+		Dataset dataset;
 		try {
 			dataset = new RebasedConcatenatedDataset(minSupport, reader);
-			
-			PatternsCollector collector = instanciateCollector(output, k, benchMode, dataset);
-			
+
+			PatternsCollector collector = instanciateCollector(output, k,
+					benchMode, dataset);
+
 			long time = System.currentTimeMillis();
-			
+
 			LCM miner = new LCM(collector);
 			miner.lcm(dataset);
-			
+
 			time = System.currentTimeMillis() - time;
 
 			reader.close();
 			long collected = collector.close();
-			
-			if (benchMode) {	
-				System.err.println(miner.toString() + " // mined in " + time + "ms // " + collected + " patterns outputted");
+
+			if (benchMode) {
+				System.err.println(miner.toString() + " // mined in " + time
+						+ "ms // " + collected + " patterns outputted");
 			}
 		} catch (DontExploreThisBranchException e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
-	 * Parse command-line arguments to instanciate the right collector
-	 * in standalone mode we're always rebasing so we need the dataset
+	 * Parse command-line arguments to instanciate the right collector in
+	 * standalone mode we're always rebasing so we need the dataset
 	 */
 	private static PatternsCollector instanciateCollector(String output,
-			Integer k, boolean benchMode, RebasedDataset dataset) {
-		
+			Integer k, boolean benchMode, Dataset dataset) {
+
 		PatternsCollector collector = null;
-		
-		if (benchMode) {	
+
+		if (benchMode) {
 			collector = new NullCollector();
 		} else {
 			if (output != null) {
@@ -194,14 +207,16 @@ public class Main {
 			} else {
 				collector = new StdOutCollector();
 			}
-
-			collector = new RebaserCollector(collector, dataset);
+			if (dataset instanceof RebasedDataset) {
+				collector = new RebaserCollector(collector,
+						(RebasedDataset) dataset);
+			}
 		}
-		
+
 		if (k != null) {
 			collector = new PerItemTopKCollector(collector, k, false);
 		}
-		
+
 		return collector;
 	}
 }

@@ -43,6 +43,7 @@ public class PLCM {
 
 	private final AtomicInteger explored = new AtomicInteger(0);
 	private final AtomicInteger cut = new AtomicInteger(0);
+	private final AtomicInteger pptestFailed = new AtomicInteger(0);
 	private final Random stealRandom = new Random();
 
 	public PLCM(PatternsCollector patternsCollector) {
@@ -101,7 +102,7 @@ public class PLCM {
 
 	public String toString() {
 		return "LCM exploration : " + explored + " patterns explored / " + cut
-				+ " aborted";
+				+ " aborted / " + pptestFailed + " pptest failed";
 	}
 
 	public StolenJob stealJob(final int id) {
@@ -200,22 +201,26 @@ public class PLCM {
 			}
 			if (explore < 0) {
 				explored.incrementAndGet();
+				Dataset dataset = null;
 				try {
-					Dataset dataset = sj.dataset.getProjection(extension);
-					int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
-							dataset.getDiscoveredClosureItems());
-					collect(dataset.getTransactionsCount(), Q);
-					ExtensionsIterator iterator = dataset.getCandidatesIterator();
-					int[] sortedFreqs = iterator.getSortedFrequents();
-					StackedJob nj = new StackedJob(iterator, dataset, Q,
-							sortedFreqs);
-					this.lock.writeLock().lock();
-					this.stackedJobs.add(nj);
-					this.lock.writeLock().unlock();
+					dataset = sj.dataset.getProjection(extension);
 				} catch (DontExploreThisBranchException e) {
-					// may happen in getProjection, in which case we should just continue with next candidate
+					// may happen in getProjection, in which case we should just
+					// continue with next candidate
+					pptestFailed.incrementAndGet();
+					return;
 				}
-				
+				int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
+						dataset.getDiscoveredClosureItems());
+				collect(dataset.getTransactionsCount(), Q);
+				ExtensionsIterator iterator = dataset.getCandidatesIterator();
+				int[] sortedFreqs = iterator.getSortedFrequents();
+				StackedJob nj = new StackedJob(iterator, dataset, Q,
+						sortedFreqs);
+				this.lock.writeLock().lock();
+				this.stackedJobs.add(nj);
+				this.lock.writeLock().unlock();
+
 			} else {
 				sj.previousItem = extension;
 				sj.previousResult = explore;
