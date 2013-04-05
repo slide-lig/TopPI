@@ -1,10 +1,10 @@
 package fr.liglab.lcm.internals;
 
-import java.util.Arrays;
 import java.util.Iterator;
 
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 
@@ -26,12 +26,13 @@ public class RebasedConcatenatedCompressedDataset extends
 	 * 
 	 * the difference with parent class is in the overloaded sub-function
 	 * "filter"
-	 * @throws DontExploreThisBranchException 
+	 * 
+	 * @throws DontExploreThisBranchException
 	 */
 	public RebasedConcatenatedCompressedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions) 
-					throws DontExploreThisBranchException {
-		
+			final Iterator<int[]> transactions)
+			throws DontExploreThisBranchException {
+
 		super(minimumsupport, transactions);
 	}
 
@@ -54,35 +55,25 @@ public class RebasedConcatenatedCompressedDataset extends
 	}
 
 	@Override
-	protected TIntArrayList filter(Iterable<int[]> transactions) {
+	protected void filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		TIntArrayList transactionsList = new TIntArrayList();
-		int i = 2;
-		int tIndex = 1;
-
+		TransactionsWriter tw = this.getTransactionsWriter();
 		for (int[] transaction : transactions) {
-			int length = 0;
-
+			boolean transactionExists = false;
 			for (int item : transaction) {
 				if (rebasing.containsKey(item)) {
+					transactionExists = true;
 					int rebased = rebasing.get(item);
-					this.concatenated[i] = rebased;
-					this.occurrences.get(rebased).add(tIndex);
-					length++;
-					i++;
+					tw.addItem(rebased);
 				}
 			}
-
-			if (length > 0) {
-				transactionsList.add(tIndex);
-				this.concatenated[tIndex] = length;
-				this.concatenated[tIndex - 1] = 1;
-				Arrays.sort(this.concatenated, tIndex + 1, i);
-				i++;
-				tIndex = i;
-				i++;
+			if (transactionExists) {
+				int tid = tw.endTransaction(1);
+				TIntIterator read = this.readTransaction(tid);
+				while (read.hasNext()) {
+					this.occurrences.get(read.next()).add(tid);
+				}
 			}
 		}
-		return transactionsList;
 	}
 }

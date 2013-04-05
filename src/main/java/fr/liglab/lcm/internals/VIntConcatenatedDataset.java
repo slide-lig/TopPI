@@ -6,9 +6,9 @@ import org.omg.CORBA.IntHolder;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import fr.liglab.lcm.io.FileReader;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.TIntList;
+import gnu.trove.list.array.TIntArrayList;
 
 /**
  * Here all transactions are prefixed by their length and concatenated in a
@@ -44,7 +44,8 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int remainingItemsCount) {
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
+			int distinctTransactionsLength, int distinctTransactionsCount) {
 		int remainingItemsSize = 0;
 		TIntIntIterator counts = this.supportCounts.iterator();
 		while (counts.hasNext()) {
@@ -56,19 +57,20 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension)
-			throws DontExploreThisBranchException {
-		double extensionSupport = this.supportCounts.get(extension);
-		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
-			return new VIntConcatenatedUnfilteredDataset(this, extension);
-		} else {
-			return new VIntConcatenatedDataset(this, extension);
-		}
+	public ExtensionsIterator getCandidatesIterator() {
+		return new CandidatesIterator();
 	}
 
 	@Override
-	public ExtensionsIterator getCandidatesIterator() {
-		return new CandidatesIterator();
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
+			throws DontExploreThisBranchException {
+		return new VIntConcatenatedUnfilteredDataset(upper, extension);
+	}
+
+	@Override
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension)
+			throws DontExploreThisBranchException {
+		return new VIntConcatenatedDataset(upper, extension);
 	}
 
 	static public int readVInt(byte[] array, IntHolder pointer) {
@@ -130,7 +132,7 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	protected TIntIterator readTransaction(int tid) {
+	protected TransactionReader readTransaction(int tid) {
 		return new ItemsIterator(tid);
 	}
 
@@ -139,7 +141,7 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 		return new TransWriter();
 	}
 
-	private class ItemsIterator implements TIntIterator {
+	private class ItemsIterator implements TransactionReader {
 		private int tid;
 		private IntHolder index;
 
@@ -165,11 +167,16 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 			return readVInt(concatenated, this.index);
 		}
 
+		@Override
+		public int getTransactionSupport() {
+			return 1;
+		}
 	}
 
 	private class TransWriter implements TransactionsWriter {
 		IntHolder index = new IntHolder(0);
 		int transactionStart = 0;
+		TIntList tids = null;
 
 		public TransWriter() {
 		}
@@ -180,14 +187,34 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 		}
 
 		@Override
-		public int endTransaction() {
+		public int endTransaction(int freq) {
+			int size = this.index.value - this.transactionStart;
 			int transId = this.index.value;
-			writeVInt(concatenated, this.index, this.index.value
-					- this.transactionStart);
-			this.transactionStart = this.index.value;
-			return transId;
+			writeVInt(concatenated, this.index, size);
+			int transLengthSize = this.index.value - transId;
+			if (freq == 1) {
+				this.transactionStart = this.index.value;
+				return transId;
+			} else {
+				this.tids = new TIntArrayList(freq);
+				this.tids.add(transId);
+				int copySize = size + transLengthSize;
+				for (int i = 1; i < freq; i++) {
+					System.arraycopy(concatenated, this.transactionStart,
+							concatenated, index.value, copySize);
+					index.value += copySize;
+					this.tids.add(index.value - transLengthSize);
+				}
+				return -1;
+			}
 		}
 
+		@Override
+		public TIntList getTids() {
+			TIntList localTids = this.tids;
+			this.tids = null;
+			return localTids;
+		}
 	}
 
 	@Override

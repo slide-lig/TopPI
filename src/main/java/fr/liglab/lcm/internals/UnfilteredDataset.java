@@ -1,14 +1,14 @@
 package fr.liglab.lcm.internals;
 
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
+
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class UnfilteredDataset extends IterableDataset {
 	public static final double FILTERING_THRESHOLD = 0.15;
@@ -116,13 +116,16 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	 */
 	private void genSupportCounts() {
 		this.supportCounts = new TIntIntHashMap();
-
 		TIntIterator iterator = this.tids.iterator();
 		while (iterator.hasNext()) {
 			int tid = iterator.next();
-			TIntIterator transIterator = this.parent.readTransaction(tid);
-			while (transIterator.hasNext()) {
-				this.supportCounts.adjustOrPutValue(transIterator.next(), 1, 1);
+			TransactionReader transIterator = this.parent.readTransaction(tid);
+			int sup = transIterator.getTransactionSupport();
+			if (sup > 0) {
+				while (transIterator.hasNext()) {
+					this.supportCounts.adjustOrPutValue(transIterator.next(),
+							sup, sup);
+				}
 			}
 		}
 	}
@@ -133,7 +136,7 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	}
 
 	@Override
-	protected TIntIterator readTransaction(int tid) {
+	protected TransactionReader readTransaction(int tid) {
 		return this.parent.readTransaction(tid);
 	}
 
