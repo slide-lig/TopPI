@@ -9,8 +9,22 @@
   <name>LCM over Hadoop</name>
   <description>Standalone implementation of LCM algorithm and its adaptation to the Hadoop platform as a top-k-per-item frequent closed itemset miner.</description>
   
+  <properties>
+  	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.0</version>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+      
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -31,13 +45,15 @@
         <version>2.4</version>
         <executions>
         	<execution>
-	        	<id>jar with deps</id>
+	        	<id>wdeps</id>
 	        	<goals>
 	        		<goal>assembly</goal>
 	        	</goals>
 	        	<phase>package</phase>
 	        	<configuration>
-		          <descriptorId>jar-with-dependencies</descriptorId>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
 		        </configuration>
         	</execution>
         </executions>
@@ -63,4 +79,5 @@
 		<scope>test</scope>
 	</dependency>
   </dependencies>
+  
 </project>
