@@ -2,10 +2,9 @@ package fr.liglab.lcm.internals;
 
 import java.util.Iterator;
 
-import org.omg.CORBA.IntHolder;
-
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 
@@ -54,7 +53,8 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int remainingItemsCount) {
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
+			int distinctTransactionsLength, int distinctTransactionsCount) {
 		this.concatenated = new byte[this.totalSize + nbBytesForTransSize
 				* this.transactionsCount];
 	}
@@ -62,26 +62,21 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 	@Override
 	protected void filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		IntHolder concIndex = new IntHolder(0);
+		TransactionsWriter tw = this.getTransactionsWriter();
 		for (int[] transaction : transactions) {
-			int startAt = concIndex.value;
+			boolean transactionExists = false;
 			for (int item : transaction) {
 				if (rebasing.containsKey(item)) {
+					transactionExists = true;
 					int rebased = rebasing.get(item);
-					writeVInt(this.concatenated, concIndex, rebased);
+					tw.addItem(rebased);
 				}
 			}
-			if (concIndex.value != startAt) {
-				int newTransId = concIndex.value;
-				writeVInt(this.concatenated, concIndex, concIndex.value
-						- startAt);
-				IntHolder addIndex = new IntHolder(startAt);
-				// new format sets transaction length after the data, so we only
-				// know the transId at the end, we need a new loop
-				// also size is in bytes and not number of items
-				while (addIndex.value < newTransId) {
-					int rebased = readVInt(this.concatenated, addIndex);
-					this.occurrences.get(rebased).add(newTransId);
+			if (transactionExists) {
+				int tid = tw.endTransaction(1);
+				TIntIterator read = this.readTransaction(tid);
+				while (read.hasNext()) {
+					this.occurrences.get(read.next()).add(tid);
 				}
 			}
 		}

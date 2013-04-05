@@ -9,22 +9,22 @@ public class TestCompression {
 
 	/**
 	 * @param args
-	 * @throws DontExploreThisBranchException 
+	 * @throws DontExploreThisBranchException
 	 */
 	public static void main(String[] args) throws DontExploreThisBranchException {
 		int minsup = Integer.parseInt(args[1]);
 		FileReader reader = new FileReader(args[0]);
-		
+
 		ConcatenatedCompressedDataset compressed = new ConcatenatedCompressedDataset(minsup, reader);
-		
+
 		System.out.println("Realsize = " + compressed.getRealSize());
 		System.out.println("computeTransactionsCount=" + compressed.computeTransactionsCount());
-		System.out.println("transactionsAtZero=" + compressed.transactionsAtZero);
 		System.out.println("getTransactionsCount=" + compressed.getTransactionsCount());
+		System.out.println("getErasedItemsCount=" + compressed.getErasedItemsCount());
 		compressed = null;
-		
+
 		reader = new FileReader(args[0]);
-		
+
 		ConcatenatedDataset normal = new ConcatenatedDataset(minsup, reader);
 		System.out.println("Realsize = " + normal.getRealSize());
 	}

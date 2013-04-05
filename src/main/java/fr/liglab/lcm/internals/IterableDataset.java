@@ -9,8 +9,11 @@ public abstract class IterableDataset extends Dataset {
 		super(minimum_support, core_item);
 	}
 
-	protected abstract TIntIterator readTransaction(int tid);
+	protected abstract TransactionReader readTransaction(int tid);
 
 	protected abstract TIntList getTidList(int item);
 
+	protected interface TransactionReader extends TIntIterator {
+		public int getTransactionSupport();
+	}
 }

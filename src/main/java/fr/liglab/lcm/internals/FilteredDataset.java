@@ -15,7 +15,8 @@ import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class FilteredDataset extends IterableDataset {
-	protected final int transactionsCount;
+	protected int transactionsCount;// number of valid transactions read from
+									// source
 	protected final int[] frequentItems;
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
@@ -36,21 +37,15 @@ public abstract class FilteredDataset extends IterableDataset {
 		this.genSupportCounts(transactionsCopier);
 		this.transactionsCount = transactionsCopier.size();
 
-		int remainingItemsCount = genClosureAndFilterCount();
+		int sumOfRemainingItemsSupport = genClosureAndFilterCount();
 		this.prepareOccurences();
-		this.prepareTransactionsStructure(remainingItemsCount);
+		this.prepareTransactionsStructure(sumOfRemainingItemsSupport,
+				sumOfRemainingItemsSupport, this.transactionsCount);
 
 		this.filter(transactionsCopier);
 
 		this.frequentItems = occurrences.keys();
 		Arrays.sort(this.frequentItems);
-	}
-
-	protected abstract void prepareTransactionsStructure(int remainingItemsCount);
-
-	protected FilteredDataset(IterableDataset parent, int extension)
-			throws DontExploreThisBranchException {
-		this(parent, extension, null);
 	}
 
 	/**
@@ -66,15 +61,22 @@ public abstract class FilteredDataset extends IterableDataset {
 		this.supportCounts = new TIntIntHashMap();
 
 		TIntList extOccurrences = parent.getTidList(extension);
-		this.transactionsCount = extOccurrences.size();
-
+		this.transactionsCount = 0;
+		int distinctTransactionsCount = 0;
+		int distinctTransactionsLength = 0;
 		TIntIterator iterator = extOccurrences.iterator();
 		while (iterator.hasNext()) {
 			int tid = iterator.next();
-			TIntIterator parentIterator = parent.readTransaction(tid);
-			while (parentIterator.hasNext()) {
-				this.supportCounts
-						.adjustOrPutValue(parentIterator.next(), 1, 1);
+			TransactionReader parentIterator = parent.readTransaction(tid);
+			int sup = parentIterator.getTransactionSupport();
+			if (sup > 0) {
+				this.transactionsCount += sup;
+				distinctTransactionsCount++;
+				while (parentIterator.hasNext()) {
+					distinctTransactionsLength++;
+					this.supportCounts.adjustOrPutValue(parentIterator.next(),
+							sup, sup);
+				}
 			}
 		}
 
@@ -86,17 +88,27 @@ public abstract class FilteredDataset extends IterableDataset {
 			}
 		}
 
-		int remainingItemsCount = genClosureAndFilterCount();
+		int sumOfRemainingItemsSupport = genClosureAndFilterCount();
 		this.prepareOccurences();
 
 		TIntSet kept = this.supportCounts.keySet();
-		this.prepareTransactionsStructure(remainingItemsCount);
+		this.prepareTransactionsStructure(sumOfRemainingItemsSupport,
+				distinctTransactionsLength, distinctTransactionsCount);
 
-		filterParent(parent, extOccurrences.iterator(), kept);
+		filterParent(parent, extOccurrences, kept);
 
 		this.frequentItems = this.occurrences.keys();
 		Arrays.sort(this.frequentItems);
 	}
+
+	protected FilteredDataset(IterableDataset parent, int extension)
+			throws DontExploreThisBranchException {
+		this(parent, extension, null);
+	}
+
+	protected abstract void prepareTransactionsStructure(
+			int sumOfRemainingItemsSupport, int distinctTransactionsLength,
+			int distinctTransactionsCount);
 
 	protected void filter(final Iterable<int[]> transactions) {
 		TIntSet retained = this.supportCounts.keySet();
@@ -110,8 +122,9 @@ public abstract class FilteredDataset extends IterableDataset {
 				}
 			}
 			if (transactionExists) {
-				int tid = tw.endTransaction();
-				TIntIterator read = this.readTransaction(tid);
+				int tid = tw.endTransaction(1);
+				TransactionReader read = this.readTransaction(tid);
+				// no need to check for support, we just wrote it, it s one
 				while (read.hasNext()) {
 					this.occurrences.get(read.next()).add(tid);
 				}
@@ -126,25 +139,37 @@ public abstract class FilteredDataset extends IterableDataset {
 	 * @param kept
 	 *            items that will remain in our transactions
 	 */
-	protected void filterParent(IterableDataset parent,
-			TIntIterator occIterator, TIntSet kept) {
+	protected void filterParent(IterableDataset parent, TIntList occ,
+			TIntSet kept) {
 		TransactionsWriter tw = this.getTransactionsWriter();
+		TIntIterator occIterator = occ.iterator();
 		while (occIterator.hasNext()) {
 			int parentTid = occIterator.next();
-			TIntIterator parentIterator = parent.readTransaction(parentTid);
-			boolean transactionExists = false;
-			while (parentIterator.hasNext()) {
-				int item = parentIterator.next();
-				if (kept.contains(item)) {
-					transactionExists = true;
-					tw.addItem(item);
+			TransactionReader parentIterator = parent
+					.readTransaction(parentTid);
+			if (parentIterator.getTransactionSupport() > 0) {
+				boolean transactionExists = false;
+				while (parentIterator.hasNext()) {
+					int item = parentIterator.next();
+					if (kept.contains(item)) {
+						transactionExists = true;
+						tw.addItem(item);
+					}
 				}
-			}
-			if (transactionExists) {
-				int tid = tw.endTransaction();
-				TIntIterator read = this.readTransaction(tid);
-				while (read.hasNext()) {
-					this.occurrences.get(read.next()).add(tid);
+				if (transactionExists) {
+					int tid = tw.endTransaction(parentIterator
+							.getTransactionSupport());
+					TransactionReader read = this.readTransaction(tid);
+					if (tid >= 0) {
+						while (read.hasNext()) {
+							this.occurrences.get(read.next()).add(tid);
+						}
+					} else {
+						TIntList tids = tw.getTids();
+						while (read.hasNext()) {
+							this.occurrences.get(read.next()).addAll(tids);
+						}
+					}
 				}
 			}
 		}
@@ -305,12 +330,35 @@ public abstract class FilteredDataset extends IterableDataset {
 		}
 	}
 
+	@Override
+	public Dataset getProjection(int extension)
+			throws DontExploreThisBranchException {
+		double extensionSupport = this.supportCounts.get(extension);
+		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
+			return this.createUnfilteredDataset(this, extension);
+		} else {
+			return this.createFilteredDataset(this, extension);
+		}
+	}
+
+	public abstract Dataset createUnfilteredDataset(FilteredDataset upper,
+			int extension) throws DontExploreThisBranchException;
+
+	public abstract Dataset createFilteredDataset(FilteredDataset upper,
+			int extension) throws DontExploreThisBranchException;
+
 	protected abstract TransactionsWriter getTransactionsWriter();
 
 	protected interface TransactionsWriter {
 		public void addItem(int item);
 
-		public int endTransaction();
+		/*
+		 * a negative result means there are several tids, so need to use
+		 * getTids
+		 */
+		public int endTransaction(int support);
+
+		public TIntList getTids();
 	}
 
 }

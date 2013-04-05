@@ -68,7 +68,7 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset implements
 				}
 			}
 			if (transactionExists) {
-				int tid = tw.endTransaction();
+				int tid = tw.endTransaction(1);
 				TIntIterator read = this.readTransaction(tid);
 				while (read.hasNext()) {
 					this.occurrences.get(read.next()).add(tid);

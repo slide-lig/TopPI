@@ -4,7 +4,8 @@ import java.util.Iterator;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import gnu.trove.iterator.TIntIterator;
+import gnu.trove.list.TIntList;
+import gnu.trove.list.array.TIntArrayList;
 
 /**
  * Here all transactions are prefixed by their length and concatenated in a
@@ -35,8 +36,9 @@ public class ConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int remainingItemsCount) {
-		this.concatenated = new int[remainingItemsCount
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
+			int distinctTransactionsLength, int distinctTransactionsCount) {
+		this.concatenated = new int[sumOfRemainingItemsSupport
 				+ this.transactionsCount];
 	}
 
@@ -46,20 +48,19 @@ public class ConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension)
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
 			throws DontExploreThisBranchException {
-
-		double extensionSupport = this.supportCounts.get(extension);
-
-		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
-			return new ConcatenatedUnfilteredDataset(this, extension);
-		} else {
-			return new ConcatenatedDataset(this, extension);
-		}
+		return new ConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
-	protected TIntIterator readTransaction(int tid) {
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension)
+			throws DontExploreThisBranchException {
+		return new ConcatenatedDataset(upper, extension);
+	}
+
+	@Override
+	protected TransactionReader readTransaction(int tid) {
 		return new ItemsIterator(tid);
 	}
 
@@ -68,7 +69,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 		return new TransWriter();
 	}
 
-	private class ItemsIterator implements TIntIterator {
+	private class ItemsIterator implements TransactionReader {
 		private int max;
 		private int index;
 
@@ -95,11 +96,17 @@ public class ConcatenatedDataset extends FilteredDataset {
 			return val;
 		}
 
+		@Override
+		public int getTransactionSupport() {
+			return 1;
+		}
+
 	}
 
 	private class TransWriter implements TransactionsWriter {
 		int index = 1;
 		int tIdPosition = 0;
+		TIntList tids = null;
 
 		public TransWriter() {
 		}
@@ -111,13 +118,34 @@ public class ConcatenatedDataset extends FilteredDataset {
 		}
 
 		@Override
-		public int endTransaction() {
-			concatenated[this.tIdPosition] = index - tIdPosition - 1;
+		public int endTransaction(int freq) {
+			int size = index - tIdPosition - 1;
+			concatenated[this.tIdPosition] = size;
 			int transId = this.tIdPosition;
-			this.tIdPosition = this.index;
-			this.index++;
-			return transId;
+			if (freq == 1) {
+				this.tIdPosition = this.index;
+				this.index++;
+				return transId;
+			} else {
+				this.tids = new TIntArrayList(freq);
+				this.tids.add(transId);
+				for (int i = 1; i < freq; i++) {
+					this.tids.add(index);
+					System.arraycopy(concatenated, this.tIdPosition,
+							concatenated, index, size + 1);
+					index += (size + 1);
+				}
+				this.tIdPosition = this.index;
+				this.index++;
+				return -1;
+			}
 		}
 
+		@Override
+		public TIntList getTids() {
+			TIntList localTids = this.tids;
+			this.tids = null;
+			return localTids;
+		}
 	}
 }
