@@ -6,6 +6,7 @@ import org.omg.CORBA.IntHolder;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import fr.liglab.lcm.io.FileReader;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 
@@ -189,6 +190,11 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 
 	}
 
+	@Override
+	public int getRealSize() {
+		return this.concatenated.length;
+	}
+
 	// public static void main(String[] args) throws Exception {
 	// // int[] tests = { 127, 128, 2097152 - 1, 2097152, Integer.MAX_VALUE,
 	// // Integer.MIN_VALUE };
@@ -211,30 +217,23 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	// // ih.value = 0;
 	// // System.out.println(readVInt(tab, ih));
 	// // System.out.println(ih.value);
-	// RebasedVIntConcatenatedDataset d = new RebasedVIntConcatenatedDataset(
-	// 5, new FileReader(
-	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-	// System.out.println(d.concatenated.length);
-	// d = null;
-	// VIntConcatenatedDataset d2 = new VIntConcatenatedDataset(5,
+	// FilteredDataset d = new RebasedVIntConcatenatedDataset(5,
 	// new FileReader(
 	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-	// System.out.println(d2.concatenated.length);
-	// d2 = null;
+	// System.out.println(d.getRealSize());
+	// d = null;
+	// d = new VIntConcatenatedDataset(5, new FileReader(
+	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// System.out.println(d.getRealSize());
+	// d = null;
 	// VIntConcatenatedDataset.setMaxTransactionLength(200);
 	// d = new RebasedVIntConcatenatedDataset(5, new FileReader(
 	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-	// System.out.println(d.concatenated.length);
+	// System.out.println(d.getRealSize());
 	// d = null;
-	// RebasedConcatenatedDataset d3 = new RebasedConcatenatedDataset(5,
-	// new FileReader(
+	// d = new RebasedConcatenatedDataset(5, new FileReader(
 	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
-	// System.out.println(d3.concatenated.length * 4);
-	// d3 = null;
+	// System.out.println(d.getRealSize());
+	// d = null;
 	// }
-
-	@Override
-	public int getRealSize() {
-		return this.concatenated.length * Byte.SIZE;
-	}
 }

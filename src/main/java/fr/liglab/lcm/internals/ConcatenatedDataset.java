@@ -42,7 +42,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 
 	@Override
 	public int getRealSize() {
-		return this.concatenated.length * Integer.SIZE;
+		return this.concatenated.length * (Integer.SIZE / Byte.SIZE);
 	}
 
 	@Override
