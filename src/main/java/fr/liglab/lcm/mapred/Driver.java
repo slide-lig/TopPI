@@ -23,18 +23,18 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
 public class Driver {
 	//////////////////// MANDATORY CONFIGURATION PROPERTIES ////////////////////
 	
-	public static final String KEY_INPUT    = "fr.liglab.lcm.input";
-	public static final String KEY_OUTPUT   = "fr.liglab.lcm.output";
-	public static final String KEY_MINSUP   = "fr.liglab.lcm.minsup";
-	public static final String KEY_NBGROUPS = "fr.liglab.lcm.nbGroups";
-	public static final String KEY_DO_TOP_K = "fr.liglab.lcm.topK";
+	public static final String KEY_INPUT    = "lcm.input";
+	public static final String KEY_OUTPUT   = "lcm.output";
+	public static final String KEY_MINSUP   = "lcm.minsup";
+	public static final String KEY_NBGROUPS = "lcm.nbGroups";
+	public static final String KEY_DO_TOP_K = "lcm.topK";
 	
 	//////////////////// OPTIONAL CONFIGURATION PROPERTIES ////////////////////
 	
-	public static final String KEY_GROUPER_CLASS = "fr.liglab.lcm.class.grouper";
-	public static final String KEY_MINING_ALGO = "fr.liglab.lcm.mapred.algo";
-	public static final String KEY_SINGLE_GROUP_ID = "fr.liglab.lcm.single-group";
-	public static final String KEY_DUMP_ON_HEAP_EXN = "fr.liglab.lcm.dump-path";
+	public static final String KEY_GROUPER_CLASS = "lcm.grouper";
+	public static final String KEY_MINING_ALGO = "lcm.mapred.algo";
+	public static final String KEY_SINGLE_GROUP_ID = "lcm.single-group";
+	public static final String KEY_DUMP_ON_HEAP_EXN = "lcm.dump-path";
 	
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
@@ -42,17 +42,17 @@ public class Driver {
 	/**
 	 * property key for item-counter-n-grouper output path
 	 */
-	static final String KEY_GROUPS_MAP = "fr.liglab.lcm.groupsMap";
+	static final String KEY_GROUPS_MAP = "lcm.groupsMap";
 	
 	/**
 	 * property key for mining output path
 	 */
-	static final String KEY_RAW_PATTERNS = "fr.liglab.lcm.rawpatterns";
+	static final String KEY_RAW_PATTERNS = "lcm.rawpatterns";
 	
 	/**
 	 * property key for aggregated patterns' output path
 	 */
-	static final String KEY_AGGREGATED_PATTERNS = "fr.liglab.lcm.aggregated";
+	static final String KEY_AGGREGATED_PATTERNS = "lcm.aggregated";
 	
 	
 	
