@@ -1,13 +1,13 @@
 package fr.liglab.lcm.internals;
 
+import java.util.Iterator;
+
+import org.omg.CORBA.IntHolder;
+
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
-
-import java.util.Iterator;
-
-import org.omg.CORBA.IntHolder;
 
 /**
  * a ConcatenatedDataset rebased at first-loading time use it with a

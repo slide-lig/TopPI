@@ -1,11 +1,11 @@
 package fr.liglab.lcm.internals;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.map.TIntIntMap;
-
-import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * A dataset where items are re-indexed by frequency (only at first loading) 
