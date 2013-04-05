@@ -6,6 +6,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.CounterGroup;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
@@ -13,7 +15,6 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
-import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
@@ -54,6 +55,10 @@ public class Driver {
 	 */
 	static final String KEY_AGGREGATED_PATTERNS = "lcm.aggregated";
 	
+	/**
+	 * this property will be filled after item counting
+	 */
+	public static final String KEY_REBASING_MAX_ID = "lcm.items.maxId";
 	
 	
 	protected final Configuration conf;
@@ -70,7 +75,7 @@ public class Driver {
 		this.input = this.conf.get(KEY_INPUT);
 		this.output = this.conf.get(KEY_OUTPUT);
 		
-		this.conf.setStrings(KEY_GROUPS_MAP, this.output + "/" + DistCache.GROUPSMAP_DIRNAME);
+		this.conf.setStrings(KEY_GROUPS_MAP, this.output + "/" + DistCache.REBASINGMAP_DIRNAME);
 		this.conf.setStrings(KEY_RAW_PATTERNS, this.output + "/" + "rawMinedPatterns");
 		this.conf.setStrings(KEY_AGGREGATED_PATTERNS, output + "/" + "topPatterns");
 	}
@@ -137,7 +142,7 @@ public class Driver {
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(GIDandRebaseWritable.class);
+		job.setOutputValueClass(IntWritable.class);
 		
 		FileInputFormat.addInputPath(job, new Path(this.input) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
@@ -146,22 +151,17 @@ public class Driver {
 		job.setMapOutputKeyClass(NullWritable.class);
 		job.setMapOutputValueClass(ItemAndSupportWritable.class);
 		
-		String grouperName = conf.get(KEY_GROUPER_CLASS, "");
-		
-		if ("ItemContigousBalancedReducer".equals(grouperName)) {
-			job.setReducerClass(ItemContigousBalancedReducer.class);
-		} else if ("ItemContigousReducer".equals(grouperName)) {
-			job.setReducerClass(ItemContigousReducer.class);
-		} else {
-			job.setReducerClass(ItemGroupingReducer.class);
-		}
-		
+		job.setReducerClass(ItemCountingReducer.class);
 		job.setNumReduceTasks(1);
 		
 		boolean success = job.waitForCompletion(true);
 		
 		if (success) {
 			DistCache.copyToCache(this.conf, output);
+			CounterGroup counters = job.getCounters().getGroup(ItemCountingReducer.COUNTERS_GROUP);
+			Counter rebasingMaxID = counters.findCounter(ItemCountingReducer.COUNTER_REBASING_MAX_ID);
+			
+			this.conf.setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
 		}
 		
 		return success;

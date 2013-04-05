@@ -10,11 +10,13 @@ import org.apache.hadoop.mapreduce.Reducer;
 import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
+import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import fr.liglab.lcm.util.HeapDumper;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 
 public class MiningGroupOnlyReducer extends 
 	Reducer<IntWritable, TransactionWritable, 
@@ -22,6 +24,9 @@ public class MiningGroupOnlyReducer extends
 	
 	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;
+	
+	protected int greatestItemID;
+	protected Grouper grouper;
 	
 	@Override
 	protected void setup(Context context)
@@ -38,14 +43,17 @@ public class MiningGroupOnlyReducer extends
 		}
 		
 		this.collector = new PerItemTopKHadoopCollector(topK, context, true, false);
+		
+		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
+		this.grouper = Grouper.factory(conf);
 	}
 	
 	protected void reduce(IntWritable gid, 
 			java.lang.Iterable<TransactionWritable> transactions, Context context)
 			throws java.io.IOException, InterruptedException {
 		
-		final Configuration conf = context.getConfiguration();
-		final TIntSet starters = DistCache.readGroupItemsFor(conf, gid.get());
+		final TIntSet starters = new TIntHashSet();
+		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		this.collector.setGroup(starters);
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());

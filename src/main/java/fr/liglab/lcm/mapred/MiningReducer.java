@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import fr.liglab.lcm.LCM;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
+import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import gnu.trove.iterator.TIntIterator;
@@ -21,6 +22,9 @@ public class MiningReducer extends
 	
 	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;
+
+	protected int greatestItemID;
+	protected Grouper grouper;
 	
 	@Override
 	protected void setup(Context context)
@@ -32,14 +36,14 @@ public class MiningReducer extends
 		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
 		this.collector = new PerItemTopKHadoopCollector(topK, context);
+		
+		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
+		this.grouper = Grouper.factory(conf);
 	}
 	
 	protected void reduce(IntWritable gid, 
 			java.lang.Iterable<TransactionWritable> transactions, Context context)
 			throws java.io.IOException, InterruptedException {
-		
-		final Configuration conf = context.getConfiguration();
-		final TIntArrayList starters = DistCache.readStartersFor(conf, gid.get());
 		
 		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
 		ConcatenatedDataset dataset = null;
@@ -54,13 +58,15 @@ public class MiningReducer extends
 		
 		final LCM lcm = new LCM(this.collector);
 		final int[] initPattern = dataset.getDiscoveredClosureItems();
+
+		final TIntArrayList starters = new TIntArrayList();
+		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		
 		if (initPattern.length > 0 ) {
 			starters.removeAll(initPattern);
 			this.collector.collect(dataset.getTransactionsCount(), initPattern);
 		}
 		
-		starters.sort();
 		TIntIterator startersIt = starters.iterator();
 		
 		while (startersIt.hasNext()) {

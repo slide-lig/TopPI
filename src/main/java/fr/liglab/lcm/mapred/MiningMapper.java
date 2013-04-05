@@ -6,11 +6,11 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import fr.liglab.lcm.util.ItemsetsFactory;
-import fr.liglab.lcm.util.RebasingAndGroupID;
 import gnu.trove.iterator.TIntIterator;
-import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 
@@ -22,15 +22,16 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Transa
 	protected final IntWritable keyW = new IntWritable();
 	protected final TransactionWritable valueW = new TransactionWritable();
 	
-	protected TIntObjectMap<RebasingAndGroupID> itemsDispatching = null;
+	protected TIntIntMap itemsRebasing = null;
+	protected Grouper grouper;
 	
 	protected void setup(Context context)
 			throws java.io.IOException ,InterruptedException {
 		
-		if (this.itemsDispatching == null) {
+		if (this.itemsRebasing == null) {
 			Configuration conf = context.getConfiguration();
-			
-			this.itemsDispatching = DistCache.readItemsDispatching(conf);
+			this.itemsRebasing = DistCache.readItemsRebasing(conf);
+			this.grouper = Grouper.factory(conf);
 		}
 	}
 	
@@ -42,11 +43,11 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Transa
 		
 		for (String token : tokens) {
 			int item = Integer.parseInt(token);
-			RebasingAndGroupID dispatching = this.itemsDispatching.get(item);
 			
-			if (dispatching != null) {
-				this.transaction.add(dispatching.rebasing);
-				this.destinations.add(dispatching.gid);
+			if (this.itemsRebasing.containsKey(item)) {
+				int rebased = this.itemsRebasing.get(item);
+				this.transaction.add(rebased);
+				this.destinations.add(this.grouper.getGid(rebased));
 			}
 		}
 		

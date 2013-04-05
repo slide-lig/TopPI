@@ -1,14 +1,7 @@
 package fr.liglab.lcm.mapred;
 
-import fr.liglab.lcm.mapred.writables.GIDandRebaseWritable;
-import fr.liglab.lcm.util.RebasingAndGroupID;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
-import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
-import gnu.trove.set.TIntSet;
-import gnu.trove.set.hash.TIntHashSet;
 
 import java.io.IOException;
 
@@ -25,7 +18,7 @@ import org.apache.hadoop.io.SequenceFile.Reader;
  * Tooling functions for distributed cache I/O
  */
 class DistCache {
-	static final String GROUPSMAP_DIRNAME = "itemGroups";
+	static final String REBASINGMAP_DIRNAME = "rebasing";
 	
 	/**
 	 * Adds given path to conf's distributed cache
@@ -46,22 +39,21 @@ class DistCache {
 	}
 	
 	/**
-	 * @return a map which associates (to any frequent item) its group ID and its new item ID
+	 * @return a map which associates (to any frequent item) its new item ID
 	 */
-	static TIntObjectMap<RebasingAndGroupID> readItemsDispatching(Configuration conf) throws IOException {
-		TIntObjectMap<RebasingAndGroupID> map = new TIntObjectHashMap<RebasingAndGroupID>();
+	static TIntIntMap readItemsRebasing(Configuration conf) throws IOException {
+		TIntIntMap map = new TIntIntHashMap();
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+			if (path.toString().contains(REBASINGMAP_DIRNAME)) {
 				Reader reader = new Reader(fs, path, conf);
 				IntWritable key = new IntWritable();
-				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				IntWritable value = new IntWritable();
 				
-				while(reader.next(key, v)) {
-					RebasingAndGroupID entry = new RebasingAndGroupID(v.getRebased(), v.getGid());
-					map.put(key.get(), entry);
+				while(reader.next(key, value)) {
+					map.put(key.get(), value.get());
 				}
 				
 				reader.close();
@@ -69,60 +61,6 @@ class DistCache {
 		}
 		
 		return map;
-	}
-	
-	/**
-	 * @return list of (rebased) items for given group ID  
-	 */
-	static TIntArrayList readStartersFor(Configuration conf, int gid) throws IOException {
-		TIntArrayList starters = new TIntArrayList();
-		
-		FileSystem fs = FileSystem.getLocal(conf);
-		
-		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
-				Reader reader = new Reader(fs, path, conf);
-				IntWritable key = new IntWritable();
-				GIDandRebaseWritable v = new GIDandRebaseWritable();
-				
-				while(reader.next(key, v)) {
-					if (v.getGid() == gid) {
-						starters.add(v.getRebased());
-					}
-				}
-				
-				reader.close();
-			}
-		}
-		
-		return starters;
-	}
-
-	/**
-	 * @return list of (rebased) items for given group ID  
-	 */
-	static TIntSet readGroupItemsFor(Configuration conf, int gid) throws IOException {
-		TIntSet groupItems = new TIntHashSet();
-		
-		FileSystem fs = FileSystem.getLocal(conf);
-		
-		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
-				Reader reader = new Reader(fs, path, conf);
-				IntWritable key = new IntWritable();
-				GIDandRebaseWritable v = new GIDandRebaseWritable();
-				
-				while(reader.next(key, v)) {
-					if (v.getGid() == gid) {
-						groupItems.add(v.getRebased());
-					}
-				}
-				
-				reader.close();
-			}
-		}
-		
-		return groupItems;
 	}
 	
 	/**
@@ -134,13 +72,13 @@ class DistCache {
 		FileSystem fs = FileSystem.getLocal(conf);
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(GROUPSMAP_DIRNAME)) {
+			if (path.toString().contains(REBASINGMAP_DIRNAME)) {
 				Reader reader = new Reader(fs, path, conf);
 				IntWritable key = new IntWritable();
-				GIDandRebaseWritable v = new GIDandRebaseWritable();
+				IntWritable value = new IntWritable();
 				
-				while(reader.next(key, v)) {
-					map.put(v.getRebased(), key.get());
+				while(reader.next(key, value)) {
+					map.put(value.get(), key.get());
 				}
 				
 				reader.close();
