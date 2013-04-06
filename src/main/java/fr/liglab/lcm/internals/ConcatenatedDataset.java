@@ -62,7 +62,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 
 	@Override
 	protected TransactionsWriter getTransactionsWriter(boolean sourceSorted) {
-		this.sorted = true;
+		this.sorted = sourceSorted;
 		return new TransWriter();
 	}
 
