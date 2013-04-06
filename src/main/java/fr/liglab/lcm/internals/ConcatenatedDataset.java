@@ -2,7 +2,6 @@ package fr.liglab.lcm.internals;
 
 import java.util.Iterator;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
@@ -84,11 +83,6 @@ public class ConcatenatedDataset extends FilteredDataset {
 		@Override
 		public boolean hasNext() {
 			return this.index <= this.max;
-		}
-
-		@Override
-		public void remove() {
-			throw new NotImplementedException();
 		}
 
 		@Override

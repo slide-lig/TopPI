@@ -11,9 +11,10 @@ import gnu.trove.map.TIntIntMap;
  * a ConcatenatedDataset rebased at first-loading time use it with a
  * RebaserCollector
  */
-public class RebasedConcatenatedCompressedDataset extends ConcatenatedCompressedDataset implements RebasedDataset {
+public class RebasedFPTreeMixDataset extends FPTreeMixDataset implements RebasedDataset {
 
 	private Rebaser rebaser;
+	private int sumAboveLimitSupport = 0;
 
 	public int[] getReverseMap() {
 		return this.rebaser.getReverseMap();
@@ -27,7 +28,7 @@ public class RebasedConcatenatedCompressedDataset extends ConcatenatedCompressed
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public RebasedConcatenatedCompressedDataset(final int minimumsupport, final Iterator<int[]> transactions)
+	public RebasedFPTreeMixDataset(final int minimumsupport, final Iterator<int[]> transactions)
 			throws DontExploreThisBranchException {
 
 		super(minimumsupport, transactions);
@@ -46,8 +47,19 @@ public class RebasedConcatenatedCompressedDataset extends ConcatenatedCompressed
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
+			if (rebasedItem > fptreeLimit) {
+				this.sumAboveLimitSupport += counts.value();
+			}
 			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
 		}
+	}
+
+	@Override
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport, int distinctTransactionsLength,
+			int distinctTransactionsCount) {
+		this.concatenated = new int[this.sumAboveLimitSupport + 2 * this.transactionsCount];
+		// init with minimal size, cannot predict exact size
+		this.fptree = new TIntArrayList(fptreeLimit * 2);
 	}
 
 	@Override

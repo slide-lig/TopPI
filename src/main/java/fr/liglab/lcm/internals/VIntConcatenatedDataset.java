@@ -4,7 +4,6 @@ import java.util.Iterator;
 
 import org.omg.CORBA.IntHolder;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.TIntList;
@@ -158,11 +157,6 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 		@Override
 		public boolean hasNext() {
 			return index.value < tid;
-		}
-
-		@Override
-		public void remove() {
-			throw new NotImplementedException();
 		}
 
 		@Override

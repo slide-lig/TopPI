@@ -4,7 +4,6 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 
@@ -70,7 +69,7 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset impl
 			}
 			if (transactionExists) {
 				int tid = tw.endTransaction(1);
-				TIntIterator read = this.readTransaction(tid);
+				TransactionReader read = this.readTransaction(tid);
 				while (read.hasNext()) {
 					this.occurrences.get(read.next()).add(tid);
 				}

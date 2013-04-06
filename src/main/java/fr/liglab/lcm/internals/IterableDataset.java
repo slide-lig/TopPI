@@ -1,6 +1,5 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 
 import java.util.Arrays;
@@ -20,8 +19,12 @@ public abstract class IterableDataset extends Dataset {
 	// true if transactions have their items sorted in increasing order
 	public abstract boolean itemsSorted();
 
-	protected interface TransactionReader extends TIntIterator {
+	protected interface TransactionReader {
 		public int getTransactionSupport();
+
+		public boolean hasNext();
+
+		public int next();
 
 	}
 
