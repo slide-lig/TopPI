@@ -12,8 +12,7 @@ import gnu.trove.map.TIntIntMap;
  * a ConcatenatedDataset rebased at first-loading time use it with a
  * RebaserCollector
  */
-public class RebasedConcatenatedDataset extends ConcatenatedDataset implements
-		RebasedDataset {
+public class RebasedConcatenatedDataset extends ConcatenatedDataset implements RebasedDataset {
 
 	private Rebaser rebaser;
 
@@ -29,8 +28,7 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset implements
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public RebasedConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions)
+	public RebasedConcatenatedDataset(final int minimumsupport, final Iterator<int[]> transactions)
 			throws DontExploreThisBranchException {
 
 		super(minimumsupport, transactions);
@@ -49,15 +47,14 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset implements
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences
-					.put(rebasedItem, new TIntArrayList(counts.value()));
+			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
 		}
 	}
 
 	@Override
 	protected void filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		TransactionsWriter tw = this.getTransactionsWriter();
+		TransactionsWriter tw = this.getTransactionsWriter(false);
 		for (int[] transaction : transactions) {
 			boolean transactionExists = false;
 			for (int item : transaction) {

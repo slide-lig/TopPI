@@ -12,8 +12,7 @@ import gnu.trove.map.TIntIntMap;
  * a ConcatenatedDataset rebased at first-loading time use it with a
  * RebaserCollector
  */
-public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
-		implements RebasedDataset {
+public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset implements RebasedDataset {
 
 	private Rebaser rebaser;
 	private int totalSize = 0;
@@ -30,8 +29,7 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public RebasedVIntConcatenatedDataset(final int minimumsupport,
-			final Iterator<int[]> transactions)
+	public RebasedVIntConcatenatedDataset(final int minimumsupport, final Iterator<int[]> transactions)
 			throws DontExploreThisBranchException {
 		super(minimumsupport, transactions);
 	}
@@ -46,23 +44,21 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset
 		while (counts.hasNext()) {
 			counts.advance();
 			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences
-					.put(rebasedItem, new TIntArrayList(counts.value()));
+			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
 			this.totalSize += getVIntSize(rebasedItem) * counts.value();
 		}
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
-			int distinctTransactionsLength, int distinctTransactionsCount) {
-		this.concatenated = new byte[this.totalSize + nbBytesForTransSize
-				* this.transactionsCount];
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport, int distinctTransactionsLength,
+			int distinctTransactionsCount) {
+		this.concatenated = new byte[this.totalSize + nbBytesForTransSize * this.transactionsCount];
 	}
 
 	@Override
 	protected void filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		TransactionsWriter tw = this.getTransactionsWriter();
+		TransactionsWriter tw = this.getTransactionsWriter(false);
 		for (int[] transaction : transactions) {
 			boolean transactionExists = false;
 			for (int item : transaction) {

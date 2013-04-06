@@ -70,13 +70,17 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 
 	@Override
 	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
-		// TODO fix when we get the unfiltered version
-		return new ConcatenatedCompressedDataset(upper, extension);
+		return new ConcatenatedUnfilteredCompressedDataset(upper, extension);
 	}
 
 	@Override
-	protected TransactionsWriter getTransactionsWriter() {
-		return new TransWriter();
+	protected TransactionsWriter getTransactionsWriter(boolean sourceSorted) {
+		return new TransWriter(sourceSorted);
+	}
+
+	@Override
+	public boolean itemsSorted() {
+		return true;
 	}
 
 	@Override
@@ -251,10 +255,12 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 	}
 
 	private class TransWriter implements TransactionsWriter {
-		int index = 2;
-		int tIdPosition = 1;
+		private int index = 2;
+		private int tIdPosition = 1;
+		private boolean sourceSorted;
 
-		public TransWriter() {
+		public TransWriter(boolean sourceSorted) {
+			this.sourceSorted = sourceSorted;
 		}
 
 		@Override
@@ -271,6 +277,9 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			int transId = this.tIdPosition;
 			this.index++;
 			this.tIdPosition = this.index;
+			if (!this.sourceSorted) {
+				Arrays.sort(concatenated, transId + 1, this.tIdPosition);
+			}
 			this.index++;
 			transactionsList.add(transId);
 			return transId;
