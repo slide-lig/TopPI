@@ -24,8 +24,8 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
 public class Driver {
 	//////////////////// MANDATORY CONFIGURATION PROPERTIES ////////////////////
 	
-	public static final String KEY_INPUT    = "lcm.input";
-	public static final String KEY_OUTPUT   = "lcm.output";
+	public static final String KEY_INPUT    = "lcm.path.input";
+	public static final String KEY_OUTPUT   = "lcm.path.output";
 	public static final String KEY_MINSUP   = "lcm.minsup";
 	public static final String KEY_NBGROUPS = "lcm.nbGroups";
 	public static final String KEY_DO_TOP_K = "lcm.topK";
@@ -43,17 +43,22 @@ public class Driver {
 	/**
 	 * property key for item-counter-n-grouper output path
 	 */
-	static final String KEY_GROUPS_MAP = "lcm.groupsMap";
+	static final String KEY_GROUPS_MAP = "lcm.path.groupsMap";
 	
 	/**
 	 * property key for mining output path
 	 */
-	static final String KEY_RAW_PATTERNS = "lcm.rawpatterns";
-	
+	static final String KEY_RAW_PATTERNS = "lcm.path.rawpatterns";
+
 	/**
 	 * property key for aggregated patterns' output path
 	 */
-	static final String KEY_AGGREGATED_PATTERNS = "lcm.aggregated";
+	static final String KEY_AGGREGATED_PATTERNS = "lcm.path.aggregated";
+
+	/**
+	 * property key for path of stored sub-DBs (for two-phases mining)
+	 */
+	static final String KEY_SUB_DBS = "lcm.path.subDBs";
 	
 	/**
 	 * this property will be filled after item counting
@@ -78,6 +83,7 @@ public class Driver {
 		this.conf.setStrings(KEY_GROUPS_MAP, this.output + "/" + DistCache.REBASINGMAP_DIRNAME);
 		this.conf.setStrings(KEY_RAW_PATTERNS, this.output + "/" + "rawMinedPatterns");
 		this.conf.setStrings(KEY_AGGREGATED_PATTERNS, output + "/" + "topPatterns");
+		this.conf.setStrings(KEY_SUB_DBS, output + "/" + "subDBs");
 	}
 	
 	@Override
@@ -119,8 +125,12 @@ public class Driver {
 				if (miningJob(false) && aggregateTopK()) {
 					return 0;
 				}
-			} else { // algo "2"
+			} else if ("2".equals(miningAlgo)) {
 				if (miningJob(true)) {
+					return 0;
+				}
+			} else { // algo "3"
+				if (twoPhasesMining() && aggregateTopK()) {
 					return 0;
 				}
 			}
@@ -221,6 +231,94 @@ public class Driver {
 		job.setGroupingComparatorClass(ItemAndSupportWritable.ItemOnlyComparator.class);
 		job.setPartitionerClass(AggregationPartitioner.class);
 		job.setReducerClass(AggregationReducer.class);
+		
+		return job.waitForCompletion(true);
+	}
+	
+	/**
+	 * It's a 3-jobs mining, actually
+	 */
+	protected boolean twoPhasesMining() 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
+		String patternsPhase1Folder = outputFolder + "/patterns-phase1";
+		String patternsPhase2Folder = outputFolder + "/patterns-phase2";
+		String boundsPath = this.output + "/bounds";
+		
+		if (buildSubDBs() && miningPhase1(patternsPhase1Folder)) {
+			Configuration phase2conf = new Configuration(this.conf);
+			
+			DistCache.copyToCache(phase2conf, boundsPath);
+			
+			/**
+			 * TODO:
+			 * miningPhase1 && miningPhase2 should output patterns as Int->SupportAndTransaction
+			 * miningPhase1 also needs MultipleOutputs to boundsPath
+			 */
+			
+			return miningPhase2(phase2conf, patternsPhase2Folder);
+		}
+		
+		return false;
+	}
+	
+	private boolean miningPhase2(Configuration phase2conf, String outputFolder) 
+			throws IOException, InterruptedException, ClassNotFoundException {
+
+		Job job = new Job(phase2conf, "Two-phases mining : phase 2 over "+this.input);
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		//job.setOutputKeyClass(IntWritable.class);
+		//job.setOutputValueClass(TransactionWritable.class);
+		
+		String input = phase2conf.get(KEY_SUB_DBS);
+		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		
+		return job.waitForCompletion(true);
+	}
+
+	protected boolean miningPhase1(String outputFolder) 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		Job job = new Job(this.conf, "Two-phases mining : phase 1 over "+this.input);
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		//job.setOutputKeyClass(IntWritable.class);
+		//job.setOutputValueClass(TransactionWritable.class);
+		
+		String input = this.conf.get(KEY_SUB_DBS);
+		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		
+		return job.waitForCompletion(true);
+	}
+
+	protected boolean buildSubDBs() 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		Job job = new Job(this.conf, "Two-phases mining : building sub-DBs from "+this.input);
+		
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(TransactionWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(this.input) );
+		
+		String outputFolder = this.conf.get(KEY_SUB_DBS);
+		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		
+		job.setMapperClass(MiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(TransactionWritable.class);
+		
+		// then job defaults to shuffle'n'sorting to IdentityReducer, which is exactly what we want
 		
 		return job.waitForCompletion(true);
 	}
