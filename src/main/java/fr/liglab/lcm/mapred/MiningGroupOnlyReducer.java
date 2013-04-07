@@ -12,6 +12,7 @@ import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
+import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import fr.liglab.lcm.util.HeapDumper;
 import gnu.trove.map.TIntIntMap;
@@ -20,7 +21,7 @@ import gnu.trove.set.hash.TIntHashSet;
 
 public class MiningGroupOnlyReducer extends 
 	Reducer<IntWritable, TransactionWritable, 
-		ItemAndSupportWritable, TransactionWritable> {
+		ItemAndSupportWritable, SupportAndTransactionWritable> {
 	
 	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;

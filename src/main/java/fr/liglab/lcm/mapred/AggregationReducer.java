@@ -3,16 +3,17 @@ package fr.liglab.lcm.mapred;
 import java.util.Iterator;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
-import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import gnu.trove.map.TIntIntMap;
 
-public class AggregationReducer extends Reducer<ItemAndSupportWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable> {
+public class AggregationReducer extends Reducer<ItemAndSupportWritable, SupportAndTransactionWritable, IntWritable, SupportAndTransactionWritable> {
 	
-	protected final ItemAndSupportWritable keyW = new ItemAndSupportWritable();
-	protected final TransactionWritable valueW = new TransactionWritable();
+	protected final IntWritable keyW = new IntWritable();
+	protected final SupportAndTransactionWritable valueW = new SupportAndTransactionWritable();
 	
 	protected TIntIntMap reverseBase = null;
 	
@@ -32,7 +33,7 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, Transact
 		this.lastCount = 0;
 	}
 	
-	protected void reduce(ItemAndSupportWritable key, java.lang.Iterable<TransactionWritable> patterns, Context context)
+	protected void reduce(ItemAndSupportWritable key, java.lang.Iterable<SupportAndTransactionWritable> patterns, Context context)
 			throws java.io.IOException, InterruptedException {
 		
 		if (key.getItem() != this.lastItem) {
@@ -40,21 +41,20 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, Transact
 			this.lastItem = key.getItem();
 			
 			int rebased = this.reverseBase.get(this.lastItem);
-			this.keyW.setItem(rebased);
+			this.keyW.set(rebased);
 		}
 		
 		if (this.lastCount < this.k) {
-			this.keyW.setSupport(key.getSupport());
-			
-			Iterator<TransactionWritable> it = patterns.iterator();
+			Iterator<SupportAndTransactionWritable> it = patterns.iterator();
 			while (it.hasNext() && this.lastCount < this.k) {
-				int[] transaction = it.next().get();
+				SupportAndTransactionWritable entry = it.next();
+				int[] transaction = entry.getTransaction();
 				
 				for (int i = 0; i < transaction.length; i++) {
 					transaction[i] = this.reverseBase.get(transaction[i]);
 				}
 				
-				this.valueW.set(transaction);
+				this.valueW.set(entry.getSupport(), transaction);
 				context.write(this.keyW, this.valueW);
 				this.lastCount++;
 			}

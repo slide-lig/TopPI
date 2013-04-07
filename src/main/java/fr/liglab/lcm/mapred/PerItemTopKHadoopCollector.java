@@ -5,6 +5,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.io.PerItemGroupTopKCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
+import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
@@ -15,17 +16,17 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	protected final static int PING_AT_MOST_EVERY = 60000;
 	private static long latestPing = 0;
 	
-	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context context;
+	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context context;
 
 	public PerItemTopKHadoopCollector(
 			int k,
-			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context currentContext) {
+			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext) {
 		this(k, currentContext, true, true);
 	}
 
 	public PerItemTopKHadoopCollector(
 			int k,
-			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, TransactionWritable>.Context currentContext,
+			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext,
 			boolean mineInGroup, boolean mineOutGroup) {
 		super(null, k, mineInGroup, mineOutGroup);
 		this.context = currentContext;
@@ -51,11 +52,11 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	 */
 	public long close(TIntIntMap reverse) {
 		final ItemAndSupportWritable keyW = new ItemAndSupportWritable();
-		final TransactionWritable valueW = new TransactionWritable();
+		final SupportAndTransactionWritable valueW = new SupportAndTransactionWritable();
 		long outputted = 0;
-
+		
 		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
-
+		
 		while (it.hasNext()) {
 			it.advance();
 			
@@ -69,9 +70,8 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 
 			for (int i = 0; i < itemTopK.length && itemTopK[i] != null; i++) {
 				PatternWithFreq entry = itemTopK[i];
-
-				keyW.setSupport(entry.getSupportCount());
 				
+				int support = entry.getSupportCount();
 				int[] pattern = entry.getPattern();
 				
 				if (reverse != null) {
@@ -80,7 +80,8 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 					}
 				}
 				
-				valueW.set(pattern);
+				keyW.setSupport(support);
+				valueW.set(support, pattern);
 
 				try {
 					context.write(keyW, valueW);

@@ -12,13 +12,14 @@ import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ConcatenatedDataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
+import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 
 public class MiningReducer extends 
 	Reducer<IntWritable, TransactionWritable, 
-		ItemAndSupportWritable, TransactionWritable> {
+	ItemAndSupportWritable, SupportAndTransactionWritable> {
 	
 	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;
