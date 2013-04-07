@@ -8,14 +8,12 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class UnfilteredDataset extends IterableDataset {
 	public static final double FILTERING_THRESHOLD = 0.15;
 
 	protected final IterableDataset parent;
 	protected final TIntList tids; // indexes in parent_concatenated
-	protected final int[] frequentItems;
 	protected final int[] ignoreItems; // items known to have a 100% support
 
 	/**
@@ -23,8 +21,7 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public UnfilteredDataset(IterableDataset parentDataset, int extension)
-			throws DontExploreThisBranchException {
+	public UnfilteredDataset(IterableDataset parentDataset, int extension) throws DontExploreThisBranchException {
 		super(parentDataset.minsup, extension);
 
 		this.parent = parentDataset;
@@ -34,15 +31,13 @@ public abstract class UnfilteredDataset extends IterableDataset {
 		this.supportCounts.remove(extension);
 		this.genClosureAndFilterCount();
 
-		this.ignoreItems = ItemsetsFactory.extend(this.discoveredClosure,
-				extension);
+		this.ignoreItems = ItemsetsFactory.extend(this.discoveredClosure, extension);
 
 		this.frequentItems = this.supportCounts.keys();
 		Arrays.sort(this.frequentItems);
 	}
 
-	public UnfilteredDataset(UnfilteredDataset upper, int extension)
-			throws DontExploreThisBranchException {
+	public UnfilteredDataset(UnfilteredDataset upper, int extension) throws DontExploreThisBranchException {
 
 		super(upper.minsup, extension);
 
@@ -57,8 +52,7 @@ public abstract class UnfilteredDataset extends IterableDataset {
 		}
 		this.genClosureAndFilterCount();
 
-		this.ignoreItems = ItemsetsFactory.extend(discoveredClosure, extension,
-				upper.ignoreItems);
+		this.ignoreItems = ItemsetsFactory.extend(discoveredClosure, extension, upper.ignoreItems);
 
 		this.frequentItems = this.supportCounts.keys();
 		Arrays.sort(this.frequentItems);
@@ -123,8 +117,7 @@ public abstract class UnfilteredDataset extends IterableDataset {
 			int sup = transIterator.getTransactionSupport();
 			if (sup > 0) {
 				while (transIterator.hasNext()) {
-					this.supportCounts.adjustOrPutValue(transIterator.next(),
-							sup, sup);
+					this.supportCounts.adjustOrPutValue(transIterator.next(), sup, sup);
 				}
 			}
 		}
@@ -141,68 +134,26 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension)
-			throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
 
 		double extensionSupport = this.supportCounts.get(extension);
 
 		if ((extensionSupport / this.parent.getTransactionsCount()) > FILTERING_THRESHOLD) {
 			return this.createUnfilteredDataset(this, extension);
 		} else {
-			return this
-					.createFilteredDataset(this, extension, this.ignoreItems);
+			return this.createFilteredDataset(this, extension, this.ignoreItems);
 		}
 	}
 
-	public abstract Dataset createUnfilteredDataset(UnfilteredDataset upper,
-			int extension) throws DontExploreThisBranchException;
+	public abstract Dataset createUnfilteredDataset(UnfilteredDataset upper, int extension)
+			throws DontExploreThisBranchException;
 
-	public abstract Dataset createFilteredDataset(IterableDataset upper,
-			int extension, int[] ignoredItems)
+	public abstract Dataset createFilteredDataset(IterableDataset upper, int extension, int[] ignoredItems)
 			throws DontExploreThisBranchException;
 
 	@Override
-	public ExtensionsIterator getCandidatesIterator() {
-		return new CandidatesIterator();
-	}
-
-	protected class CandidatesIterator implements ExtensionsIterator {
-		private AtomicInteger next_index;
-		private final int candidatesLength; // candidates is
-											// frequentItems[0:candidatesLength[
-
-		public int[] getSortedFrequents() {
-			return frequentItems;
-		}
-
-		public CandidatesIterator() {
-			this.next_index = new AtomicInteger(-1);
-
-			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
-			if (coreItemIndex >= 0) {
-				throw new RuntimeException(
-						"Unexpected : coreItem appears in frequentItems !");
-			}
-			candidatesLength = -coreItemIndex - 1;
-		}
-
-		public int getExtension() {
-			if (candidatesLength < 0) {
-				return -1;
-			}
-			while (true) {
-				int next_index_local = this.next_index.incrementAndGet();
-				if (next_index_local < 0) {
-					// overflow, just in case
-					return -1;
-				}
-				if (next_index_local >= this.candidatesLength) {
-					return -1;
-				} else {
-					return frequentItems[next_index_local];
-				}
-			}
-		}
+	public boolean itemsSorted() {
+		return this.parent.itemsSorted();
 	}
 
 }

@@ -47,9 +47,7 @@ public class Main {
 				Main.OPTION_BENCHMARK,
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
-		options.addOption(
-				Main.OPTION_GROUPS,
-				true,
+		options.addOption(Main.OPTION_GROUPS, true,
 				"(only for map-reduce) Number of groups in which frequent items are dispatched (defaults to 50)");
 		options.addOption(Main.OPTION_TOPK, true, "Run in top-k-per-item mode");
 
@@ -63,15 +61,11 @@ public class Main {
 
 		try {
 			Configuration conf = new Configuration();
-			GenericOptionsParser hadoopCmd = new GenericOptionsParser(conf,
-					args);
-			CommandLine cmd = parser.parse(options,
-					hadoopCmd.getRemainingArgs());
+			GenericOptionsParser hadoopCmd = new GenericOptionsParser(conf, args);
+			CommandLine cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
 			String[] remainingArgs = cmd.getArgs();
 
-			if (remainingArgs.length == 3
-					|| (remainingArgs.length == 2 && cmd
-							.hasOption(OPTION_STANDALONE))) {
+			if (remainingArgs.length == 3 || (remainingArgs.length == 2 && cmd.hasOption(OPTION_STANDALONE))) {
 
 				String input = remainingArgs[0];
 				int minSupport = Integer.parseInt(remainingArgs[1]);
@@ -86,8 +80,7 @@ public class Main {
 					k = Integer.parseInt(cmd.getOptionValue(OPTION_TOPK));
 
 					if (k <= 0) {
-						throw new RuntimeException(
-								"When provided, K must be positive");
+						throw new RuntimeException("When provided, K must be positive");
 					}
 				}
 
@@ -101,8 +94,7 @@ public class Main {
 						g = Integer.parseInt(cmd.getOptionValue(OPTION_GROUPS));
 
 						if (g <= 0) {
-							throw new RuntimeException(
-									"When provided, G must be positive");
+							throw new RuntimeException("When provided, G must be positive");
 						}
 					}
 
@@ -134,10 +126,8 @@ public class Main {
 	public static void printMan(Options options) {
 		String syntax = "hadoop jar [path/to/lcm.jar] [GENERIC_OPTIONS] [OPTIONS] INPUT_PATH MINSUP OUTPUT_PATH";
 		String header = "\nOUTPUT_PATH is optional in standalone mode. When missing, patterns are printed to standard output.\n\nOptions are :";
-		String footer = "\n\nTweaking properties : \n"
-				+ Driver.KEY_GROUPER_CLASS + "\n" + Driver.KEY_MINING_ALGO
-				+ "\n" + Driver.KEY_SINGLE_GROUP_ID + "\n"
-				+ Driver.KEY_DUMP_ON_HEAP_EXN + "\n";
+		String footer = "\n\nTweaking properties : \n" + Driver.KEY_GROUPER_CLASS + "\n" + Driver.KEY_MINING_ALGO
+				+ "\n" + Driver.KEY_SINGLE_GROUP_ID + "\n" + Driver.KEY_DUMP_ON_HEAP_EXN + "\n";
 
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(syntax, header, options, footer);
@@ -154,16 +144,14 @@ public class Main {
 	 *            may be null
 	 * @param benchMode
 	 */
-	public static void standalone(String input, int minSupport, String output,
-			Integer k, boolean benchMode) {
+	public static void standalone(String input, int minSupport, String output, Integer k, boolean benchMode) {
 
 		FileReader reader = new FileReader(input);
 		Dataset dataset;
 		try {
 			dataset = new RebasedConcatenatedDataset(minSupport, reader);
 
-			PatternsCollector collector = instanciateCollector(output, k,
-					benchMode, dataset);
+			PatternsCollector collector = instanciateCollector(output, k, benchMode, dataset);
 
 			long time = System.currentTimeMillis();
 
@@ -176,8 +164,8 @@ public class Main {
 			long collected = collector.close();
 
 			if (benchMode) {
-				System.err.println(miner.toString() + " // mined in " + time
-						+ "ms // " + collected + " patterns outputted");
+				System.err.println(miner.toString() + " // mined in " + time + "ms // " + collected
+						+ " patterns outputted");
 			}
 		} catch (DontExploreThisBranchException e) {
 			e.printStackTrace();
@@ -188,8 +176,7 @@ public class Main {
 	 * Parse command-line arguments to instanciate the right collector in
 	 * standalone mode we're always rebasing so we need the dataset
 	 */
-	private static PatternsCollector instanciateCollector(String output,
-			Integer k, boolean benchMode, Dataset dataset) {
+	private static PatternsCollector instanciateCollector(String output, Integer k, boolean benchMode, Dataset dataset) {
 
 		PatternsCollector collector = null;
 
@@ -208,8 +195,7 @@ public class Main {
 				collector = new StdOutCollector();
 			}
 			if (dataset instanceof RebasedDataset) {
-				collector = new RebaserCollector(collector,
-						(RebasedDataset) dataset);
+				collector = new RebaserCollector(collector, (RebasedDataset) dataset);
 			}
 		}
 

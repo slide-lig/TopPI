@@ -2,7 +2,6 @@ package fr.liglab.lcm.internals;
 
 import java.util.Iterator;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
@@ -19,27 +18,25 @@ import gnu.trove.list.array.TIntArrayList;
 public class ConcatenatedDataset extends FilteredDataset {
 
 	private int[] concatenated;
+	private boolean sorted = false;
 
-	public ConcatenatedDataset(int minimumsupport, Iterator<int[]> transactions)
-			throws DontExploreThisBranchException {
+	public ConcatenatedDataset(int minimumsupport, Iterator<int[]> transactions) throws DontExploreThisBranchException {
 		super(minimumsupport, transactions);
 	}
 
-	public ConcatenatedDataset(IterableDataset parent, int extension,
-			int[] ignoreItems) throws DontExploreThisBranchException {
+	public ConcatenatedDataset(IterableDataset parent, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
 		super(parent, extension, ignoreItems);
 	}
 
-	public ConcatenatedDataset(IterableDataset parent, int extension)
-			throws DontExploreThisBranchException {
+	public ConcatenatedDataset(IterableDataset parent, int extension) throws DontExploreThisBranchException {
 		super(parent, extension);
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
-			int distinctTransactionsLength, int distinctTransactionsCount) {
-		this.concatenated = new int[sumOfRemainingItemsSupport
-				+ this.transactionsCount];
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport, int distinctTransactionsLength,
+			int distinctTransactionsCount) {
+		this.concatenated = new int[sumOfRemainingItemsSupport + this.transactionsCount];
 	}
 
 	@Override
@@ -48,14 +45,12 @@ public class ConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
-			throws DontExploreThisBranchException {
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
 		return new ConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension)
-			throws DontExploreThisBranchException {
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
 		return new ConcatenatedDataset(upper, extension);
 	}
 
@@ -65,8 +60,14 @@ public class ConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	protected TransactionsWriter getTransactionsWriter() {
+	protected TransactionsWriter getTransactionsWriter(boolean sourceSorted) {
+		this.sorted = sourceSorted;
 		return new TransWriter();
+	}
+
+	@Override
+	public boolean itemsSorted() {
+		return this.sorted;
 	}
 
 	private class ItemsIterator implements TransactionReader {
@@ -82,11 +83,6 @@ public class ConcatenatedDataset extends FilteredDataset {
 		@Override
 		public boolean hasNext() {
 			return this.index <= this.max;
-		}
-
-		@Override
-		public void remove() {
-			throw new NotImplementedException();
 		}
 
 		@Override
@@ -131,8 +127,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 				this.tids.add(transId);
 				for (int i = 1; i < freq; i++) {
 					this.tids.add(index);
-					System.arraycopy(concatenated, this.tIdPosition,
-							concatenated, index, size + 1);
+					System.arraycopy(concatenated, this.tIdPosition, concatenated, index, size + 1);
 					index += (size + 1);
 				}
 				this.tIdPosition = this.index;

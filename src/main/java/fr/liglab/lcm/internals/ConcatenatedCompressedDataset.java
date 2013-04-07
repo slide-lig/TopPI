@@ -11,8 +11,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 /**
  * Here all transactions are prefixed by their length and concatenated in a
  * single int[]
@@ -23,6 +21,7 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  * prefix-preserving test (see inner class CandidatesIterator)
  */
 public class ConcatenatedCompressedDataset extends FilteredDataset {
+	// TODO extract compression and make it generic using the reader API
 	/**
 	 * Support list will contain transactions with 0 frequency because
 	 * compression occurs AFTER their construction
@@ -70,13 +69,17 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 
 	@Override
 	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
-		// TODO fix when we get the unfiltered version
-		return new ConcatenatedCompressedDataset(upper, extension);
+		return new ConcatenatedUnfilteredCompressedDataset(upper, extension);
 	}
 
 	@Override
-	protected TransactionsWriter getTransactionsWriter() {
-		return new TransWriter();
+	protected TransactionsWriter getTransactionsWriter(boolean sourceSorted) {
+		return new TransWriter(sourceSorted);
+	}
+
+	@Override
+	public boolean itemsSorted() {
+		return true;
 	}
 
 	@Override
@@ -216,11 +219,6 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			return this.nextItem >= 0;
 		}
 
-		@Override
-		public void remove() {
-			throw new NotImplementedException();
-		}
-
 		public void findNext() {
 			while (true) {
 				if (this.index > this.max) {
@@ -251,10 +249,12 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 	}
 
 	private class TransWriter implements TransactionsWriter {
-		int index = 2;
-		int tIdPosition = 1;
+		private int index = 2;
+		private int tIdPosition = 1;
+		private boolean sourceSorted;
 
-		public TransWriter() {
+		public TransWriter(boolean sourceSorted) {
+			this.sourceSorted = sourceSorted;
 		}
 
 		@Override
@@ -271,6 +271,9 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			int transId = this.tIdPosition;
 			this.index++;
 			this.tIdPosition = this.index;
+			if (!this.sourceSorted) {
+				Arrays.sort(concatenated, transId + 1, this.tIdPosition - 1);
+			}
 			this.index++;
 			transactionsList.add(transId);
 			return transId;

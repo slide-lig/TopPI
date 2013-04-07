@@ -12,12 +12,10 @@ import gnu.trove.set.TIntSet;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class FilteredDataset extends IterableDataset {
 	protected int transactionsCount;// number of valid transactions read from
 									// source
-	protected final int[] frequentItems;
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
 	 * Transactions are added in the same order in all occurences-arrays. This
@@ -25,22 +23,20 @@ public abstract class FilteredDataset extends IterableDataset {
 	 */
 	final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
 
-	public FilteredDataset(final int minimumsupport,
-			final Iterator<int[]> transactions)
+	public FilteredDataset(final int minimumsupport, final Iterator<int[]> transactions)
 			throws DontExploreThisBranchException {
 
 		// in initial dataset, all items are candidate => all items < coreItem
 		super(minimumsupport, Integer.MAX_VALUE);
 
-		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
-				transactions);
+		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(transactions);
 		this.genSupportCounts(transactionsCopier);
 		this.transactionsCount = transactionsCopier.size();
 
 		int sumOfRemainingItemsSupport = genClosureAndFilterCount();
 		this.prepareOccurences();
-		this.prepareTransactionsStructure(sumOfRemainingItemsSupport,
-				sumOfRemainingItemsSupport, this.transactionsCount);
+		this.prepareTransactionsStructure(sumOfRemainingItemsSupport, sumOfRemainingItemsSupport,
+				this.transactionsCount);
 
 		this.filter(transactionsCopier);
 
@@ -54,8 +50,8 @@ public abstract class FilteredDataset extends IterableDataset {
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public FilteredDataset(IterableDataset parent, int extension,
-			int[] ignoreItems) throws DontExploreThisBranchException {
+	public FilteredDataset(IterableDataset parent, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
 
 		super(parent.minsup, extension);
 		this.supportCounts = new TIntIntHashMap();
@@ -74,8 +70,7 @@ public abstract class FilteredDataset extends IterableDataset {
 				distinctTransactionsCount++;
 				while (parentIterator.hasNext()) {
 					distinctTransactionsLength++;
-					this.supportCounts.adjustOrPutValue(parentIterator.next(),
-							sup, sup);
+					this.supportCounts.adjustOrPutValue(parentIterator.next(), sup, sup);
 				}
 			}
 		}
@@ -92,8 +87,8 @@ public abstract class FilteredDataset extends IterableDataset {
 		this.prepareOccurences();
 
 		TIntSet kept = this.supportCounts.keySet();
-		this.prepareTransactionsStructure(sumOfRemainingItemsSupport,
-				distinctTransactionsLength, distinctTransactionsCount);
+		this.prepareTransactionsStructure(sumOfRemainingItemsSupport, distinctTransactionsLength,
+				distinctTransactionsCount);
 
 		filterParent(parent, extOccurrences, kept);
 
@@ -101,18 +96,16 @@ public abstract class FilteredDataset extends IterableDataset {
 		Arrays.sort(this.frequentItems);
 	}
 
-	protected FilteredDataset(IterableDataset parent, int extension)
-			throws DontExploreThisBranchException {
+	protected FilteredDataset(IterableDataset parent, int extension) throws DontExploreThisBranchException {
 		this(parent, extension, null);
 	}
 
-	protected abstract void prepareTransactionsStructure(
-			int sumOfRemainingItemsSupport, int distinctTransactionsLength,
-			int distinctTransactionsCount);
+	protected abstract void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
+			int distinctTransactionsLength, int distinctTransactionsCount);
 
 	protected void filter(final Iterable<int[]> transactions) {
 		TIntSet retained = this.supportCounts.keySet();
-		TransactionsWriter tw = this.getTransactionsWriter();
+		TransactionsWriter tw = this.getTransactionsWriter(false);
 		for (int[] transaction : transactions) {
 			boolean transactionExists = false;
 			for (int item : transaction) {
@@ -139,14 +132,12 @@ public abstract class FilteredDataset extends IterableDataset {
 	 * @param kept
 	 *            items that will remain in our transactions
 	 */
-	protected void filterParent(IterableDataset parent, TIntList occ,
-			TIntSet kept) {
-		TransactionsWriter tw = this.getTransactionsWriter();
+	protected void filterParent(IterableDataset parent, TIntList occ, TIntSet kept) {
+		TransactionsWriter tw = this.getTransactionsWriter(parent.itemsSorted());
 		TIntIterator occIterator = occ.iterator();
 		while (occIterator.hasNext()) {
 			int parentTid = occIterator.next();
-			TransactionReader parentIterator = parent
-					.readTransaction(parentTid);
+			TransactionReader parentIterator = parent.readTransaction(parentTid);
 			if (parentIterator.getTransactionSupport() > 0) {
 				boolean transactionExists = false;
 				while (parentIterator.hasNext()) {
@@ -157,8 +148,7 @@ public abstract class FilteredDataset extends IterableDataset {
 					}
 				}
 				if (transactionExists) {
-					int tid = tw.endTransaction(parentIterator
-							.getTransactionSupport());
+					int tid = tw.endTransaction(parentIterator.getTransactionSupport());
 					TransactionReader read = this.readTransaction(tid);
 					if (tid >= 0) {
 						while (read.hasNext()) {
@@ -182,8 +172,7 @@ public abstract class FilteredDataset extends IterableDataset {
 		TIntIntIterator counts = this.supportCounts.iterator();
 		while (counts.hasNext()) {
 			counts.advance();
-			this.occurrences.put(counts.key(),
-					new TIntArrayList(counts.value()));
+			this.occurrences.put(counts.key(), new TIntArrayList(counts.value()));
 		}
 	}
 
@@ -199,9 +188,7 @@ public abstract class FilteredDataset extends IterableDataset {
 	public int prefixPreservingTest(final int candidate) {
 		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
 		if (candidateIdx < 0) {
-			throw new RuntimeException(
-					"Unexpected : prefixPreservingTest of an infrequent item, "
-							+ candidate);
+			throw new RuntimeException("Unexpected : prefixPreservingTest of an infrequent item, " + candidate);
 		}
 
 		return ppTest(candidateIdx);
@@ -271,68 +258,7 @@ public abstract class FilteredDataset extends IterableDataset {
 	public abstract int getRealSize();
 
 	@Override
-	public ExtensionsIterator getCandidatesIterator() {
-		return new CandidatesIterator();
-	}
-
-	/**
-	 * Iterates on candidates items such that - their support count is in
-	 * [minsup, transactionsCount[ , - candidate < coreItem - no item >
-	 * candidate has the same support as candidate (aka fast-prefix-preservation
-	 * test) => assuming items from previously found patterns (including
-	 * coreItem) have been removed !! coreItem = extension item (if it exists)
-	 */
-	protected class CandidatesIterator implements ExtensionsIterator {
-		private AtomicInteger next_index;
-		private final int candidatesLength; // candidates is
-											// frequentItems[0:candidatesLength[
-
-		public int[] getSortedFrequents() {
-			return frequentItems;
-		}
-
-		/**
-		 * @param original
-		 *            an iterator on frequent items
-		 * @param min
-		 */
-		public CandidatesIterator() {
-			this.next_index = new AtomicInteger(-1);
-
-			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
-			if (coreItemIndex >= 0) {
-				throw new RuntimeException(
-						"Unexpected : coreItem appears in frequentItems !");
-			}
-
-			// binarySearch returns -(insertion_point)-1
-			// where insertion_point == index of first element greater OR
-			// a.length
-			candidatesLength = -coreItemIndex - 1;
-		}
-
-		public int getExtension() {
-			if (candidatesLength < 0) {
-				return -1;
-			}
-			while (true) {
-				int next_index_local = this.next_index.incrementAndGet();
-				if (next_index_local < 0) {
-					// overflow, just in case
-					return -1;
-				}
-				if (next_index_local >= this.candidatesLength) {
-					return -1;
-				} else { // if (ppTest(next_index_local)) {
-					return frequentItems[next_index_local];
-				}
-			}
-		}
-	}
-
-	@Override
-	public Dataset getProjection(int extension)
-			throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
 		double extensionSupport = this.supportCounts.get(extension);
 		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
 			return this.createUnfilteredDataset(this, extension);
@@ -341,15 +267,16 @@ public abstract class FilteredDataset extends IterableDataset {
 		}
 	}
 
-	public abstract Dataset createUnfilteredDataset(FilteredDataset upper,
-			int extension) throws DontExploreThisBranchException;
+	public abstract Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
+			throws DontExploreThisBranchException;
 
-	public abstract Dataset createFilteredDataset(FilteredDataset upper,
-			int extension) throws DontExploreThisBranchException;
+	public abstract Dataset createFilteredDataset(FilteredDataset upper, int extension)
+			throws DontExploreThisBranchException;
 
-	protected abstract TransactionsWriter getTransactionsWriter();
+	protected abstract TransactionsWriter getTransactionsWriter(boolean sourceSorted);
 
 	protected interface TransactionsWriter {
+
 		public void addItem(int item);
 
 		/*

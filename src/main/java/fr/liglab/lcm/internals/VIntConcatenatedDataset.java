@@ -4,7 +4,6 @@ import java.util.Iterator;
 
 import org.omg.CORBA.IntHolder;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.list.TIntList;
@@ -22,38 +21,37 @@ import gnu.trove.list.array.TIntArrayList;
 public class VIntConcatenatedDataset extends FilteredDataset {
 	protected static int nbBytesForTransSize = 5;
 	protected byte[] concatenated;
+	private boolean sorted = false;
 
 	public static void setMaxTransactionLength(int length) {
 		int nbBits = ((int) Math.floor(Math.log(length) / (Math.log(2)))) + 1;
 		nbBytesForTransSize = (int) Math.ceil(nbBits / 7.);
 	}
 
-	public VIntConcatenatedDataset(int minimumsupport,
-			Iterator<int[]> transactions) throws DontExploreThisBranchException {
+	public VIntConcatenatedDataset(int minimumsupport, Iterator<int[]> transactions)
+			throws DontExploreThisBranchException {
 		super(minimumsupport, transactions);
 	}
 
-	public VIntConcatenatedDataset(IterableDataset parent, int extension,
-			int[] ignoreItems) throws DontExploreThisBranchException {
+	public VIntConcatenatedDataset(IterableDataset parent, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
 		super(parent, extension, ignoreItems);
 	}
 
-	public VIntConcatenatedDataset(IterableDataset parent, int extension)
-			throws DontExploreThisBranchException {
+	public VIntConcatenatedDataset(IterableDataset parent, int extension) throws DontExploreThisBranchException {
 		super(parent, extension);
 	}
 
 	@Override
-	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport,
-			int distinctTransactionsLength, int distinctTransactionsCount) {
+	protected void prepareTransactionsStructure(int sumOfRemainingItemsSupport, int distinctTransactionsLength,
+			int distinctTransactionsCount) {
 		int remainingItemsSize = 0;
 		TIntIntIterator counts = this.supportCounts.iterator();
 		while (counts.hasNext()) {
 			counts.advance();
 			remainingItemsSize += getVIntSize(counts.key()) * counts.value();
 		}
-		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize
-				* this.transactionsCount];
+		this.concatenated = new byte[remainingItemsSize + nbBytesForTransSize * this.transactionsCount];
 	}
 
 	@Override
@@ -62,14 +60,12 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
-			throws DontExploreThisBranchException {
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
 		return new VIntConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension)
-			throws DontExploreThisBranchException {
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
 		return new VIntConcatenatedDataset(upper, extension);
 	}
 
@@ -137,8 +133,14 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	protected TransactionsWriter getTransactionsWriter() {
+	protected TransactionsWriter getTransactionsWriter(boolean sourceSorted) {
+		this.sorted = sourceSorted;
 		return new TransWriter();
+	}
+
+	@Override
+	public boolean itemsSorted() {
+		return this.sorted;
 	}
 
 	private class ItemsIterator implements TransactionReader {
@@ -155,11 +157,6 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 		@Override
 		public boolean hasNext() {
 			return index.value < tid;
-		}
-
-		@Override
-		public void remove() {
-			throw new NotImplementedException();
 		}
 
 		@Override
@@ -200,8 +197,7 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 				this.tids.add(transId);
 				int copySize = size + transLengthSize;
 				for (int i = 1; i < freq; i++) {
-					System.arraycopy(concatenated, this.transactionStart,
-							concatenated, index.value, copySize);
+					System.arraycopy(concatenated, this.transactionStart, concatenated, index.value, copySize);
 					index.value += copySize;
 					this.tids.add(index.value - transLengthSize);
 				}
@@ -244,22 +240,21 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	// // ih.value = 0;
 	// // System.out.println(readVInt(tab, ih));
 	// // System.out.println(ih.value);
-	// FilteredDataset d = new RebasedVIntConcatenatedDataset(5,
-	// new FileReader(
+	// FilteredDataset d = new RebasedVIntConcatenatedDataset(5, new FileReader(
 	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
 	// System.out.println(d.getRealSize());
 	// d = null;
-	// d = new VIntConcatenatedDataset(5, new FileReader(
-	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// d = new VIntConcatenatedDataset(5, new
+	// FileReader("/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
 	// System.out.println(d.getRealSize());
 	// d = null;
 	// VIntConcatenatedDataset.setMaxTransactionLength(200);
-	// d = new RebasedVIntConcatenatedDataset(5, new FileReader(
-	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// d = new RebasedVIntConcatenatedDataset(5, new
+	// FileReader("/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
 	// System.out.println(d.getRealSize());
 	// d = null;
-	// d = new RebasedConcatenatedDataset(5, new FileReader(
-	// "/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
+	// d = new RebasedConcatenatedDataset(5, new
+	// FileReader("/Users/vleroy/Workspace/lastfm/lastfm-s1200.dat"));
 	// System.out.println(d.getRealSize());
 	// d = null;
 	// }
