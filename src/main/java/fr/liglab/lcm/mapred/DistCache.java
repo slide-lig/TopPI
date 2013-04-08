@@ -43,12 +43,23 @@ class DistCache {
 	 * @return a map which associates (to any frequent item) its new item ID
 	 */
 	static TIntIntMap readItemsRebasing(Configuration conf) throws IOException {
+		return readIntIntMap(conf, REBASINGMAP_DIRNAME);
+	}
+
+	/**
+	 * @return a map which associates (to any frequent item, if known) its k-th pattern's support count 
+	 */
+	static TIntIntMap readKnownBounds(Configuration conf) throws IOException {
+		return readIntIntMap(conf, BOUNDS_DIRNAME);
+	}
+	
+	private static TIntIntMap readIntIntMap(Configuration conf, String pathFilter) throws IOException {
 		TIntIntMap map = new TIntIntHashMap();
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(REBASINGMAP_DIRNAME)) {
+			if (path.toString().contains(pathFilter)) {
 				Reader reader = new Reader(fs, path, conf);
 				IntWritable key = new IntWritable();
 				IntWritable value = new IntWritable();

@@ -23,6 +23,14 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
 /**
  * Driver methods for our 3 map-reduce jobs
+ * 
+ * 
+ * 
+ * 
+ * FIXME : rebasing map shouldn't always be in distcache
+ *  -> all driver methods should get static, with the conf as a parameter
+ *  -> remove "conf" as a class attribute
+ * 
  */
 public class Driver {
 	//////////////////// MANDATORY CONFIGURATION PROPERTIES ////////////////////
@@ -259,26 +267,6 @@ public class Driver {
 		
 		return false;
 	}
-	
-	private boolean miningPhase2(Configuration myConf, String outputFolder) 
-			throws IOException, InterruptedException, ClassNotFoundException {
-		
-		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
-		job.setJarByClass(this.getClass());
-		
-		job.setInputFormatClass(TextInputFormat.class);
-		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		job.setOutputKeyClass(ItemAndSupportWritable.class);
-		job.setOutputValueClass(SupportAndTransactionWritable.class);
-		
-		String input = myConf.get(KEY_SUB_DBS);
-		FileInputFormat.addInputPath(job, new Path(input));
-		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
-		
-		//job.setReducerClass(TwoPhasesMiningReducer.class);
-		
-		return job.waitForCompletion(true);
-	}
 
 	protected boolean miningPhase1(String outputFolder, String boundsFolder) 
 			throws IOException, InterruptedException, ClassNotFoundException {
@@ -311,7 +299,27 @@ public class Driver {
 			return false;
 		}
 	}
-
+	
+	private boolean miningPhase2(Configuration myConf, String outputFolder) 
+			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
+		job.setJarByClass(this.getClass());
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(ItemAndSupportWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
+		
+		String input = myConf.get(KEY_SUB_DBS);
+		FileInputFormat.addInputPath(job, new Path(input));
+		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		
+		job.setReducerClass(MiningReducerPhase2.class);
+		
+		return job.waitForCompletion(true);
+	}
+	
 	protected boolean buildSubDBs() 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
