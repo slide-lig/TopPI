@@ -133,7 +133,8 @@ public class Driver {
 			String miningAlgo = this.conf.get(KEY_MINING_ALGO, "");
 			
 			if ("1".equals(miningAlgo)) {
-				if (miningJob(false) && aggregateTopK()) {
+				String patternsPath = this.conf.get(KEY_RAW_PATTERNS);
+				if (miningJob(false) && aggregateTopK(patternsPath)) {
 					return 0;
 				}
 			} else if ("2".equals(miningAlgo)) {
@@ -141,7 +142,9 @@ public class Driver {
 					return 0;
 				}
 			} else { // algo "3"
-				if (twoPhasesMining() && aggregateTopK()) {
+				// FIXME
+				String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
+				if (twoPhasesMining() && aggregateTopK(outputFolder + "/1", outputFolder + "/2")) {
 					return 0;
 				}
 			}
@@ -220,10 +223,9 @@ public class Driver {
 		return job.waitForCompletion(true);
 	}
 	
-	protected boolean aggregateTopK() 
+	protected boolean aggregateTopK(String... inputs) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		String input  = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
 		String output = this.conf.getStrings(KEY_AGGREGATED_PATTERNS)[0];
 		
 		Job job = new Job(conf, "Aggregating top-K frequent itemsets from "+this.input);
@@ -236,7 +238,10 @@ public class Driver {
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(input) );
+		for (String input : inputs) {
+			FileInputFormat.addInputPath(job, new Path(input) );
+		}
+		
 		FileOutputFormat.setOutputPath(job, new Path(output));
 
 		job.setSortComparatorClass(ItemAndSupportWritable.SortComparator.class);
@@ -254,9 +259,9 @@ public class Driver {
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
 		String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
-		String patternsPhase1Folder = outputFolder + "/patterns-phase1";
-		String patternsPhase2Folder = outputFolder + "/patterns-phase2";
-		String boundsPath = this.output + DistCache.BOUNDS_DIRNAME;
+		String patternsPhase1Folder = outputFolder + "/1";
+		String patternsPhase2Folder = outputFolder + "/2";
+		String boundsPath = this.output + "/" + DistCache.BOUNDS_DIRNAME;
 		
 		if (buildSubDBs() && miningPhase1(patternsPhase1Folder, boundsPath)) {
 			Configuration phase2conf = new Configuration(this.conf);
@@ -276,8 +281,10 @@ public class Driver {
 		Job job = new Job(this.conf, "Two-phases mining : phase 1 over "+this.input);
 		job.setJarByClass(this.getClass());
 		
-		job.setInputFormatClass(TextInputFormat.class);
+		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(TransactionWritable.class);
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
@@ -306,8 +313,10 @@ public class Driver {
 		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
 		job.setJarByClass(this.getClass());
 		
-		job.setInputFormatClass(TextInputFormat.class);
+		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(TransactionWritable.class);
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
