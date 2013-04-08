@@ -213,8 +213,7 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			this.index = tid + 1;
 			this.findNext();
 		}
-
-		@Override
+		
 		public boolean hasNext() {
 			return this.nextItem >= 0;
 		}
@@ -233,15 +232,13 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 				}
 			}
 		}
-
-		@Override
+		
 		public int next() {
 			int res = this.nextItem;
 			this.findNext();
 			return res;
 		}
-
-		@Override
+		
 		public int getTransactionSupport() {
 			return this.freq;
 		}
@@ -256,14 +253,12 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 		public TransWriter(boolean sourceSorted) {
 			this.sourceSorted = sourceSorted;
 		}
-
-		@Override
+		
 		public void addItem(int item) {
 			concatenated[index] = item;
 			this.index++;
 		}
-
-		@Override
+		
 		public int endTransaction(int freq) {
 			int size = index - tIdPosition - 1;
 			concatenated[this.tIdPosition] = size;
@@ -278,8 +273,7 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			transactionsList.add(transId);
 			return transId;
 		}
-
-		@Override
+		
 		public TIntList getTids() {
 			return null;
 		}

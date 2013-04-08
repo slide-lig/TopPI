@@ -79,20 +79,17 @@ public class ConcatenatedDataset extends FilteredDataset {
 			this.max = tid + length;
 			this.index = tid + 1;
 		}
-
-		@Override
+		
 		public boolean hasNext() {
 			return this.index <= this.max;
 		}
-
-		@Override
+		
 		public int next() {
 			int val = concatenated[this.index];
 			this.index++;
 			return val;
 		}
-
-		@Override
+		
 		public int getTransactionSupport() {
 			return 1;
 		}
@@ -106,14 +103,12 @@ public class ConcatenatedDataset extends FilteredDataset {
 
 		public TransWriter() {
 		}
-
-		@Override
+		
 		public void addItem(int item) {
 			concatenated[index] = item;
 			this.index++;
 		}
-
-		@Override
+		
 		public int endTransaction(int freq) {
 			int size = index - tIdPosition - 1;
 			concatenated[this.tIdPosition] = size;
@@ -135,8 +130,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 				return -1;
 			}
 		}
-
-		@Override
+		
 		public TIntList getTids() {
 			TIntList localTids = this.tids;
 			this.tids = null;

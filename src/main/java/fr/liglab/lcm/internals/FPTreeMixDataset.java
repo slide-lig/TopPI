@@ -106,8 +106,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				this.index = fptreeStart;
 			}
 		}
-
-		@Override
+		
 		public boolean hasNext() {
 			if (inFPTree) {
 				return true;
@@ -115,8 +114,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				return this.length > 0;
 			}
 		}
-
-		@Override
+		
 		public int next() {
 			int val;
 			if (this.inFPTree) {
@@ -134,8 +132,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			// System.out.println("reading " + val);
 			return val;
 		}
-
-		@Override
+		
 		public int getTransactionSupport() {
 			return 1;
 		}
@@ -154,8 +151,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			this.buffer = new TIntArrayList(fptreeLimit);
 			this.fpTreeIndex = new TObjectIntHashMap<WrappedArray>();
 		}
-
-		@Override
+		
 		public void addItem(int item) {
 			if (item > fptreeLimit) {
 				if (!fpTreeDone) {
@@ -174,8 +170,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				this.buffer.add(item);
 			}
 		}
-
-		@Override
+		
 		public int endTransaction(int freq) {
 			if (!fpTreeDone) {
 				if (!this.buffer.isEmpty()) {
@@ -241,8 +236,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			// pos);
 			return pos;
 		}
-
-		@Override
+		
 		public TIntList getTids() {
 			TIntList localTids = this.tids;
 			this.tids = null;
