@@ -19,6 +19,7 @@ import org.apache.hadoop.io.SequenceFile.Reader;
  */
 class DistCache {
 	static final String REBASINGMAP_DIRNAME = "rebasing";
+	static final String BOUNDS_DIRNAME = "bounds";
 	
 	/**
 	 * Adds given path to conf's distributed cache

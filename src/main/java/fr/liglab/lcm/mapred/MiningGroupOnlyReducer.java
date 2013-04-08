@@ -1,8 +1,5 @@
 package fr.liglab.lcm.mapred;
 
-import java.util.Iterator;
-
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -10,8 +7,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.LCM;
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import fr.liglab.lcm.internals.ConcatenatedDataset;
+import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
@@ -27,7 +23,6 @@ public class MiningGroupOnlyReducer extends
 	
 	protected final Log logger = LogFactory.getLog(this.getClass());
 	
-	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;
 	
 	protected int greatestItemID;
@@ -39,7 +34,6 @@ public class MiningGroupOnlyReducer extends
 		
 		Configuration conf = context.getConfiguration();
 		
-		this.minSupport = conf.getInt(Driver.KEY_MINSUP, 10);
 		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
 		String dumpPath = conf.get(Driver.KEY_DUMP_ON_HEAP_EXN, "");
@@ -63,14 +57,7 @@ public class MiningGroupOnlyReducer extends
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		this.collector.setGroup(starters);
 		
-		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
-		ConcatenatedDataset dataset = null;
-		try {
-			dataset = new ConcatenatedDataset(this.minSupport, input);
-		} catch (DontExploreThisBranchException e) {
-			// with initial support coreItem = MAX_ITEM , this won't happen
-			e.printStackTrace();
-		}
+		Dataset dataset = TransactionWritable.buildDataset(context.getConfiguration(), transactions.iterator());
 		
 		logger.info("Loaded dataset for group "+gid.get());
 		
@@ -85,28 +72,5 @@ public class MiningGroupOnlyReducer extends
 		TIntIntMap reverse = DistCache.readReverseRebasing(conf);
 		
 		this.collector.close(reverse);
-	}
-	
-	
-	
-	public static final class WritableTransactionsIterator implements Iterator<int[]> {
-		
-		private final Iterator<TransactionWritable> wrapped;
-		
-		public WritableTransactionsIterator(Iterator<TransactionWritable> original) {
-			this.wrapped = original;
-		}
-		
-		public boolean hasNext() {
-			return this.wrapped.hasNext();
-		}
-
-		public int[] next() {
-			return this.wrapped.next().get();
-		}
-
-		public void remove() {
-			throw new NotImplementedException();
-		}
 	}
 }

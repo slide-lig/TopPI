@@ -1,12 +1,10 @@
 package fr.liglab.lcm.mapred;
 
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.io.PerItemGroupTopKCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
-import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 
@@ -16,17 +14,17 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	protected final static int PING_AT_MOST_EVERY = 60000;
 	private static long latestPing = 0;
 	
-	protected final Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context context;
+	protected final Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context context;
 
 	public PerItemTopKHadoopCollector(
 			int k,
-			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext) {
+			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext) {
 		this(k, currentContext, true, true);
 	}
 
 	public PerItemTopKHadoopCollector(
 			int k,
-			Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext,
+			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext,
 			boolean mineInGroup, boolean mineOutGroup) {
 		super(null, k, mineInGroup, mineOutGroup);
 		this.context = currentContext;

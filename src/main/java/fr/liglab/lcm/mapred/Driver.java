@@ -3,6 +3,7 @@ package fr.liglab.lcm.mapred;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -13,6 +14,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
@@ -246,57 +248,68 @@ public class Driver {
 		String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
 		String patternsPhase1Folder = outputFolder + "/patterns-phase1";
 		String patternsPhase2Folder = outputFolder + "/patterns-phase2";
-		String boundsPath = this.output + "/bounds";
+		String boundsPath = this.output + DistCache.BOUNDS_DIRNAME;
 		
-		if (buildSubDBs() && miningPhase1(patternsPhase1Folder)) {
+		if (buildSubDBs() && miningPhase1(patternsPhase1Folder, boundsPath)) {
 			Configuration phase2conf = new Configuration(this.conf);
 			
 			DistCache.copyToCache(phase2conf, boundsPath);
-			
-			/**
-			 * TODO:
-			 * miningPhase1 && miningPhase2 should output patterns as Int->SupportAndTransaction
-			 * miningPhase1 also needs MultipleOutputs to boundsPath
-			 */
-			
 			return miningPhase2(phase2conf, patternsPhase2Folder);
 		}
 		
 		return false;
 	}
 	
-	private boolean miningPhase2(Configuration phase2conf, String outputFolder) 
+	private boolean miningPhase2(Configuration myConf, String outputFolder) 
 			throws IOException, InterruptedException, ClassNotFoundException {
-
-		Job job = new Job(phase2conf, "Two-phases mining : phase 2 over "+this.input);
+		
+		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
 		job.setJarByClass(this.getClass());
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		//job.setOutputKeyClass(IntWritable.class);
-		//job.setOutputValueClass(TransactionWritable.class);
+		job.setOutputKeyClass(ItemAndSupportWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		String input = phase2conf.get(KEY_SUB_DBS);
+		String input = myConf.get(KEY_SUB_DBS);
+		FileInputFormat.addInputPath(job, new Path(input));
 		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		
+		//job.setReducerClass(TwoPhasesMiningReducer.class);
 		
 		return job.waitForCompletion(true);
 	}
 
-	protected boolean miningPhase1(String outputFolder) 
+	protected boolean miningPhase1(String outputFolder, String boundsFolder) 
 			throws IOException, InterruptedException, ClassNotFoundException {
+		
+		this.conf.set(MiningReducerPhase1.KEY_BOUNDS_PATH, "tmp/");
 		
 		Job job = new Job(this.conf, "Two-phases mining : phase 1 over "+this.input);
 		job.setJarByClass(this.getClass());
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		//job.setOutputKeyClass(IntWritable.class);
-		//job.setOutputValueClass(TransactionWritable.class);
+		job.setOutputKeyClass(ItemAndSupportWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
 		String input = this.conf.get(KEY_SUB_DBS);
+		FileInputFormat.addInputPath(job, new Path(input));
 		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
 		
-		return job.waitForCompletion(true);
+		MultipleOutputs.addNamedOutput(job, MiningReducerPhase1.BOUNDS_OUTPUT_NAME, 
+				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
+		
+		job.setReducerClass(MiningReducerPhase1.class);
+		
+		if (job.waitForCompletion(true)) {
+			FileSystem fs = FileSystem.get(conf);
+			fs.rename(new Path(outputFolder+"/tmp"), new Path(boundsFolder));
+			
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	protected boolean buildSubDBs() 
