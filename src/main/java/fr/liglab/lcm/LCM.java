@@ -2,6 +2,9 @@ package fr.liglab.lcm;
 
 import java.util.Arrays;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PatternsCollector;
@@ -14,8 +17,13 @@ import gnu.trove.map.hash.TIntIntHashMap;
  * LCM implementation, based on UnoAUA04 :
  * "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
  * by Takeaki Uno el. al.
+ * 
+ * Turn on starters' logging by setting 
+ * log4j.logger.fr.liglab.lcm.LCM=DEBUG
+ * in log4j.properties (or use -Dlog4j.configuration=PATH_TO_FILE)
  */
 public class LCM {
+	private final Log logger;
 	private final PatternsCollector collector;
 
 	private int explored = 0;
@@ -24,6 +32,7 @@ public class LCM {
 
 	public LCM(PatternsCollector patternsCollector) {
 		collector = patternsCollector;
+		logger = LogFactory.getLog(getClass());
 	}
 
 	/**
@@ -37,7 +46,7 @@ public class LCM {
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
 
-		extensionLoop(pattern, dataset);
+		extensionLoop(pattern, dataset, true);
 	}
 
 	/**
@@ -66,7 +75,7 @@ public class LCM {
 
 			collector.collect(dataset.getTransactionsCount(), Q);
 
-			extensionLoop(Q, dataset);
+			extensionLoop(Q, dataset, false);
 		} catch (OutOfMemoryError e) {
 			if (HeapDumper.basePath != null) {
 				HeapDumper.dumpThemAll();
@@ -77,7 +86,7 @@ public class LCM {
 		}
 	}
 
-	private void extensionLoop(final int[] pattern, final Dataset dataset) {
+	private void extensionLoop(final int[] pattern, final Dataset dataset, final boolean log) {
 		ExtensionsIterator iterator = dataset.getCandidatesIterator();
 		int[] sortedFreqs = iterator.getSortedFrequents();
 		TIntIntMap supportCounts = dataset.getSupportCounts();
@@ -93,6 +102,9 @@ public class LCM {
 					previousExplore);
 			if (explore < 0) {
 				try {
+					if (log && this.logger.isDebugEnabled()) {
+						this.logger.debug("Extending "+Arrays.toString(pattern)+" with "+candidate);
+					}
 					lcm(pattern, dataset, candidate);
 					explored++;
 				} catch (DontExploreThisBranchException e) {

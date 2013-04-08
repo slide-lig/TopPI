@@ -3,6 +3,8 @@ package fr.liglab.lcm.mapred;
 import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -22,6 +24,8 @@ import gnu.trove.set.hash.TIntHashSet;
 public class MiningGroupOnlyReducer extends 
 	Reducer<IntWritable, TransactionWritable, 
 		ItemAndSupportWritable, SupportAndTransactionWritable> {
+	
+	protected final Log logger = LogFactory.getLog(this.getClass());
 	
 	protected int minSupport;
 	protected PerItemTopKHadoopCollector collector;
@@ -53,6 +57,8 @@ public class MiningGroupOnlyReducer extends
 			java.lang.Iterable<TransactionWritable> transactions, Context context)
 			throws java.io.IOException, InterruptedException {
 		
+		logger.info("Loading dataset for group "+gid.get());
+		
 		final TIntSet starters = new TIntHashSet();
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		this.collector.setGroup(starters);
@@ -65,6 +71,8 @@ public class MiningGroupOnlyReducer extends
 			// with initial support coreItem = MAX_ITEM , this won't happen
 			e.printStackTrace();
 		}
+		
+		logger.info("Loaded dataset for group "+gid.get());
 		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
