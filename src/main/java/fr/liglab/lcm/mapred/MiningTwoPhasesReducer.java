@@ -122,9 +122,14 @@ public class MiningTwoPhasesReducer extends
 		
 		while (boundsIter.hasNext()) {
 			boundsIter.advance();
-			itemW.set(boundsIter.key());
-			boundW.set(boundsIter.value());
-			this.sideOutputs.write(BOUNDS_OUTPUT_NAME, itemW, boundW, this.boundsPath);
+			
+			int boundary = boundsIter.value();
+			
+			if (boundary > 0) {
+				itemW.set(boundsIter.key());
+				boundW.set(boundary);
+				this.sideOutputs.write(BOUNDS_OUTPUT_NAME, itemW, boundW, this.boundsPath);
+			}
 		}
 	}
 	
