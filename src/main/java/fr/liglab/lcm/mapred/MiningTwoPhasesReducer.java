@@ -106,6 +106,10 @@ public class MiningTwoPhasesReducer extends
 		while (startersIt.hasNext()) {
 			int candidate = startersIt.next();
 			
+			if (this.logger.isDebugEnabled()) {
+				this.logger.debug("phase "+this.phase+" - launching starter #"+candidate);
+			}
+			
 			try {
 				lcm.lcm(initPattern, dataset, candidate);
 			} catch (DontExploreThisBranchException e) {
