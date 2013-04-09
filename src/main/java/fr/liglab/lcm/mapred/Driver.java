@@ -273,10 +273,11 @@ public class Driver {
 		return false;
 	}
 
-	protected boolean miningPhase1(String outputFolder, String boundsFolder) 
+	private boolean miningPhase1(String outputFolder, String boundsFolder) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		this.conf.set(MiningReducerPhase1.KEY_BOUNDS_PATH, "tmp/");
+		this.conf.set(MiningTwoPhasesReducer.KEY_BOUNDS_PATH, "tmp/");
+		this.conf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 1);
 		
 		Job job = new Job(this.conf, "Two-phases mining : phase 1 over "+this.input);
 		job.setJarByClass(this.getClass());
@@ -292,10 +293,10 @@ public class Driver {
 		FileInputFormat.addInputPath(job, new Path(input));
 		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
 		
-		MultipleOutputs.addNamedOutput(job, MiningReducerPhase1.BOUNDS_OUTPUT_NAME, 
+		MultipleOutputs.addNamedOutput(job, MiningTwoPhasesReducer.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
 		
-		job.setReducerClass(MiningReducerPhase1.class);
+		job.setReducerClass(MiningTwoPhasesReducer.class);
 		
 		if (job.waitForCompletion(true)) {
 			FileSystem fs = FileSystem.get(conf);
@@ -309,7 +310,8 @@ public class Driver {
 	
 	private boolean miningPhase2(Configuration myConf, String outputFolder) 
 			throws IOException, InterruptedException, ClassNotFoundException {
-		
+
+		myConf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 2);
 		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
 		job.setJarByClass(this.getClass());
 		
@@ -324,7 +326,7 @@ public class Driver {
 		FileInputFormat.addInputPath(job, new Path(input));
 		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
 		
-		job.setReducerClass(MiningReducerPhase2.class);
+		job.setReducerClass(MiningTwoPhasesReducer.class);
 		
 		return job.waitForCompletion(true);
 	}
