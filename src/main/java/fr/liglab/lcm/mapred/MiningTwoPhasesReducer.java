@@ -29,6 +29,8 @@ public class MiningTwoPhasesReducer extends
 	static final String BOUNDS_OUTPUT_NAME = "bounds";
 	static final String KEY_BOUNDS_PATH = "lcm.bound.path";
 	static final String KEY_PHASE_ID = "lcm.mining.phase";
+	static final String COUNTER_GROUP = "MiningTwoPhasesReducer";
+	static final String COUNTER_BOUNDS_COUNT = "FoundBounds";
 	
 	protected final Log logger = LogFactory.getLog(this.getClass());
 	
@@ -63,8 +65,11 @@ public class MiningTwoPhasesReducer extends
 			this.boundsPath = context.getConfiguration().get(KEY_BOUNDS_PATH);
 		} else {
 			this.collector = new PerItemTopKHadoopCollector(topK, context, false, true);
-			TIntIntMap bounds = DistCache.readKnownBounds(conf);
-			this.collector.setKnownBounds(bounds);
+			
+			if (conf.getLong(Driver.KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
+				TIntIntMap bounds = DistCache.readKnownBounds(conf);
+				this.collector.setKnownBounds(bounds);
+			}
 		}
 		
 		
@@ -109,16 +114,22 @@ public class MiningTwoPhasesReducer extends
 		}
 		
 		if (this.phase == 1) {
-			this.dumpBounds();
+			int nbBounds = this.dumpBounds();
+			context.getCounter(COUNTER_GROUP, COUNTER_BOUNDS_COUNT).increment(nbBounds);
 		}
 	}
 	
-	protected void dumpBounds() throws IOException, InterruptedException {
+	/**
+	 * @return the number of positive discovered bounds (actually written to disk) - may be 0 ! 
+	 */
+	protected int dumpBounds() throws IOException, InterruptedException {
 		final IntWritable itemW  = new IntWritable();
 		final IntWritable boundW = new IntWritable();
 		
 		final TIntIntMap bounds = this.collector.getTopKBounds();
 		final TIntIntIterator boundsIter = bounds.iterator();
+		
+		int found = 0;
 		
 		while (boundsIter.hasNext()) {
 			boundsIter.advance();
@@ -129,8 +140,11 @@ public class MiningTwoPhasesReducer extends
 				itemW.set(boundsIter.key());
 				boundW.set(boundary);
 				this.sideOutputs.write(BOUNDS_OUTPUT_NAME, itemW, boundW, this.boundsPath);
+				found++;
 			}
 		}
+		
+		return found;
 	}
 	
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {

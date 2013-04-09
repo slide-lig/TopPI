@@ -65,6 +65,12 @@ public final class Driver {
 	 */
 	public static final String KEY_REBASING_MAX_ID = "lcm.items.maxId";
 	
+	/**
+	 * this property will be set by miningPhase1() if top-K boundaries have 
+	 * actually been written to disk (and distcache)
+	 */
+	public static final String KEY_BOUNDS_IN_DISTCACHE = "lcm.bounds.written";
+	
 	
 	protected final Configuration originalConf;
 	protected final String input;
@@ -150,7 +156,9 @@ public final class Driver {
 				if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
 						miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
 					
-					DistCache.copyToCache(miningConf, boundsPath);
+					if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
+						DistCache.copyToCache(miningConf, boundsPath);
+					}
 					
 					if (miningPhase2(miningConf, subDBsPath, patterns2) &&
 							aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
@@ -277,7 +285,7 @@ public final class Driver {
 	/**
 	 * Two-phases mining : step 1/2
 	 * This one has two outputs : mined patterns and discovered top-K support bounds, per item
-	 * @param conf 
+	 * @param conf - if bounds have been written (in rare cases in may not happen), KEY_BOUNDS_IN_DISTCACHE will be set
 	 * @param input path to sub-DBs file
 	 * @param patternsPath
 	 * @param boundsPath
@@ -287,7 +295,7 @@ public final class Driver {
 			final String input, final String patternsPath, final String boundsPath) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		conf.set(MiningTwoPhasesReducer.KEY_BOUNDS_PATH, "tmp/");
+		conf.set(MiningTwoPhasesReducer.KEY_BOUNDS_PATH, "tmp/bounds");
 		conf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 1);
 		
 		Job job = new Job(conf, "Two-phases mining : phase 1 over "+input);
@@ -309,8 +317,16 @@ public final class Driver {
 		job.setReducerClass(MiningTwoPhasesReducer.class);
 		
 		if (job.waitForCompletion(true)) {
-			FileSystem fs = FileSystem.get(conf);
-			fs.rename(new Path(patternsPath+"/tmp"), new Path(boundsPath));
+			
+			Counter boundsCounter = job.getCounters().findCounter(MiningTwoPhasesReducer.COUNTER_GROUP, 
+					MiningTwoPhasesReducer.COUNTER_BOUNDS_COUNT);
+			
+			if (boundsCounter.getValue() > 0) {
+				FileSystem fs = FileSystem.get(conf);
+				fs.rename(new Path(patternsPath+"/tmp"), new Path(boundsPath));
+				
+				conf.setLong(KEY_BOUNDS_IN_DISTCACHE, boundsCounter.getValue());
+			}
 			
 			return true;
 		} else {
