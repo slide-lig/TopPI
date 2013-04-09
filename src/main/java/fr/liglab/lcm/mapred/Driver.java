@@ -22,17 +22,11 @@ import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
 /**
- * Driver methods for our 3 map-reduce jobs
+ * Driver program for map-reduce'd mining 
  * 
- * 
- * 
- * 
- * FIXME : rebasing map shouldn't always be in distcache
- *  -> all driver methods should get static, with the conf as a parameter
- *  -> remove "conf" as a class attribute
- * 
+ * Each job is a static method.
  */
-public class Driver {
+public final class Driver {
 	//////////////////// MANDATORY CONFIGURATION PROPERTIES ////////////////////
 	
 	public static final String KEY_INPUT    = "lcm.path.input";
@@ -43,33 +37,28 @@ public class Driver {
 	
 	//////////////////// OPTIONAL CONFIGURATION PROPERTIES ////////////////////
 	
+	/**
+	 * Must be an actual class name from fr.liglab.lcm.mapred.groupers
+	 */
 	public static final String KEY_GROUPER_CLASS = "lcm.grouper";
+	
+	/**
+	 * 1 (naive top-k filtering, with starters), 2 (group-only top-k filtering, without starters) or 3 (two-phases mining)
+	 */
 	public static final String KEY_MINING_ALGO = "lcm.mapred.algo";
+	
+	/**
+	 * For profiling and testing only : the given groups'ID will be the only generated and mined sub-DB
+	 */
 	public static final String KEY_SINGLE_GROUP_ID = "lcm.single-group";
+	
+	/**
+	 * For debugging : when set to an existing folder on task tracker, heap dump will be printed on OutOfMemoryError
+	 */
 	public static final String KEY_DUMP_ON_HEAP_EXN = "lcm.dump-path";
 	
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
-	
-	/**
-	 * property key for item-counter-n-grouper output path
-	 */
-	static final String KEY_GROUPS_MAP = "lcm.path.groupsMap";
-	
-	/**
-	 * property key for mining output path
-	 */
-	static final String KEY_RAW_PATTERNS = "lcm.path.rawpatterns";
-
-	/**
-	 * property key for aggregated patterns' output path
-	 */
-	static final String KEY_AGGREGATED_PATTERNS = "lcm.path.aggregated";
-
-	/**
-	 * property key for path of stored sub-DBs (for two-phases mining)
-	 */
-	static final String KEY_SUB_DBS = "lcm.path.subDBs";
 	
 	/**
 	 * this property will be filled after item counting
@@ -77,7 +66,7 @@ public class Driver {
 	public static final String KEY_REBASING_MAX_ID = "lcm.items.maxId";
 	
 	
-	protected final Configuration conf;
+	protected final Configuration originalConf;
 	protected final String input;
 	protected final String output;
 	
@@ -86,22 +75,17 @@ public class Driver {
 	 * (except KEY_DO_TOP_K : if it's not set, all patterns will be mined)
 	 */
 	public Driver(Configuration configuration) {
-		this.conf = configuration;
+		this.originalConf = configuration;
 		
-		this.input = this.conf.get(KEY_INPUT);
-		this.output = this.conf.get(KEY_OUTPUT);
-		
-		this.conf.setStrings(KEY_GROUPS_MAP, this.output + "/" + DistCache.REBASINGMAP_DIRNAME);
-		this.conf.setStrings(KEY_RAW_PATTERNS, this.output + "/" + "rawMinedPatterns");
-		this.conf.setStrings(KEY_AGGREGATED_PATTERNS, output + "/" + "topPatterns");
-		this.conf.setStrings(KEY_SUB_DBS, output + "/" + "subDBs");
+		this.input = this.originalConf.get(KEY_INPUT);
+		this.output = this.originalConf.get(KEY_OUTPUT);
 	}
 	
 	@Override
 	public String toString() {
-		int g = this.conf.getInt(KEY_NBGROUPS, -1);
-		int k = this.conf.getInt(KEY_DO_TOP_K, -1);
-		int minSupport = this.conf.getInt(KEY_MINSUP, -1);
+		int g = this.originalConf.getInt(KEY_NBGROUPS, -1);
+		int k = this.originalConf.getInt(KEY_DO_TOP_K, -1);
+		int minSupport = this.originalConf.getInt(KEY_MINSUP, -1);
 		
 		StringBuilder builder = new StringBuilder();
 		
@@ -126,49 +110,80 @@ public class Driver {
 	}
 	
 	public int run() throws Exception {
-		System.out.println(toString());
+		System.out.println(this.toString());
 		
-		if (genItemMapToCache()) {
+		int miningAlgo = this.originalConf.getInt(KEY_MINING_ALGO, 3);
+		
+		String rebasingMapPath = this.output + "/" + DistCache.REBASINGMAP_DIRNAME;
+		String rawPatternsPath = this.output + "/" + "rawMinedPatterns";
+		String patternsPath = output + "/" + "topPatterns";
+		
+		if (genItemMap(this.originalConf, this.input, rebasingMapPath)) {
 			
-			String miningAlgo = this.conf.get(KEY_MINING_ALGO, "");
+			Configuration confWithRebasing = new Configuration(this.originalConf);
+			DistCache.copyToCache(confWithRebasing, rebasingMapPath);
 			
-			if ("1".equals(miningAlgo)) {
-				String patternsPath = this.conf.get(KEY_RAW_PATTERNS);
-				if (miningJob(false) && aggregateTopK(patternsPath)) {
+			switch (miningAlgo) {
+			case 1:
+				if (miningJob(confWithRebasing, this.input, rawPatternsPath, false) &&
+						aggregateTopK(confWithRebasing, patternsPath, rawPatternsPath)) {
+					
 					return 0;
 				}
-			} else if ("2".equals(miningAlgo)) {
-				if (miningJob(true)) {
+				break;
+			
+			case 2:
+				if (miningJob(confWithRebasing, this.input, patternsPath, true)) {
 					return 0;
 				}
-			} else { // algo "3"
-				// FIXME
-				String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
-				if (twoPhasesMining() && aggregateTopK(outputFolder + "/1", outputFolder + "/2")) {
-					return 0;
+				break;
+			
+			case 3:
+			default:
+				String patterns1 = rawPatternsPath + "/1";
+				String patterns2 = rawPatternsPath + "/2";
+				String subDBsPath = this.output + "/" + "subDBs";
+				String boundsPath = this.output + "/" + DistCache.BOUNDS_DIRNAME;
+				
+				Configuration miningConf = new Configuration(this.originalConf);
+				
+				if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
+						miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
+					
+					DistCache.copyToCache(miningConf, boundsPath);
+					
+					if (miningPhase2(miningConf, subDBsPath, patterns2) &&
+							aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
+						
+						return 0;
+					}
+					
 				}
+				break;
 			}
 		}
 		
 		return 1;
 	}
 	
-	protected boolean genItemMapToCache() 
+	/**
+	 * Item counting and rebasing job
+	 * KEY_REBASING_MAX_ID will be added to "conf"
+	 * @return true on success
+	 */
+	private static boolean genItemMap(Configuration conf, 
+			final String input, final String output) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		String output = this.conf.getStrings(KEY_GROUPS_MAP)[0];
-		
-		Job job = new Job(conf, 
-				"Computing frequent items mapping to groups, from "+this.input);
-		
-		job.setJarByClass(this.getClass());
+		Job job = new Job(conf, "Computing frequent items mapping to groups, from "+input);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(IntWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
+		FileInputFormat.addInputPath(job, new Path(input) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setMapperClass(ItemCountingMapper.class);
@@ -181,56 +196,63 @@ public class Driver {
 		boolean success = job.waitForCompletion(true);
 		
 		if (success) {
-			DistCache.copyToCache(this.conf, output);
 			CounterGroup counters = job.getCounters().getGroup(ItemCountingReducer.COUNTERS_GROUP);
 			Counter rebasingMaxID = counters.findCounter(ItemCountingReducer.COUNTER_REBASING_MAX_ID);
 			
-			this.conf.setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
+			conf.setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
 		}
 		
 		return success;
 	}
 	
-	protected boolean miningJob(boolean useGroupOnly) 
+	/**
+	 * Mining in a single job
+	 * @param conf with rebasing map in distcache
+	 * @param input
+	 * @param output
+	 * @param useGroupOnly when set to true, rely on MiningGroupOnlyReducer, which doesn't need aggregation
+	 * @return true on success
+	 */
+	private static boolean miningJob(final Configuration conf, 
+			final String input, final String output, final boolean useGroupOnly) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		Job job = new Job(conf, "Mining frequent itemsets from "+this.input);
-		
-		job.setJarByClass(this.getClass());
+		Job job = new Job(conf, "Mining frequent itemsets from "+input);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
+		FileInputFormat.addInputPath(job, new Path(input) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setMapperClass(MiningMapper.class);
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(TransactionWritable.class);
 		
-		String outputPath;
 		if (useGroupOnly) {
-			outputPath = this.conf.getStrings(KEY_AGGREGATED_PATTERNS)[0];
 			job.setReducerClass(MiningGroupOnlyReducer.class);
 		} else {
-			outputPath = this.conf.getStrings(KEY_RAW_PATTERNS)[0];
 			job.setReducerClass(MiningReducer.class);
 		}
-		
-		FileOutputFormat.setOutputPath(job, new Path(outputPath));
 		
 		return job.waitForCompletion(true);
 	}
 	
-	protected boolean aggregateTopK(String... inputs) 
+	/**
+	 * Aggregate patterns in order to ensure the K limit
+	 * @param conf with rebasing map in distcache
+	 * @param output
+	 * @param inputs you may provide many !
+	 * @return true on success
+	 */
+	private static boolean aggregateTopK(final Configuration conf, final String output, final String... inputs) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		String output = this.conf.getStrings(KEY_AGGREGATED_PATTERNS)[0];
-		
-		Job job = new Job(conf, "Aggregating top-K frequent itemsets from "+this.input);
-		
-		job.setJarByClass(this.getClass());
+		Job job = new Job(conf, "Aggregating top-K frequent itemsets to "+output);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -253,34 +275,23 @@ public class Driver {
 	}
 	
 	/**
-	 * It's a 3-jobs mining, actually
+	 * Two-phases mining : step 1/2
+	 * This one has two outputs : mined patterns and discovered top-K support bounds, per item
+	 * @param conf 
+	 * @param input path to sub-DBs file
+	 * @param patternsPath
+	 * @param boundsPath
+	 * @return true on success
 	 */
-	protected boolean twoPhasesMining() 
+	private static boolean miningPhase1(Configuration conf,
+			final String input, final String patternsPath, final String boundsPath) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		String outputFolder = this.conf.get(KEY_RAW_PATTERNS);
-		String patternsPhase1Folder = outputFolder + "/1";
-		String patternsPhase2Folder = outputFolder + "/2";
-		String boundsPath = this.output + "/" + DistCache.BOUNDS_DIRNAME;
+		conf.set(MiningTwoPhasesReducer.KEY_BOUNDS_PATH, "tmp/");
+		conf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 1);
 		
-		if (buildSubDBs() && miningPhase1(patternsPhase1Folder, boundsPath)) {
-			Configuration phase2conf = new Configuration(this.conf);
-			
-			DistCache.copyToCache(phase2conf, boundsPath);
-			return miningPhase2(phase2conf, patternsPhase2Folder);
-		}
-		
-		return false;
-	}
-
-	private boolean miningPhase1(String outputFolder, String boundsFolder) 
-			throws IOException, InterruptedException, ClassNotFoundException {
-		
-		this.conf.set(MiningTwoPhasesReducer.KEY_BOUNDS_PATH, "tmp/");
-		this.conf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 1);
-		
-		Job job = new Job(this.conf, "Two-phases mining : phase 1 over "+this.input);
-		job.setJarByClass(this.getClass());
+		Job job = new Job(conf, "Two-phases mining : phase 1 over "+input);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -289,9 +300,8 @@ public class Driver {
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		String input = this.conf.get(KEY_SUB_DBS);
 		FileInputFormat.addInputPath(job, new Path(input));
-		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		FileOutputFormat.setOutputPath(job, new Path(patternsPath));
 		
 		MultipleOutputs.addNamedOutput(job, MiningTwoPhasesReducer.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
@@ -300,7 +310,7 @@ public class Driver {
 		
 		if (job.waitForCompletion(true)) {
 			FileSystem fs = FileSystem.get(conf);
-			fs.rename(new Path(outputFolder+"/tmp"), new Path(boundsFolder));
+			fs.rename(new Path(patternsPath+"/tmp"), new Path(boundsPath));
 			
 			return true;
 		} else {
@@ -308,12 +318,20 @@ public class Driver {
 		}
 	}
 	
-	private boolean miningPhase2(Configuration myConf, String outputFolder) 
+	/**
+	 * Two-phases mining : step 2/2
+	 * @param conf - expecting known support bounds in dist cache
+	 * @param input path to sub-DBs file
+	 * @param output
+	 * @return true on success
+	 */
+	protected static boolean miningPhase2(Configuration conf, 
+			final String input, final String output) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 
-		myConf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 2);
-		Job job = new Job(myConf, "Two-phases mining : phase 2 over "+this.input);
-		job.setJarByClass(this.getClass());
+		conf.setInt(MiningTwoPhasesReducer.KEY_PHASE_ID, 2);
+		Job job = new Job(conf, "Two-phases mining : phase 2 over "+input);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -322,31 +340,33 @@ public class Driver {
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		String input = myConf.get(KEY_SUB_DBS);
 		FileInputFormat.addInputPath(job, new Path(input));
-		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setReducerClass(MiningTwoPhasesReducer.class);
 		
 		return job.waitForCompletion(true);
 	}
 	
-	protected boolean buildSubDBs() 
+	/**
+	 * Create the sub-DBs file, sorted by groupID
+	 * @param conf - expecting rebasing map in dist cache
+	 * @return true on success
+	 */
+	protected static boolean buildSubDBs(Configuration conf, 
+			final String input, final String output) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
-		Job job = new Job(this.conf, "Two-phases mining : building sub-DBs from "+this.input);
-		
-		job.setJarByClass(this.getClass());
+		Job job = new Job(conf, "Two-phases mining : building sub-DBs from "+input);
+		job.setJarByClass(Driver.class);
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(TransactionWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
-		
-		String outputFolder = this.conf.get(KEY_SUB_DBS);
-		FileOutputFormat.setOutputPath(job, new Path(outputFolder));
+		FileInputFormat.addInputPath(job, new Path(input) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setMapperClass(MiningMapper.class);
 		job.setMapOutputKeyClass(IntWritable.class);
