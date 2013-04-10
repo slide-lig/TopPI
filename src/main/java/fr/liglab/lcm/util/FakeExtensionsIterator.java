@@ -7,10 +7,10 @@ import gnu.trove.iterator.TIntIterator;
  * FIXME : actually, ExtensionsIterator is useless !
  */
 public class FakeExtensionsIterator implements ExtensionsIterator {
-	
+
 	private final int[] sortedFrequents;
 	private final TIntIterator wrapped;
-	
+
 	public FakeExtensionsIterator(int[] sortedFrequents, TIntIterator wrapped) {
 		this.sortedFrequents = sortedFrequents;
 		this.wrapped = wrapped;
@@ -20,7 +20,7 @@ public class FakeExtensionsIterator implements ExtensionsIterator {
 		return this.sortedFrequents;
 	}
 
-	public int getExtension() {
+	public synchronized int getExtension() {
 		if (wrapped.hasNext()) {
 			return wrapped.next();
 		} else {
