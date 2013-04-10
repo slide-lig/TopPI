@@ -10,7 +10,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import java.util.Arrays;
 
 public abstract class UnfilteredDataset extends IterableDataset {
-	public static final double FILTERING_THRESHOLD = 0.15;
+	public static double FILTERING_THRESHOLD = 0.15;
 
 	protected final IterableDataset parent;
 	protected final TIntList tids; // indexes in parent_concatenated
