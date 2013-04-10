@@ -35,16 +35,13 @@ public class RebasedVIntConcatenatedDataset extends VIntConcatenatedDataset impl
 
 	@Override
 	protected void prepareOccurences() {
-		// Rebaser instanciation will nullify supportCounts - grab it while it's
-		// there !
-		TIntIntIterator counts = this.supportCounts.iterator();
 		this.rebaser = new Rebaser(this);
-		TIntIntMap rebasing = this.rebaser.getRebasingMap();
+		TIntIntIterator counts = this.supportCounts.iterator();
+		
 		while (counts.hasNext()) {
 			counts.advance();
-			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
-			this.totalSize += getVIntSize(rebasedItem) * counts.value();
+			this.occurrences.put(counts.key(), new TIntArrayList(counts.value()));
+			this.totalSize += getVIntSize(counts.key()) * counts.value();
 		}
 	}
 

@@ -36,21 +36,16 @@ public class RebasedFPTreeMixDataset extends FPTreeMixDataset implements Rebased
 
 	@Override
 	protected void prepareOccurences() {
-
-		// Rebaser instanciation will nullify supportCounts - grab it while it's
-		// there !
-		TIntIntIterator counts = this.supportCounts.iterator();
-
 		this.rebaser = new Rebaser(this);
-		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-
+		TIntIntIterator counts = this.supportCounts.iterator();
+		
 		while (counts.hasNext()) {
 			counts.advance();
-			int rebasedItem = rebasing.get(counts.key());
-			if (rebasedItem > fptreeLimit) {
+			
+			if (counts.key() > fptreeLimit) {
 				this.sumAboveLimitSupport += counts.value();
 			}
-			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
+			this.occurrences.put(counts.key(), new TIntArrayList(counts.value()));
 		}
 	}
 
