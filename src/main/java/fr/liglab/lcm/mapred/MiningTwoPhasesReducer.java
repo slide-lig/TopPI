@@ -40,6 +40,7 @@ public class MiningTwoPhasesReducer extends
 	
 	protected MultipleOutputs<ItemAndSupportWritable,SupportAndTransactionWritable> sideOutputs;
 	protected String boundsPath;
+	protected TIntIntMap bounds;
 	
 	protected int greatestItemID;
 	protected Grouper grouper;
@@ -63,8 +64,7 @@ public class MiningTwoPhasesReducer extends
 			this.sideOutputs = new MultipleOutputs<ItemAndSupportWritable, SupportAndTransactionWritable>(context);
 			this.boundsPath = context.getConfiguration().get(KEY_BOUNDS_PATH);
 		} else if (conf.getLong(Driver.KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
-			TIntIntMap bounds = DistCache.readKnownBounds(conf);
-			this.collector.setKnownBounds(bounds);
+			this.bounds = DistCache.readKnownBounds(conf);
 		}
 		
 		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
@@ -86,6 +86,7 @@ public class MiningTwoPhasesReducer extends
 			this.collector = new PerItemTopKHadoopCollector(topK, context, dataset, true, false);
 		} else {
 			this.collector = new PerItemTopKHadoopCollector(topK, context, dataset, false, true);
+			this.collector.setKnownBounds(bounds);
 		}
 		
 		final TIntArrayList starters = new TIntArrayList();
