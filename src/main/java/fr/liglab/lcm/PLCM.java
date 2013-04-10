@@ -79,14 +79,16 @@ public class PLCM {
 	 * Initial invocation
 	 */
 	public void lcm(final Dataset dataset) {
-		int[] pattern = dataset.getDiscoveredClosureItems(); // usually, it's
-																// empty
-
+		lcm(dataset, dataset.getCandidatesIterator());
+	}
+	
+	public void lcm(final Dataset dataset, ExtensionsIterator iterator) {
+		int[] pattern = dataset.getDiscoveredClosureItems();
+		
 		if (pattern.length > 0) {
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
-
-		ExtensionsIterator iterator = dataset.getCandidatesIterator();
+		
 		this.threads.get(0).init(iterator, dataset, pattern);
 		for (PLCMThread t : this.threads) {
 			// System.out.println("Starting thread " + t.id);

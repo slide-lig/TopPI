@@ -3,8 +3,8 @@ package fr.liglab.lcm.io;
 import fr.liglab.lcm.internals.Dataset;
 import gnu.trove.iterator.TIntIterator;
 
-public final class PerItemTopKCollectorThreadSafeInitialized extends
-		PerItemTopKCollector {
+public class PerItemTopKCollectorThreadSafeInitialized extends
+		PerItemGroupTopKCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a
 	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
@@ -31,10 +31,20 @@ public final class PerItemTopKCollectorThreadSafeInitialized extends
 	public PerItemTopKCollectorThreadSafeInitialized(
 			final PatternsCollector follower, final int k, TIntIterator items,
 			final boolean outputEachPatternOnce) {
-		super(follower, k, outputEachPatternOnce);
+		super(follower, k);
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
 		this.init(items);
+	}
+	
+	public PerItemTopKCollectorThreadSafeInitialized(
+			final PatternsCollector follower, final int k, Dataset dataset,
+			final boolean mineInGroup, final boolean mineOutGroup) {
+		
+		super(follower, k, mineInGroup, mineOutGroup);
+		
+		// FIXME - maybe this would better happen in setGroup ?
+		this.init(dataset.getSupportCounts().keySet().iterator());
 	}
 
 	private void init(final TIntIterator items) {

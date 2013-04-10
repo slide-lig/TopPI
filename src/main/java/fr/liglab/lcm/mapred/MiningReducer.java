@@ -4,14 +4,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
-import fr.liglab.lcm.LCM;
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import gnu.trove.iterator.TIntIterator;
+import fr.liglab.lcm.util.FakeExtensionsIterator;
 import gnu.trove.list.array.TIntArrayList;
 
 public class MiningReducer extends 
@@ -22,6 +21,8 @@ public class MiningReducer extends
 
 	protected int greatestItemID;
 	protected Grouper grouper;
+	protected int topK;
+	protected int nbThreads;
 	
 	@Override
 	protected void setup(Context context)
@@ -29,12 +30,12 @@ public class MiningReducer extends
 		
 		Configuration conf = context.getConfiguration();
 		
-		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
-		
-		this.collector = new PerItemTopKHadoopCollector(topK, context);
+		topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
 		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
 		this.grouper = Grouper.factory(conf);
+		
+		this.nbThreads = conf.getInt(Driver.KEY_NB_THREADS, 1);
 	}
 	
 	protected void reduce(IntWritable gid, 
@@ -44,32 +45,21 @@ public class MiningReducer extends
 		Dataset dataset = TransactionWritable.buildDataset(context.getConfiguration(), transactions.iterator());
 
 		context.progress(); // ping master, otherwise long mining tasks get killed
+
+		this.collector = new PerItemTopKHadoopCollector(this.topK, dataset, context);
 		
-		final LCM lcm = new LCM(this.collector);
-		final int[] initPattern = dataset.getDiscoveredClosureItems();
+		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
 
 		final TIntArrayList starters = new TIntArrayList();
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		
-		if (initPattern.length > 0 ) {
-			starters.removeAll(initPattern);
-			this.collector.collect(dataset.getTransactionsCount(), initPattern);
-		}
+		FakeExtensionsIterator fake = new FakeExtensionsIterator(
+				dataset.getCandidatesIterator().getSortedFrequents(), 
+				starters.iterator()
+			);
 		
-		TIntIterator startersIt = starters.iterator();
+		lcm.lcm(dataset, fake);
 		
-		while (startersIt.hasNext()) {
-			int candidate = startersIt.next();
-			
-			try {
-				lcm.lcm(initPattern, dataset, candidate);
-			} catch (DontExploreThisBranchException e) {
-				
-			}
-		}
-	}
-	
-	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
 		this.collector.close();
 	}
 }

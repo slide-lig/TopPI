@@ -57,6 +57,10 @@ public final class Driver {
 	 */
 	public static final String KEY_DUMP_ON_HEAP_EXN = "lcm.dump-path";
 	
+	/**
+	 * Mining reducers gone multi-threaded (defaults to 1)
+	 */
+	public static final String KEY_NB_THREADS = "lcm.threads";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	

@@ -1,32 +1,36 @@
 package fr.liglab.lcm.mapred;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.apache.hadoop.mapreduce.Reducer;
 
-import fr.liglab.lcm.io.PerItemGroupTopKCollector;
+import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 
-public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
+public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeInitialized {
 	
 	// minimum interval between pokes to job tracker, in milliseconds
 	protected final static int PING_AT_MOST_EVERY = 60000;
-	private static long latestPing = 0;
+	private static AtomicLong latestPing = new AtomicLong(0);
 	
 	protected final Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context context;
 
 	public PerItemTopKHadoopCollector(
-			int k,
+			int k, Dataset dataset,
 			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext) {
-		this(k, currentContext, true, true);
+		this(k, currentContext, dataset, true, true);
 	}
 
 	public PerItemTopKHadoopCollector(
 			int k,
 			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext,
+			Dataset dataset,
 			boolean mineInGroup, boolean mineOutGroup) {
-		super(null, k, mineInGroup, mineOutGroup);
+		super(null, k, dataset, mineInGroup, mineOutGroup);
 		this.context = currentContext;
 	}
 	
@@ -34,9 +38,9 @@ public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	public void collect(int support, int[] pattern) {
 		super.collect(support, pattern);
 		
-		if ( (System.currentTimeMillis()-latestPing) > PING_AT_MOST_EVERY) {
+		if ( (System.currentTimeMillis()-latestPing.get()) > PING_AT_MOST_EVERY) {
+			latestPing.set(System.currentTimeMillis());
 			this.context.progress();
-			latestPing = System.currentTimeMillis();
 		}
 	}
 

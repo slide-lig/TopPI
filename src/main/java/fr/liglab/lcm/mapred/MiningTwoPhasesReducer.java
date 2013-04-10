@@ -9,16 +9,15 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
-import fr.liglab.lcm.LCM;
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import fr.liglab.lcm.util.FakeExtensionsIterator;
 import fr.liglab.lcm.util.HeapDumper;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.set.hash.TIntHashSet;
@@ -36,6 +35,8 @@ public class MiningTwoPhasesReducer extends
 	
 	protected PerItemTopKHadoopCollector collector;
 	protected int phase;
+	protected int topK;
+	protected int nbThreads;
 	
 	protected MultipleOutputs<ItemAndSupportWritable,SupportAndTransactionWritable> sideOutputs;
 	protected String boundsPath;
@@ -49,7 +50,7 @@ public class MiningTwoPhasesReducer extends
 		
 		Configuration conf = context.getConfiguration();
 		
-		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
+		this.topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
 		String dumpPath = conf.get(Driver.KEY_DUMP_ON_HEAP_EXN, "");
 		if (dumpPath.length() > 0) {
@@ -59,22 +60,17 @@ public class MiningTwoPhasesReducer extends
 		this.phase = conf.getInt(KEY_PHASE_ID, 1);
 		
 		if (this.phase == 1) {
-			this.collector = new PerItemTopKHadoopCollector(topK, context, true, false);
-			
 			this.sideOutputs = new MultipleOutputs<ItemAndSupportWritable, SupportAndTransactionWritable>(context);
 			this.boundsPath = context.getConfiguration().get(KEY_BOUNDS_PATH);
-		} else {
-			this.collector = new PerItemTopKHadoopCollector(topK, context, false, true);
-			
-			if (conf.getLong(Driver.KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
-				TIntIntMap bounds = DistCache.readKnownBounds(conf);
-				this.collector.setKnownBounds(bounds);
-			}
+		} else if (conf.getLong(Driver.KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
+			TIntIntMap bounds = DistCache.readKnownBounds(conf);
+			this.collector.setKnownBounds(bounds);
 		}
-		
 		
 		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
 		this.grouper = Grouper.factory(conf);
+		
+		this.nbThreads = conf.getInt(Driver.KEY_NB_THREADS, 1);
 	}
 	
 	
@@ -86,41 +82,32 @@ public class MiningTwoPhasesReducer extends
 		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
+		if (this.phase == 1) {
+			this.collector = new PerItemTopKHadoopCollector(topK, context, dataset, true, false);
+		} else {
+			this.collector = new PerItemTopKHadoopCollector(topK, context, dataset, false, true);
+		}
+		
 		final TIntArrayList starters = new TIntArrayList();
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
+		
 		this.collector.setGroup(new TIntHashSet(starters));
 		
-		final LCM lcm = new LCM(this.collector);
-		final int[] initPattern = dataset.getDiscoveredClosureItems();
+		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
 		
-		if (initPattern.length > 0 ) {
-			starters.removeAll(initPattern);
-			
-			if (this.phase == 1) {
-				this.collector.collect(dataset.getTransactionsCount(), initPattern);
-			}
-		}
+		FakeExtensionsIterator fake = new FakeExtensionsIterator(
+				dataset.getCandidatesIterator().getSortedFrequents(), 
+				starters.iterator()
+			);
 		
-		TIntIterator startersIt = starters.iterator();
-		
-		while (startersIt.hasNext()) {
-			int candidate = startersIt.next();
-			
-			if (this.logger.isDebugEnabled()) {
-				this.logger.debug("phase "+this.phase+" - launching starter #"+candidate);
-			}
-			
-			try {
-				lcm.lcm(initPattern, dataset, candidate);
-			} catch (DontExploreThisBranchException e) {
-				
-			}
-		}
+		lcm.lcm(dataset, fake);
 		
 		if (this.phase == 1) {
 			int nbBounds = this.dumpBounds();
 			context.getCounter(COUNTER_GROUP, COUNTER_BOUNDS_COUNT).increment(nbBounds);
 		}
+		
+		this.collector.close();
 	}
 	
 	/**
@@ -155,7 +142,5 @@ public class MiningTwoPhasesReducer extends
 		if (this.phase == 1) {
 			this.sideOutputs.close();
 		}
-		
-		this.collector.close();
 	}
 }

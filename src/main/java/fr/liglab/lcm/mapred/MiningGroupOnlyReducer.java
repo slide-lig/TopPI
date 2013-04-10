@@ -6,7 +6,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 
-import fr.liglab.lcm.LCM;
+import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
@@ -27,6 +27,9 @@ public class MiningGroupOnlyReducer extends
 	
 	protected int greatestItemID;
 	protected Grouper grouper;
+	protected int topK;
+	protected int nbThreads;
+	protected TIntIntMap reverse;
 	
 	@Override
 	protected void setup(Context context)
@@ -34,17 +37,19 @@ public class MiningGroupOnlyReducer extends
 		
 		Configuration conf = context.getConfiguration();
 		
-		int topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
+		this.topK = conf.getInt(Driver.KEY_DO_TOP_K, -1);
 		
 		String dumpPath = conf.get(Driver.KEY_DUMP_ON_HEAP_EXN, "");
 		if (dumpPath.length() > 0) {
 			HeapDumper.basePath = dumpPath;
 		}
 		
-		this.collector = new PerItemTopKHadoopCollector(topK, context, true, false);
-		
 		this.greatestItemID = conf.getInt(Driver.KEY_REBASING_MAX_ID, 1);
 		this.grouper = Grouper.factory(conf);
+		
+		this.reverse = DistCache.readReverseRebasing(conf);
+		
+		this.nbThreads = conf.getInt(Driver.KEY_NB_THREADS, 1);
 	}
 	
 	protected void reduce(IntWritable gid, 
@@ -53,24 +58,24 @@ public class MiningGroupOnlyReducer extends
 		
 		logger.info("Loading dataset for group "+gid.get());
 		
+		Dataset dataset = TransactionWritable.buildDataset(context.getConfiguration(), transactions.iterator());
+		
+		this.collector = new PerItemTopKHadoopCollector(topK, context, dataset, true, false);
+		
 		final TIntSet starters = new TIntHashSet();
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
 		this.collector.setGroup(starters);
-		
-		Dataset dataset = TransactionWritable.buildDataset(context.getConfiguration(), transactions.iterator());
 		
 		logger.info("Loaded dataset for group "+gid.get());
 		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
-		final LCM lcm = new LCM(this.collector);
+		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
+		
 		lcm.lcm(dataset);
+		
+
+		this.collector.close(this.reverse);
 	}
 	
-	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
-		Configuration conf = context.getConfiguration();
-		TIntIntMap reverse = DistCache.readReverseRebasing(conf);
-		
-		this.collector.close(reverse);
-	}
 }
