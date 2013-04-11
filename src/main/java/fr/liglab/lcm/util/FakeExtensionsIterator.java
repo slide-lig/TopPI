@@ -1,5 +1,7 @@
 package fr.liglab.lcm.util;
 
+import java.util.Calendar;
+
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import gnu.trove.iterator.TIntIterator;
 
@@ -22,7 +24,9 @@ public class FakeExtensionsIterator implements ExtensionsIterator {
 
 	public synchronized int getExtension() {
 		if (wrapped.hasNext()) {
-			return wrapped.next();
+			int next = wrapped.next();
+			System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - extending with %2$d\n", Calendar.getInstance(), next);
+			return next;
 		} else {
 			return -1;
 		}
