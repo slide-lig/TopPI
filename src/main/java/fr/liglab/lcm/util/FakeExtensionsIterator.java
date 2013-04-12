@@ -25,11 +25,9 @@ public class FakeExtensionsIterator implements ExtensionsIterator {
 	public synchronized int getExtension() {
 		if (wrapped.hasNext()) {
 			int next = wrapped.next();
-			
 			long id = Thread.currentThread().getId();
 			System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d extending with %3$d\n", 
 					Calendar.getInstance(), id , next);
-			
 			return next;
 		} else {
 			return -1;

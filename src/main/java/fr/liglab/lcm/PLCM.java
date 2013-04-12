@@ -153,6 +153,11 @@ public class PLCM {
 			this.stackedJobs.add(sj);
 			this.lock.writeLock().unlock();
 		}
+		
+		@Override
+		public long getId() {
+			return id;
+		}
 
 		@Override
 		public void run() {
