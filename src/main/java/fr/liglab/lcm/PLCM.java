@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -45,7 +44,6 @@ public class PLCM {
 	private final AtomicInteger explored = new AtomicInteger(0);
 	private final AtomicInteger cut = new AtomicInteger(0);
 	private final AtomicInteger pptestFailed = new AtomicInteger(0);
-	private final Random stealRandom = new Random();
 
 	public PLCM(PatternsCollector patternsCollector) {
 		this(patternsCollector, Runtime.getRuntime().availableProcessors());
@@ -110,9 +108,7 @@ public class PLCM {
 
 	public StolenJob stealJob(final int id) {
 		// here we need to readlock because the owner thread can write
-		int startSteal = this.stealRandom.nextInt(this.threads.size());
-		for (int stealDelta = 0; stealDelta < this.threads.size(); stealDelta++) {
-			int stealFrom = (startSteal + stealDelta) % this.threads.size();
+		for (int stealFrom = 0; stealFrom < this.threads.size(); stealFrom++) {
 			if (stealFrom != id) {
 				PLCMThread t = this.threads.get(stealFrom);
 				for (int stealPos = 0; stealPos < t.stackedJobs.size(); stealPos++) {
