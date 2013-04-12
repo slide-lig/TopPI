@@ -204,6 +204,9 @@ public class PLCM {
 					}
 				}
 			}
+			
+			System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d terminated\n", 
+					Calendar.getInstance(), this.id);
 		}
 
 		private void lcm(StackedJob sj, int extension) {
