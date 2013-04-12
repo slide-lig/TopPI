@@ -3,6 +3,7 @@ package fr.liglab.lcm;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -133,17 +134,28 @@ public class PLCM {
 		}
 		return null;
 	}
+	
+	public void setUltraVerboseMode(boolean enabled) {
+		for (PLCMThread t : this.threads) {
+			t.setUltraVerboseMode(enabled);
+		}
+	}
 
 	private class PLCMThread extends Thread {
 		private final ReadWriteLock lock;
 		private final List<StackedJob> stackedJobs;
 		private final int id;
+		private boolean ultraVerbose = false;
 
 		public PLCMThread(final int id) {
 			super("PLCMThread" + id);
 			this.stackedJobs = new ArrayList<StackedJob>();
 			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
+		}
+
+		public void setUltraVerboseMode(boolean enabled) {
+			this.ultraVerbose = enabled;
 		}
 
 		private void init(ExtensionsIterator iterator, Dataset dataset,
@@ -205,6 +217,12 @@ public class PLCM {
 			}
 			if (explore < 0) {
 				explored.incrementAndGet();
+				
+				if (this.ultraVerbose) {
+					System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d extending %3$s with %4$d\n", 
+							Calendar.getInstance(), this.id , Arrays.toString(sj.pattern) , extension);
+				}
+				
 				Dataset dataset = null;
 				try {
 					dataset = sj.dataset.getProjection(extension);

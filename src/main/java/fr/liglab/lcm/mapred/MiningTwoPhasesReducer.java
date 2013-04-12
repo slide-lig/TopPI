@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
@@ -96,25 +97,35 @@ public class MiningTwoPhasesReducer extends
 		
 		final TIntArrayList starters = new TIntArrayList();
 		this.grouper.fillWithGroupItems(starters, gid.get(), this.greatestItemID);
-		
 		this.collector.setGroup(new TIntHashSet(starters));
-		
+
 		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
+		ExtensionsIterator extensionsIterator;
 		
-		FakeExtensionsIterator fake = new FakeExtensionsIterator(
-				dataset.getCandidatesIterator().getSortedFrequents(), 
-				starters.iterator()
-			);
-		
+		int singleStarter = context.getConfiguration().getInt(SingleStarter.KEY_STARTER, -1);
 		int STAHP = context.getConfiguration().getInt(Driver.KEY_STOP_AT, -1);
-		if (STAHP > 0) {
-			fake.interruptAt(STAHP);
+		
+		int[] sortedFrequents = dataset.getCandidatesIterator().getSortedFrequents();
+		if (singleStarter >= 0) {
+			extensionsIterator = new SingleStarter.SingleExtensionIterator(singleStarter, sortedFrequents);
+			SingleStarter.preFillCollector(context.getConfiguration(), this.collector);
+			lcm.setUltraVerboseMode(true);
+		} else if (this.phase == 1) {
+			FakeExtensionsIterator fakeIt = new FakeExtensionsIterator(sortedFrequents, starters.iterator());
+			
+			if (STAHP > 0) {
+				fakeIt.interruptAt(STAHP);
+			}
+			extensionsIterator = fakeIt;
+		} else {
+			extensionsIterator = dataset.getCandidatesIterator();
 		}
 		
-		lcm.lcm(dataset, fake);
+		lcm.lcm(dataset, extensionsIterator);
 		
-		if (this.phase == 1) {
-			
+		if (singleStarter >= 0) {
+			System.out.println(lcm.toString());
+		} else if (this.phase == 1) {
 			int nbBounds = 0;
 			
 			if (STAHP > 0) {

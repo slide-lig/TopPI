@@ -104,4 +104,18 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeIn
 		}
 		return outputted;
 	}
+	
+	/*
+	 * DEBUG ONLY
+	 */
+	@Deprecated
+	public void init(int i, int[] supports) {
+		PatternWithFreq[] patterns = new PatternWithFreq[k];
+		
+		for (int j = 0; j < supports.length; j++) {
+			patterns[j] = new PatternWithFreq(supports[j], new int[0]);
+		}
+		
+		this.topK.put(i, patterns);
+	}
 }
