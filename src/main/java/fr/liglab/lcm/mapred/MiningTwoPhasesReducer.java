@@ -11,21 +11,26 @@ import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import fr.liglab.lcm.util.FakeExtensionsIterator;
 import fr.liglab.lcm.util.HeapDumper;
+import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.TIntObjectMap;
 import gnu.trove.set.hash.TIntHashSet;
 
 public class MiningTwoPhasesReducer extends
 		Reducer<IntWritable, TransactionWritable, ItemAndSupportWritable, SupportAndTransactionWritable> {
 	
 	static final String BOUNDS_OUTPUT_NAME = "bounds";
+	static final String TOK_SUPPORTS_DUMP_OUTPUT_NAME = "topKDump";
 	static final String KEY_BOUNDS_PATH = "lcm.bound.path";
 	static final String KEY_PHASE_ID = "lcm.mining.phase";
 	static final String COUNTER_GROUP = "MiningTwoPhasesReducer";
@@ -101,10 +106,23 @@ public class MiningTwoPhasesReducer extends
 				starters.iterator()
 			);
 		
+		int STAHP = context.getConfiguration().getInt(Driver.KEY_STOP_AT, -1);
+		if (STAHP > 0) {
+			fake.interruptAt(STAHP);
+		}
+		
 		lcm.lcm(dataset, fake);
 		
 		if (this.phase == 1) {
-			int nbBounds = this.dumpBounds();
+			
+			int nbBounds = 0;
+			
+			if (STAHP > 0) {
+				nbBounds = this.completeTopKDump();
+			} else {
+				nbBounds = this.dumpBounds();
+			}
+			
 			context.getCounter(COUNTER_GROUP, COUNTER_BOUNDS_COUNT).increment(nbBounds);
 		}
 		
@@ -132,6 +150,38 @@ public class MiningTwoPhasesReducer extends
 				itemW.set(boundsIter.key());
 				boundW.set(boundary);
 				this.sideOutputs.write(BOUNDS_OUTPUT_NAME, itemW, boundW, this.boundsPath);
+				found++;
+			}
+		}
+		
+		return found;
+	}
+	
+	@SuppressWarnings("deprecation")
+	protected int completeTopKDump() throws IOException, InterruptedException {
+		final IntWritable itemW  = new IntWritable();
+		final TransactionWritable supportsW = new TransactionWritable();
+		ItemsetsFactory factory = new ItemsetsFactory();
+		
+		TIntObjectMap<PatternWithFreq[]> patterns = this.collector.getTopK();
+		TIntObjectIterator<PatternWithFreq[]> iterator = patterns.iterator();
+		
+		int found = 0;
+		
+		while (iterator.hasNext()) {
+			iterator.advance();
+			
+			itemW.set(iterator.key());
+			
+			for (PatternWithFreq entry : iterator.value()) {
+				if (entry != null && entry.getSupportCount() > 0) {
+					factory.add(entry.getSupportCount());
+				}
+			}
+			
+			if (!factory.isEmpty()) {
+				supportsW.set(factory.get());
+				this.sideOutputs.write(TOK_SUPPORTS_DUMP_OUTPUT_NAME, itemW, supportsW, this.boundsPath);
 				found++;
 			}
 		}

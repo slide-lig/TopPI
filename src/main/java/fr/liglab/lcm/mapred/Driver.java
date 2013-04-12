@@ -62,6 +62,11 @@ public final class Driver {
 	 */
 	public static final String KEY_NB_THREADS = "lcm.threads";
 	
+	/**
+	 * If set, 1st phase of mining will be interrupted once the given item ID is outputted 
+	 */
+	public static final String KEY_STOP_AT = "lcm.mining.stopAt";
+	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
 	/**
@@ -159,6 +164,10 @@ public final class Driver {
 				
 				if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
 						miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
+					
+					if (this.originalConf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
+						return 0;
+					}
 					
 					if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
 						DistCache.copyToCache(miningConf, boundsPath);
@@ -317,6 +326,11 @@ public final class Driver {
 		
 		MultipleOutputs.addNamedOutput(job, MiningTwoPhasesReducer.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
+		
+		if (conf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
+			MultipleOutputs.addNamedOutput(job, MiningTwoPhasesReducer.TOK_SUPPORTS_DUMP_OUTPUT_NAME, 
+					SequenceFileOutputFormat.class, IntWritable.class, TransactionWritable.class);
+		}
 		
 		job.setReducerClass(MiningTwoPhasesReducer.class);
 		

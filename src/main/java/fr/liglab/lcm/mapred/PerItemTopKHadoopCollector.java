@@ -10,6 +10,7 @@ import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.TIntObjectMap;
 
 public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeInitialized {
 	
@@ -47,6 +48,14 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeIn
 	@Override
 	public long close() {
 		return this.close(null);
+	}
+	
+	/**
+	 * for debugging only !
+	 */
+	@Deprecated
+	public TIntObjectMap<PatternWithFreq[]> getTopK() {
+		return this.topK;
 	}
 	
 	/**
