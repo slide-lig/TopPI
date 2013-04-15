@@ -222,8 +222,8 @@ public class PLCM {
 				explored.incrementAndGet();
 				
 				if (this.ultraVerbose) {
-					System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d extending %3$s with %4$d\n", 
-							Calendar.getInstance(), this.id , Arrays.toString(sj.pattern) , extension);
+					System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n", 
+							Calendar.getInstance(), this.id , Arrays.toString(sj.pattern) , sj.dataset.getTransactionsCount(), extension);
 				}
 				
 				Dataset dataset = null;

@@ -74,7 +74,7 @@ public abstract class FilteredDataset extends IterableDataset {
 				}
 			}
 		}
-
+		
 		supportCounts.remove(extension);
 
 		if (ignoreItems != null) {
