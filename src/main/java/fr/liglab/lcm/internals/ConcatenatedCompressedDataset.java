@@ -69,7 +69,7 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 
 	@Override
 	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
-		return new ConcatenatedUnfilteredCompressedDataset(upper, extension);
+		return new ConcatenatedCompressedDataset(upper, extension);
 	}
 
 	@Override
@@ -213,7 +213,7 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			this.index = tid + 1;
 			this.findNext();
 		}
-		
+
 		public boolean hasNext() {
 			return this.nextItem >= 0;
 		}
@@ -232,13 +232,13 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 				}
 			}
 		}
-		
+
 		public int next() {
 			int res = this.nextItem;
 			this.findNext();
 			return res;
 		}
-		
+
 		public int getTransactionSupport() {
 			return this.freq;
 		}
@@ -253,12 +253,12 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 		public TransWriter(boolean sourceSorted) {
 			this.sourceSorted = sourceSorted;
 		}
-		
+
 		public void addItem(int item) {
 			concatenated[index] = item;
 			this.index++;
 		}
-		
+
 		public int endTransaction(int freq) {
 			int size = index - tIdPosition - 1;
 			concatenated[this.tIdPosition] = size;
@@ -273,7 +273,7 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 			transactionsList.add(transId);
 			return transId;
 		}
-		
+
 		public TIntList getTids() {
 			return null;
 		}
