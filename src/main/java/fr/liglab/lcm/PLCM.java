@@ -120,12 +120,23 @@ public class PLCM {
 					if (!t.stackedJobs.isEmpty()) {
 						StackedJob sj = t.stackedJobs.get(0);
 						t.lock.readLock().unlock();
-						int extension = sj.getIterator().getExtension();
-						if (extension != -1) {
-							// need to copy because of possible inconsistencies
-							// in previous explore results (no lock to
-							// read/update them)
-							return new StolenJob(extension, sj);
+						
+						boolean notAFirstParent = true;
+						while(notAFirstParent) {
+							try {
+								int extension = sj.getIterator().getExtension();
+								
+								// no DontExploreThisBranchException happened
+								notAFirstParent = false;
+								if (extension != -1) {
+									// need to copy because of possible inconsistencies
+									// in previous explore results (no lock to
+									// read/update them)
+									return new StolenJob(extension, sj);
+								}
+							} catch (DontExploreThisBranchException e) {
+								// try again
+							}
 						}
 					} else {
 						t.lock.readLock().unlock();
@@ -187,19 +198,22 @@ public class PLCM {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
 				}
 				if (sj != null) {
-					extension = sj.getIterator().getExtension();
-					// iterator is finished, remove it from the stack
-					if (extension == -1) {
-						this.lock.writeLock().lock();
-						this.stackedJobs.remove(this.stackedJobs.size() - 1);
-						this.lock.writeLock().unlock();
+					try {
+						extension = sj.getIterator().getExtension();
+						// iterator is finished, remove it from the stack
+						if (extension == -1) {
+							this.lock.writeLock().lock();
+							this.stackedJobs.remove(this.stackedJobs.size() - 1);
+							this.lock.writeLock().unlock();
+						} else {
+							this.lcm(sj, extension);
+						}
+					} catch (DontExploreThisBranchException e) {
+						sj.updatepptestfail(e.extension, e.firstParent);
+						pptestFailed.incrementAndGet();
 					}
-				}
-				if (extension != -1) {
-					this.lcm(sj, extension);
-				}
-				// our list was empty, we should steal from another thread
-				if (sj == null) {
+					
+				} else { // our list was empty, we should steal from another thread
 					StolenJob stolj = stealJob(this.id);
 					if (stolj == null) {
 						exit = true;

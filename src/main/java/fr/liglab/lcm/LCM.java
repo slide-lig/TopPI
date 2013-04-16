@@ -94,27 +94,33 @@ public class LCM {
 		int candidate;
 		int previousExplore = -1;
 		int previousCandidate = -1;
-
-		while ((candidate = iterator.getExtension()) != -1) {
-			int explore = collector.explore(pattern, candidate, sortedFreqs,
-					supportCounts, failedPPTests, previousCandidate,
-					previousExplore);
-			if (explore < 0) {
-				try {
-					if (log && this.logger.isDebugEnabled()) {
-						this.logger.debug("Extending "+Arrays.toString(pattern)+" with "+candidate);
+		
+		while (true) {
+			try {
+				candidate = iterator.getExtension();
+				
+				int explore = collector.explore(pattern, candidate, sortedFreqs,
+						supportCounts, failedPPTests, previousCandidate,
+						previousExplore);
+				if (explore < 0) {
+					try {
+						if (log && this.logger.isDebugEnabled()) {
+							this.logger.debug("Extending "+Arrays.toString(pattern)+" with "+candidate);
+						}
+						lcm(pattern, dataset, candidate);
+						explored++;
+					} catch (DontExploreThisBranchException e) {
+						failedPPTests.put(candidate, e.firstParent);
+						pptestcut++;
 					}
-					lcm(pattern, dataset, candidate);
-					explored++;
-				} catch (DontExploreThisBranchException e) {
-					failedPPTests.put(candidate, e.firstParent);
-					pptestcut++;
-				}
 
-			} else {
-				previousExplore = explore;
-				previousCandidate = candidate;
-				explorecut++;
+				} else {
+					previousExplore = explore;
+					previousCandidate = candidate;
+					explorecut++;
+				}
+			} catch (DontExploreThisBranchException exn) {
+				pptestcut++;
 			}
 		}
 	}
@@ -127,13 +133,16 @@ public class LCM {
 		private static final long serialVersionUID = 2969583589161047791L;
 
 		public final int firstParent;
+		public final int extension;
 
 		/**
+		 * @param extension the tested extension
 		 * @param foundFirstParent
-		 *            a item found in closure > coreItem
+		 *            a item found in closure > extension
 		 */
-		public DontExploreThisBranchException(int foundFirstParent) {
+		public DontExploreThisBranchException(int exploredExtension, int foundFirstParent) {
 			this.firstParent = foundFirstParent;
+			this.extension = exploredExtension;
 		}
 	}
 

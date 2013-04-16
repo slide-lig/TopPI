@@ -106,7 +106,7 @@ public abstract class Dataset {
 		}
 
 		if (greatestClosureItem > this.coreItem) {
-			throw new LCM.DontExploreThisBranchException(greatestClosureItem);
+			throw new LCM.DontExploreThisBranchException(this.coreItem, greatestClosureItem);
 		}
 
 		discoveredClosure = builder.get();
