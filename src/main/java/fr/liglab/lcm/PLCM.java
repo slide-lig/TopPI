@@ -30,7 +30,6 @@ import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
 import fr.liglab.lcm.io.RebaserCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
-import gnu.trove.map.TIntIntMap;
 
 /**
  * LCM implementation, based on UnoAUA04 :
@@ -52,8 +51,7 @@ public class PLCM {
 
 	public PLCM(PatternsCollector patternsCollector, int nbThreads) {
 		if (nbThreads < 1) {
-			throw new IllegalArgumentException(
-					"nbThreads has to be > 0, given " + nbThreads);
+			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
 		collector = patternsCollector;
 		this.threads = new ArrayList<PLCMThread>(nbThreads);
@@ -66,12 +64,17 @@ public class PLCM {
 		this.collector.collect(support, pattern);
 	}
 
-	public final int explore(int[] currentPattern, int extension,
-			int[] sortedFreqItems, TIntIntMap supportCounts, int previousItem,
-			int previousResult) {
-		return this.collector.explore(currentPattern, extension,
-				sortedFreqItems, supportCounts, null, previousItem,
-				previousResult);
+	public final int explore(StackedJob sj, int extension) {
+		int previousItem = -1;
+		int previousResult = -1;
+		synchronized (sj) {
+			previousItem = sj.getPreviousItem();
+			previousResult = sj.getPreviousResult();
+		}
+		synchronized (sj.getFailedpptests()) {
+			return this.collector.explore(sj.getPattern(), extension, sj.getSortedfreqs(), sj.getDataset()
+					.getSupportCounts(), sj.getFailedpptests(), previousItem, previousResult);
+		}
 	}
 
 	/**
@@ -80,14 +83,14 @@ public class PLCM {
 	public void lcm(final Dataset dataset) {
 		lcm(dataset, dataset.getCandidatesIterator());
 	}
-	
+
 	public void lcm(final Dataset dataset, ExtensionsIterator iterator) {
 		int[] pattern = dataset.getDiscoveredClosureItems();
-		
+
 		if (pattern.length > 0) {
 			collector.collect(dataset.getTransactionsCount(), pattern);
 		}
-		
+
 		this.threads.get(0).init(iterator, dataset, pattern);
 		for (PLCMThread t : this.threads) {
 			// System.out.println("Starting thread " + t.id);
@@ -103,8 +106,8 @@ public class PLCM {
 	}
 
 	public String toString() {
-		return "LCM exploration : " + explored + " patterns explored / " + cut
-				+ " aborted / " + pptestFailed + " pptest failed";
+		return "LCM exploration : " + explored + " patterns explored / " + cut + " aborted / " + pptestFailed
+				+ " pptest failed";
 	}
 
 	public StolenJob stealJob(final int id) {
@@ -117,14 +120,12 @@ public class PLCM {
 					if (!t.stackedJobs.isEmpty()) {
 						StackedJob sj = t.stackedJobs.get(0);
 						t.lock.readLock().unlock();
-						int extension = sj.iterator.getExtension();
+						int extension = sj.getIterator().getExtension();
 						if (extension != -1) {
 							// need to copy because of possible inconsistencies
 							// in previous explore results (no lock to
 							// read/update them)
-							return new StolenJob(extension, new StackedJob(
-									sj.iterator, sj.dataset, sj.pattern,
-									sj.sortedfreqs));
+							return new StolenJob(extension, sj);
 						}
 					} else {
 						t.lock.readLock().unlock();
@@ -134,7 +135,7 @@ public class PLCM {
 		}
 		return null;
 	}
-	
+
 	public void setUltraVerboseMode(boolean enabled) {
 		for (PLCMThread t : this.threads) {
 			t.setUltraVerboseMode(enabled);
@@ -158,14 +159,13 @@ public class PLCM {
 			this.ultraVerbose = enabled;
 		}
 
-		private void init(ExtensionsIterator iterator, Dataset dataset,
-				int[] pattern) {
+		private void init(ExtensionsIterator iterator, Dataset dataset, int[] pattern) {
 			StackedJob sj = new StackedJob(iterator, dataset, pattern, null);
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(sj);
 			this.lock.writeLock().unlock();
 		}
-		
+
 		@Override
 		public long getId() {
 			return id;
@@ -183,7 +183,7 @@ public class PLCM {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
 				}
 				if (sj != null) {
-					extension = sj.iterator.getExtension();
+					extension = sj.getIterator().getExtension();
 					// iterator is finished, remove it from the stack
 					if (extension == -1) {
 						this.lock.writeLock().lock();
@@ -204,80 +204,52 @@ public class PLCM {
 					}
 				}
 			}
-			
-			System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d terminated\n", 
-					Calendar.getInstance(), this.id);
+
+			System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d terminated\n", Calendar.getInstance(),
+					this.id);
 		}
 
 		private void lcm(StackedJob sj, int extension) {
-			TIntIntMap supportCounts = sj.dataset.getSupportCounts();
 			int explore;
-			if (sj.sortedfreqs == null) {
+			if (sj.getSortedfreqs() == null) {
 				explore = -1;
 			} else {
-				explore = explore(sj.pattern, extension, sj.sortedfreqs,
-						supportCounts, sj.previousItem, sj.previousResult);
+				explore = explore(sj, extension);
 			}
 			if (explore < 0) {
 				explored.incrementAndGet();
-				
+
 				if (this.ultraVerbose) {
-					System.out.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n", 
-							Calendar.getInstance(), this.id , Arrays.toString(sj.pattern) , sj.dataset.getTransactionsCount(), extension);
+					System.out
+							.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n",
+									Calendar.getInstance(), this.id, Arrays.toString(sj.getPattern()), sj.getDataset()
+											.getTransactionsCount(), extension);
 				}
-				
+
 				Dataset dataset = null;
 				try {
-					dataset = sj.dataset.getProjection(extension);
+					dataset = sj.getDataset().getProjection(extension);
 				} catch (DontExploreThisBranchException e) {
 					// may happen in getProjection, in which case we should just
 					// continue with next candidate
+					sj.updatepptestfail(extension, e.firstParent);
 					pptestFailed.incrementAndGet();
 					return;
 				}
-				int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
-						dataset.getDiscoveredClosureItems());
+				int[] Q = ItemsetsFactory.extend(sj.getPattern(), extension, dataset.getDiscoveredClosureItems());
 				collect(dataset.getTransactionsCount(), Q);
 				ExtensionsIterator iterator = dataset.getCandidatesIterator();
 				int[] sortedFreqs = iterator.getSortedFrequents();
-				StackedJob nj = new StackedJob(iterator, dataset, Q,
-						sortedFreqs);
+				StackedJob nj = new StackedJob(iterator, dataset, Q, sortedFreqs);
 				this.lock.writeLock().lock();
 				this.stackedJobs.add(nj);
 				this.lock.writeLock().unlock();
 
 			} else {
-				sj.previousItem = extension;
-				sj.previousResult = explore;
+				sj.updateExploreResults(extension, explore);
 				cut.incrementAndGet();
 			}
 		}
-	}
-
-	private static final class StackedJob {
-		private final ExtensionsIterator iterator;
-		private final Dataset dataset;
-		private final int[] pattern;
-		private final int[] sortedfreqs;
-		private int previousItem;
-		private int previousResult;
-
-		public StackedJob(ExtensionsIterator iterator, Dataset dataset,
-				int[] pattern, int[] sortedfreqs) {
-			super();
-			this.iterator = iterator;
-			this.dataset = dataset;
-			this.pattern = pattern;
-			this.sortedfreqs = sortedfreqs;
-			this.previousItem = -1;
-			this.previousResult = -1;
-		}
-
-		@Override
-		public String toString() {
-			return "StackedJob [pattern=" + Arrays.toString(pattern) + "]";
-		}
-
 	}
 
 	private static final class StolenJob {
@@ -303,10 +275,8 @@ public class PLCM {
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
-		options.addOption("t", true,
-				"How many threads will be launched (defaults to 8)");
-		options.addOption("f", true,
-				"Filtering threshold (must be between 0 and 1, defaults to 0.15)");
+		options.addOption("t", true, "How many threads will be launched (defaults to 8)");
+		options.addOption("f", true, "Filtering threshold (must be between 0 and 1, defaults to 0.15)");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -349,18 +319,17 @@ public class PLCM {
 			outputPath = args[2];
 		}
 
-		PatternsCollector collector = instanciateCollector(cmd, outputPath,
-				dataset, dataset);
+		PatternsCollector collector = instanciateCollector(cmd, outputPath, dataset, dataset);
 
 		long time = System.currentTimeMillis();
-		
+
 		if (cmd.hasOption('f')) {
 			double threshold = Double.parseDouble(cmd.getOptionValue('f'));
 			if (threshold >= 0 && threshold <= 1) {
 				UnfilteredDataset.FILTERING_THRESHOLD = threshold;
 			}
 		}
-		
+
 		PLCM miner;
 		if (cmd.hasOption('t')) {
 			int nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
@@ -368,13 +337,12 @@ public class PLCM {
 		} else {
 			miner = new PLCM(collector);
 		}
-		
+
 		miner.lcm(dataset);
 
 		if (cmd.hasOption('b')) {
 			time = System.currentTimeMillis() - time;
-			System.err
-					.println(miner.toString() + " // mined in " + time + "ms");
+			System.err.println(miner.toString() + " // mined in " + time + "ms");
 		}
 
 		reader.close();
@@ -385,8 +353,8 @@ public class PLCM {
 	 * Parse command-line arguments to instanciate the right collector in
 	 * stand-alone mode we're always rebasing so we need the dataset
 	 */
-	private static PatternsCollector instanciateCollector(CommandLine cmd,
-			String outputPath, RebasedDataset rebasedDataset, Dataset dataset) {
+	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath,
+			RebasedDataset rebasedDataset, Dataset dataset) {
 
 		PatternsCollector collector = null;
 
@@ -410,8 +378,7 @@ public class PLCM {
 
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
-			collector = new PerItemTopKCollectorThreadSafeInitialized(
-					collector, k, dataset, true);
+			collector = new PerItemTopKCollectorThreadSafeInitialized(collector, k, dataset, true);
 		}
 
 		return collector;
