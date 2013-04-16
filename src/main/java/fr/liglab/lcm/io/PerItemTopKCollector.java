@@ -32,8 +32,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		this(decorated, k, false);
 	}
 
-	public PerItemTopKCollector(final PatternsCollector follower, final int k,
-			final boolean outputEachPatternOnce) {
+	public PerItemTopKCollector(final PatternsCollector follower, final int k, final boolean outputEachPatternOnce) {
 		this.decorated = follower;
 		this.k = k;
 		// we may want to hint a default size, it is at least the group size,
@@ -48,8 +47,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		}
 	}
 
-	protected void insertPatternInTop(final int support, final int[] pattern,
-			int item) {
+	protected void insertPatternInTop(final int support, final int[] pattern, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 		if (itemTopK == null) {
 			itemTopK = new PatternWithFreq[this.k];
@@ -58,8 +56,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		updateTop(support, pattern, itemTopK);
 	}
 
-	protected void updateTop(final int support, final int[] pattern,
-			PatternWithFreq[] itemTopK) {
+	protected void updateTop(final int support, final int[] pattern, PatternWithFreq[] itemTopK) {
 		// we do not have k patterns for this item yet
 		if (itemTopK[this.k - 1] == null) {
 			// find the position of the last null entry
@@ -115,9 +112,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 						break;
 					} else {
 						if (dedup.add(itemTopK[i])) {
-							this.decorated.collect(
-									itemTopK[i].getSupportCount(),
-									itemTopK[i].getPattern());
+							this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 						}
 					}
 				}
@@ -128,8 +123,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 					if (itemTopK[i] == null) {
 						break;
 					} else {
-						this.decorated.collect(itemTopK[i].getSupportCount(),
-								itemTopK[i].getPattern());
+						this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 					}
 				}
 			}
@@ -157,9 +151,8 @@ public class PerItemTopKCollector extends PatternsCollector {
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
 	@Override
-	public int explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final TIntIntMap failedPPTests, final int previousItem,
+	public int explore(final int[] currentPattern, final int extension, final int[] sortedFreqItems,
+			final TIntIntMap supportCounts, final TIntIntMap failedPPTests, final int previousItem,
 			final int resultForPreviousItem) {
 
 		if (currentPattern.length == 0) {
@@ -172,8 +165,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 			threshold = Math.min(resultForPreviousItem, threshold);
 		} else {
 			for (int item : currentPattern) {
-				int itemTest = this.checkExploreInCurrentPattern(item,
-						extensionSupport);
+				int itemTest = this.checkExploreInCurrentPattern(item, extensionSupport);
 				if (itemTest == -1) {
 					return -1;
 				} else {
@@ -183,8 +175,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		}
 		// check for extension
 		{
-			int itemTest = this.checkExploreInCurrentPattern(extension,
-					extensionSupport);
+			int itemTest = this.checkExploreInCurrentPattern(extension, extensionSupport);
 			if (itemTest == -1) {
 				return -1;
 			} else {
@@ -195,8 +186,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 		if (shortcut) {
 			i = Arrays.binarySearch(sortedFreqItems, previousItem);
 			if (i < 0) {
-				throw new RuntimeException(
-						"previous item not in frequent items");
+				throw new RuntimeException("previous item not in frequent items");
 			}
 			i++;
 		}
@@ -208,8 +198,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 			if (item >= extension) {
 				break;
 			}
-			int itemTest = this.checkExploreOtherItem(item,
-					supportCounts.get(item), extension, extensionSupport,
+			int itemTest = this.checkExploreOtherItem(item, supportCounts.get(item), extension, extensionSupport,
 					failedPPTests);
 			if (itemTest == -1) {
 				return -1;
@@ -220,28 +209,23 @@ public class PerItemTopKCollector extends PatternsCollector {
 		return threshold;
 	}
 
-	protected int checkExploreInCurrentPattern(final int item,
-			final int itemSupport) {
+	protected int checkExploreInCurrentPattern(final int item, final int itemSupport) {
 		final PatternWithFreq[] itemTopK = this.topK.get(item);
 		// itemTopK == null should never happen in theory, as
 		// currentPattern should be in there at least
-		if (itemTopK == null || itemTopK[this.k - 1] == null
-				|| itemTopK[this.k - 1].getSupportCount() < itemSupport) {
+		if (itemTopK == null || itemTopK[this.k - 1] == null || itemTopK[this.k - 1].getSupportCount() < itemSupport) {
 			return -1;
 		} else {
 			return itemTopK[this.k - 1].getSupportCount();
 		}
 	}
 
-	protected int checkExploreOtherItem(final int item, final int itemSupport,
-			final int extension, final int extensionSupport,
-			final TIntIntMap failedPPTests) {
+	protected int checkExploreOtherItem(final int item, final int itemSupport, final int extension,
+			final int extensionSupport, final TIntIntMap failedPPTests) {
 		final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
 
-		if (potentialExtensionTopK == null
-				|| potentialExtensionTopK[this.k - 1] == null
-				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math
-						.min(extensionSupport, itemSupport)) {
+		if (potentialExtensionTopK == null || potentialExtensionTopK[this.k - 1] == null
+				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math.min(extensionSupport, itemSupport)) {
 
 			if (failedPPTests == null || failedPPTests.get(item) <= extension) {
 				return -1;
@@ -295,8 +279,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 
 		@Override
 		public String toString() {
-			return "[supportCount=" + supportCount + ", pattern="
-					+ Arrays.toString(pattern) + "]";
+			return "[supportCount=" + supportCount + ", pattern=" + Arrays.toString(pattern) + "]";
 		}
 
 		@Override
@@ -337,8 +320,7 @@ public class PerItemTopKCollector extends PatternsCollector {
 	}
 
 	public static void main(String[] args) {
-		final PerItemTopKCollector topk = new PerItemTopKCollector(
-				new StdOutCollector(), 3, true);
+		final PerItemTopKCollector topk = new PerItemTopKCollector(new StdOutCollector(), 3, true);
 		topk.collect(10, new int[] { 3, 1, 2 });
 		topk.collect(100, new int[] { 1 });
 		topk.collect(30, new int[] { 1, 3 });
