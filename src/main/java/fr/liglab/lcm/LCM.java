@@ -70,8 +70,7 @@ public class LCM {
 		try {
 			final Dataset dataset = parent_dataset.getProjection(extension);
 
-			int[] Q = ItemsetsFactory.extend(pattern, extension,
-					dataset.getDiscoveredClosureItems());
+			int[] Q = ItemsetsFactory.extend(dataset.getDiscoveredClosureItems(), extension, pattern);
 
 			collector.collect(dataset.getTransactionsCount(), Q);
 

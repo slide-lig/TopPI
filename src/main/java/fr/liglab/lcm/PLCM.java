@@ -135,6 +135,10 @@ public class PLCM {
 		return null;
 	}
 	
+	/**
+	 * Don't use it on dense datasets. Just don't.
+	 */
+	@Deprecated
 	public void setUltraVerboseMode(boolean enabled) {
 		for (PLCMThread t : this.threads) {
 			t.setUltraVerboseMode(enabled);
@@ -235,8 +239,7 @@ public class PLCM {
 					pptestFailed.incrementAndGet();
 					return;
 				}
-				int[] Q = ItemsetsFactory.extend(sj.pattern, extension,
-						dataset.getDiscoveredClosureItems());
+				int[] Q = ItemsetsFactory.extend(dataset.getDiscoveredClosureItems(), extension, sj.pattern);
 				collect(dataset.getTransactionsCount(), Q);
 				ExtensionsIterator iterator = dataset.getCandidatesIterator();
 				int[] sortedFreqs = iterator.getSortedFrequents();

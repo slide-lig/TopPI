@@ -127,7 +127,6 @@ public class MiningTwoPhasesReducer extends
 		if (singleStarter >= 0) {
 			extensionsIterator = new SingleStarter.SingleExtensionIterator(singleStarter, sortedFrequents);
 			SingleStarter.preFillCollector(context.getConfiguration(), this.collector);
-			lcm.setUltraVerboseMode(true);
 			
 			// lol
 			try {
