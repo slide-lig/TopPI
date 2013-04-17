@@ -14,6 +14,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
@@ -35,17 +36,23 @@ public class SingleStarter extends Configured implements Tool{
 	}
 
 	public int run(String[] args) throws Exception {
-		if (args.length != 7) {
-			System.err.println("USAGE: hadoop jar SingleStarter.jar -libjars trove4j-3.0.3.jar SUB_DBS_PATH MINSUP NBGROUPS K PATH_TO_KNOWN_BOUNDS MAX_ITEM STARTER");
+		if (args.length != 7 && args.length != 8) {
+			System.err.println("USAGE: hadoop jar SingleStarter.jar -libjars trove4j-3.0.3.jar SUB_DBS_PATH MINSUP NBGROUPS K PATH_TO_KNOWN_BOUNDS MAX_ITEM STARTER [OUTPUT_PATH]");
 			return 1;
+		}
+		
+		String outputPath = null;
+		
+		if (args.length == 8) {
+			outputPath = args[7];
 		}
 		
 		return run(args[0], Integer.parseInt(args[1]), 
 				Integer.parseInt(args[2]), Integer.parseInt(args[3]), 
-				args[4], Integer.parseInt(args[5]), Integer.parseInt(args[6]));
+				args[4], Integer.parseInt(args[5]), Integer.parseInt(args[6]), outputPath);
 	}
 	
-	private int run(String input, int minsup, int nbgroups, int k, String boundsPath, int maxItemID, int starter) 
+	private int run(String input, int minsup, int nbgroups, int k, String boundsPath, int maxItemID, int starter, String output) 
 			throws IOException, InterruptedException, ClassNotFoundException {
 		
 		Configuration conf = getConf();
@@ -62,7 +69,14 @@ public class SingleStarter extends Configured implements Tool{
 		job.setJarByClass(this.getClass());
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
-		job.setOutputFormatClass(NullOutputFormat.class);
+		
+		if (output == null) {
+			job.setOutputFormatClass(NullOutputFormat.class);
+		} else {
+			job.setOutputFormatClass(TextOutputFormat.class);
+			TextOutputFormat.setOutputPath(job, new Path(output));
+		}
+		
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(TransactionWritable.class);
 		job.setOutputKeyClass(ItemAndSupportWritable.class);
