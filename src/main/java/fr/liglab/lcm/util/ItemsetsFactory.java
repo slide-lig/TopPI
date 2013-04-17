@@ -49,6 +49,10 @@ public class ItemsetsFactory {
 	 * @return a new array concatenating each of its arguments
 	 */
 	public static int[] extend(final int[] pattern, final int extension, final int[] closure) {
+		if (closure == null) {
+			return extend(pattern, extension);
+		}
+		
 		int[] extended = new int[pattern.length + closure.length + 1];
 
 		System.arraycopy(pattern, 0, extended, 0, pattern.length);
@@ -59,6 +63,10 @@ public class ItemsetsFactory {
 	}
 
 	public static int[] extend(final int[] pattern, final int extension, final int[] closure, final int[] ignoreItems) {
+		if (ignoreItems == null) {
+			return extend(pattern, extension, closure);
+		}
+		
 		int[] extended = new int[pattern.length + closure.length + 1 + ignoreItems.length];
 
 		System.arraycopy(pattern, 0, extended, 0, pattern.length);
