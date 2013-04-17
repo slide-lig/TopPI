@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals;
 
+import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 
 import java.util.Arrays;
@@ -69,5 +70,70 @@ public abstract class IterableDataset extends Dataset {
 				}
 			}
 		}
+	}
+
+	/**
+	 * @return greatest j > candidate having the same support as candidate, -1
+	 *         if not such item exists
+	 */
+	public int prefixPreservingTest(final int candidate) {
+		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
+		if (candidateIdx < 0) {
+			throw new RuntimeException("Unexpected : prefixPreservingTest of an infrequent item, " + candidate);
+		}
+
+		return ppTest(candidateIdx);
+	}
+
+	/**
+	 * @return greatest j > candidate having the same support as candidate at
+	 *         the given index, -1 if not such item exists
+	 */
+	protected int ppTest(final int candidateIndex) {
+		final int candidate = frequentItems[candidateIndex];
+		final int candidateSupport = supportCounts.get(candidate);
+		TIntList candidateOccurrences = this.getTidList(candidate);
+
+		for (int i = frequentItems.length - 1; i > candidateIndex; i--) {
+			int j = frequentItems[i];
+
+			if (supportCounts.get(j) >= candidateSupport) {
+				TIntList jOccurrences = this.getTidList(j);
+				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
+					return j;
+				}
+			}
+		}
+
+		return -1;
+	}
+
+	/**
+	 * Assumptions : - both contain array indexes appended in increasing order -
+	 * you already tested that B.size >= A.size
+	 * 
+	 * @return true if A is included in B
+	 */
+	public boolean isAincludedInB(final TIntList a, final TIntList b) {
+		TIntIterator aIt = a.iterator();
+		TIntIterator bIt = b.iterator();
+
+		int tidA = 0;
+		int tidB = 0;
+
+		while (aIt.hasNext() && bIt.hasNext()) {
+			tidA = aIt.next();
+			tidB = bIt.next();
+
+			while (tidB < tidA && bIt.hasNext()) {
+				tidB = bIt.next();
+			}
+
+			if (tidB > tidA) {
+				return false;
+			}
+		}
+
+		return tidA == tidB && !aIt.hasNext();
 	}
 }
