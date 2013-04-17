@@ -42,22 +42,19 @@ public class BasicDataset extends Dataset {
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public BasicDataset(final int minimumsupport,
-			final Iterator<int[]> transactions)
+	public BasicDataset(final int minimumsupport, final Iterator<int[]> transactions)
 			throws DontExploreThisBranchException {
 
 		// in initial dataset, all items are candidate => all items < coreItem
 		super(minimumsupport, Integer.MAX_VALUE);
 
-		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(
-				transactions);
+		CopyIteratorDecorator<int[]> transactionsCopier = new CopyIteratorDecorator<int[]>(transactions);
 		genSupportCounts(transactionsCopier);
 		transactionsCount = transactionsCopier.size();
 
 		genClosureAndFilterCount();
 
-		reduceAndBuildOccurrences(transactionsCopier,
-				new SortedItemsetsFactory());
+		reduceAndBuildOccurrences(transactionsCopier, new SortedItemsetsFactory());
 	}
 
 	/**
@@ -67,8 +64,7 @@ public class BasicDataset extends Dataset {
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	protected BasicDataset(final int minimumsupport,
-			final ArrayList<int[]> projectedSupport, final int projectedItem)
+	protected BasicDataset(final int minimumsupport, final ArrayList<int[]> projectedSupport, final int projectedItem)
 			throws DontExploreThisBranchException {
 
 		super(minimumsupport, projectedItem);
@@ -90,8 +86,7 @@ public class BasicDataset extends Dataset {
 	 * All transactions will be filtered (keeping only items existing in
 	 * supportCounts) and constructed via the provided builder
 	 */
-	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset,
-			ItemsetsFactory builder) {
+	protected void reduceAndBuildOccurrences(Iterable<int[]> dataset, ItemsetsFactory builder) {
 		builder.get(); // reset builder, just to be sure
 		TIntSet retained = this.supportCounts.keySet();
 
@@ -125,8 +120,7 @@ public class BasicDataset extends Dataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension)
-			throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension, int[] ignoreItems) throws DontExploreThisBranchException {
 		return new BasicDataset(minsup, occurrences.get(extension), extension);
 	}
 
@@ -165,8 +159,7 @@ public class BasicDataset extends Dataset {
 
 			int coreItemIndex = Arrays.binarySearch(frequentItems, coreItem);
 			if (coreItemIndex >= 0) {
-				throw new RuntimeException(
-						"Unexpected : coreItem appears in frequentItems !");
+				throw new RuntimeException("Unexpected : coreItem appears in frequentItems !");
 			}
 
 			// binarySearch returns -(insertion_point)-1
@@ -221,8 +214,7 @@ public class BasicDataset extends Dataset {
 		 * @return true if A is included in B, assuming they share array
 		 *         pointers (appended in the same order)
 		 */
-		private boolean isAincludedInB(final ArrayList<int[]> a,
-				final ArrayList<int[]> b) {
+		private boolean isAincludedInB(final ArrayList<int[]> a, final ArrayList<int[]> b) {
 			Iterator<int[]> aIt = a.iterator();
 			Iterator<int[]> bIt = b.iterator();
 

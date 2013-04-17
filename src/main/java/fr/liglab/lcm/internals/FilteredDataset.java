@@ -74,7 +74,7 @@ public abstract class FilteredDataset extends IterableDataset {
 				}
 			}
 		}
-		
+
 		supportCounts.remove(extension);
 
 		if (ignoreItems != null) {
@@ -258,19 +258,19 @@ public abstract class FilteredDataset extends IterableDataset {
 	public abstract int getRealSize();
 
 	@Override
-	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension, int[] ignoreItems) throws DontExploreThisBranchException {
 		double extensionSupport = this.supportCounts.get(extension);
 		if ((extensionSupport / this.transactionsCount) > UnfilteredDataset.FILTERING_THRESHOLD) {
-			return this.createUnfilteredDataset(this, extension);
+			return this.createUnfilteredDataset(this, extension, ignoreItems);
 		} else {
-			return this.createFilteredDataset(this, extension);
+			return this.createFilteredDataset(this, extension, ignoreItems);
 		}
 	}
 
-	public abstract Dataset createUnfilteredDataset(FilteredDataset upper, int extension)
+	public abstract Dataset createUnfilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
 			throws DontExploreThisBranchException;
 
-	public abstract Dataset createFilteredDataset(FilteredDataset upper, int extension)
+	public abstract Dataset createFilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
 			throws DontExploreThisBranchException;
 
 	protected abstract TransactionsWriter getTransactionsWriter(boolean sourceSorted);

@@ -120,22 +120,20 @@ public class PLCM {
 					if (!t.stackedJobs.isEmpty()) {
 						StackedJob sj = t.stackedJobs.get(0);
 						t.lock.readLock().unlock();
-						
+
 						boolean notAFirstParent = true;
-						while(notAFirstParent) {
+						while (notAFirstParent) {
 							try {
 								int extension = sj.getIterator().getExtension();
-								
+
 								// no DontExploreThisBranchException happened
 								notAFirstParent = false;
 								if (extension != -1) {
-									// need to copy because of possible inconsistencies
-									// in previous explore results (no lock to
-									// read/update them)
 									return new StolenJob(extension, sj);
 								}
 							} catch (DontExploreThisBranchException e) {
-								// try again
+								// try again, but first remember this
+								sj.updatepptestfail(e.extension, e.firstParent);
 							}
 						}
 					} else {
@@ -146,7 +144,7 @@ public class PLCM {
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Don't use it on dense datasets. Just don't.
 	 */
@@ -212,8 +210,9 @@ public class PLCM {
 						sj.updatepptestfail(e.extension, e.firstParent);
 						pptestFailed.incrementAndGet();
 					}
-					
-				} else { // our list was empty, we should steal from another thread
+
+				} else { // our list was empty, we should steal from another
+							// thread
 					StolenJob stolj = stealJob(this.id);
 					if (stolj == null) {
 						exit = true;
@@ -246,7 +245,7 @@ public class PLCM {
 
 				Dataset dataset = null;
 				try {
-					dataset = sj.getDataset().getProjection(extension);
+					dataset = sj.getDataset().getProjection(extension, sj.getRemovedItems(extension));
 				} catch (DontExploreThisBranchException e) {
 					// may happen in getProjection, in which case we should just
 					// continue with next candidate

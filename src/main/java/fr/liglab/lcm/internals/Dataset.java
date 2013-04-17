@@ -60,10 +60,15 @@ public abstract class Dataset {
 	 * 
 	 * the projected dataset won't forget that !
 	 * 
+	 * @param removedItems
+	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public abstract Dataset getProjection(int extension)
-			throws DontExploreThisBranchException;
+	public abstract Dataset getProjection(int extension, int[] removedItems) throws DontExploreThisBranchException;
+
+	public final Dataset getProjection(int extension) throws DontExploreThisBranchException {
+		return getProjection(extension, null);
+	}
 
 	/**
 	 * @return candidates items known to be frequent, preserving prefix and not
@@ -79,8 +84,7 @@ public abstract class Dataset {
 	 * @return sum of remaining items' support counts
 	 * @throws DontExploreThisBranchException
 	 */
-	protected int genClosureAndFilterCount()
-			throws DontExploreThisBranchException {
+	protected int genClosureAndFilterCount() throws DontExploreThisBranchException {
 		ItemsetsFactory builder = new ItemsetsFactory();
 		int closureSupport = getTransactionsCount();
 		int remainingsSupportsSum = 0;

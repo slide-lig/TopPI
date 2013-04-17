@@ -9,6 +9,8 @@ import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 
+import com.google.common.primitives.Ints;
+
 public abstract class UnfilteredDataset extends IterableDataset {
 	public static double FILTERING_THRESHOLD = 0.15;
 
@@ -21,7 +23,8 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	 * 
 	 * @throws DontExploreThisBranchException
 	 */
-	public UnfilteredDataset(IterableDataset parentDataset, int extension) throws DontExploreThisBranchException {
+	public UnfilteredDataset(IterableDataset parentDataset, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
 		super(parentDataset.minsup, extension);
 
 		this.parent = parentDataset;
@@ -30,14 +33,19 @@ public abstract class UnfilteredDataset extends IterableDataset {
 		this.genSupportCounts();
 		this.supportCounts.remove(extension);
 		this.genClosureAndFilterCount();
-
-		this.ignoreItems = ItemsetsFactory.extend(this.discoveredClosure, extension);
+		if (ignoreItems != null) {
+			for (int item : ignoreItems) {
+				this.supportCounts.remove(item);
+			}
+		}
+		this.ignoreItems = ItemsetsFactory.extend(this.discoveredClosure, extension, ignoreItems);
 
 		this.frequentItems = this.supportCounts.keys();
 		Arrays.sort(this.frequentItems);
 	}
 
-	public UnfilteredDataset(UnfilteredDataset upper, int extension) throws DontExploreThisBranchException {
+	public UnfilteredDataset(UnfilteredDataset upper, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
 
 		super(upper.minsup, extension);
 
@@ -50,9 +58,14 @@ public abstract class UnfilteredDataset extends IterableDataset {
 		for (int item : upper.ignoreItems) {
 			this.supportCounts.remove(item);
 		}
+		if (ignoreItems != null) {
+			for (int item : ignoreItems) {
+				this.supportCounts.remove(item);
+			}
+		}
 		this.genClosureAndFilterCount();
 
-		this.ignoreItems = ItemsetsFactory.extend(discoveredClosure, extension, upper.ignoreItems);
+		this.ignoreItems = ItemsetsFactory.extend(discoveredClosure, extension, upper.ignoreItems, ignoreItems);
 
 		this.frequentItems = this.supportCounts.keys();
 		Arrays.sort(this.frequentItems);
@@ -134,18 +147,18 @@ public abstract class UnfilteredDataset extends IterableDataset {
 	}
 
 	@Override
-	public Dataset getProjection(int extension) throws DontExploreThisBranchException {
+	public Dataset getProjection(int extension, int[] ignoreItems) throws DontExploreThisBranchException {
 
 		double extensionSupport = this.supportCounts.get(extension);
 
 		if ((extensionSupport / this.parent.getTransactionsCount()) > FILTERING_THRESHOLD) {
-			return this.createUnfilteredDataset(this, extension);
+			return this.createUnfilteredDataset(this, extension, ignoreItems);
 		} else {
-			return this.createFilteredDataset(this, extension, this.ignoreItems);
+			return this.createFilteredDataset(this, extension, Ints.concat(this.ignoreItems, ignoreItems));
 		}
 	}
 
-	public abstract Dataset createUnfilteredDataset(UnfilteredDataset upper, int extension)
+	public abstract Dataset createUnfilteredDataset(UnfilteredDataset upper, int extension, int[] ignoreItems)
 			throws DontExploreThisBranchException;
 
 	public abstract Dataset createFilteredDataset(IterableDataset upper, int extension, int[] ignoredItems)

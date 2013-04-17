@@ -60,13 +60,15 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
-		return new VIntConcatenatedUnfilteredDataset(upper, extension);
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
+		return new VIntConcatenatedUnfilteredDataset(upper, extension, ignoreItems);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
-		return new VIntConcatenatedDataset(upper, extension);
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
+			throws DontExploreThisBranchException {
+		return new VIntConcatenatedDataset(upper, extension, ignoreItems);
 	}
 
 	static public int readVInt(byte[] array, IntHolder pointer) {
@@ -153,15 +155,15 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 			int length = readVInt(concatenated, this.index);
 			this.index.value = tid - length;
 		}
-		
+
 		public boolean hasNext() {
 			return index.value < tid;
 		}
-		
+
 		public int next() {
 			return readVInt(concatenated, this.index);
 		}
-		
+
 		public int getTransactionSupport() {
 			return 1;
 		}
@@ -174,11 +176,11 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 
 		public TransWriter() {
 		}
-		
+
 		public void addItem(int item) {
 			writeVInt(concatenated, this.index, item);
 		}
-		
+
 		public int endTransaction(int freq) {
 			int size = this.index.value - this.transactionStart;
 			int transId = this.index.value;
@@ -199,7 +201,7 @@ public class VIntConcatenatedDataset extends FilteredDataset {
 				return -1;
 			}
 		}
-		
+
 		public TIntList getTids() {
 			TIntList localTids = this.tids;
 			this.tids = null;
