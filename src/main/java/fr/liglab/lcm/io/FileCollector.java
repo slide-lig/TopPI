@@ -38,7 +38,7 @@ public class FileCollector extends PatternsCollector {
 		buffer.clear();
 	}
 	
-	public void collect(final int support, final int[] pattern) {
+	public synchronized void collect(final int support, final int[] pattern) {
 		putInt(support);
 		safePut((byte) '\t'); // putChar('\t') would append TWO bytes, but in ASCII we need only one
 		
