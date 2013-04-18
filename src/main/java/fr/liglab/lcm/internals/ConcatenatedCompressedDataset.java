@@ -64,15 +64,13 @@ public class ConcatenatedCompressedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
-		return new ConcatenatedCompressedDataset(upper, extension, ignoreItems);
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
+		return new ConcatenatedCompressedDataset(upper, extension);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
-		return new ConcatenatedCompressedDataset(upper, extension, ignoreItems);
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
+		return new ConcatenatedCompressedDataset(upper, extension);
 	}
 
 	@Override

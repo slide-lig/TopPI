@@ -45,14 +45,12 @@ public class ConcatenatedDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
-		return new ConcatenatedUnfilteredDataset(upper, extension, ignoreItems);
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
+		return new ConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
 		return new ConcatenatedDataset(upper, extension);
 	}
 
@@ -81,17 +79,17 @@ public class ConcatenatedDataset extends FilteredDataset {
 			this.max = tid + length;
 			this.index = tid + 1;
 		}
-
+		
 		public boolean hasNext() {
 			return this.index <= this.max;
 		}
-
+		
 		public int next() {
 			int val = concatenated[this.index];
 			this.index++;
 			return val;
 		}
-
+		
 		public int getTransactionSupport() {
 			return 1;
 		}
@@ -105,12 +103,12 @@ public class ConcatenatedDataset extends FilteredDataset {
 
 		public TransWriter() {
 		}
-
+		
 		public void addItem(int item) {
 			concatenated[index] = item;
 			this.index++;
 		}
-
+		
 		public int endTransaction(int freq) {
 			int size = index - tIdPosition - 1;
 			concatenated[this.tIdPosition] = size;
@@ -132,7 +130,7 @@ public class ConcatenatedDataset extends FilteredDataset {
 				return -1;
 			}
 		}
-
+		
 		public TIntList getTids() {
 			TIntList localTids = this.tids;
 			this.tids = null;

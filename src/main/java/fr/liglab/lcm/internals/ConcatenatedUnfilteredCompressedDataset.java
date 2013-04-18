@@ -1,30 +1,28 @@
 package fr.liglab.lcm.internals;
 
-import com.google.common.primitives.Ints;
-
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 
 public class ConcatenatedUnfilteredCompressedDataset extends UnfilteredDataset {
-	public ConcatenatedUnfilteredCompressedDataset(IterableDataset parentDataset, int extension, int[] ignoreItems)
+	public ConcatenatedUnfilteredCompressedDataset(IterableDataset parentDataset, int extension)
 			throws DontExploreThisBranchException {
-		super(parentDataset, extension, ignoreItems);
+		super(parentDataset, extension);
 	}
 
-	public ConcatenatedUnfilteredCompressedDataset(UnfilteredDataset upper, int extension, int[] ignoreItems)
+	public ConcatenatedUnfilteredCompressedDataset(UnfilteredDataset upper, int extension)
 			throws DontExploreThisBranchException {
-		super(upper, extension, ignoreItems);
+		super(upper, extension);
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(UnfilteredDataset upper, int extension, int[] ignoreItems)
+	public Dataset createUnfilteredDataset(UnfilteredDataset upper, int extension)
 			throws DontExploreThisBranchException {
-		return new ConcatenatedUnfilteredCompressedDataset(upper, extension, ignoreItems);
+		return new ConcatenatedUnfilteredCompressedDataset(upper, extension);
 	}
 
 	@Override
 	public Dataset createFilteredDataset(IterableDataset upper, int extension, int[] ignoredItems)
 			throws DontExploreThisBranchException {
-		return new ConcatenatedCompressedDataset(upper, extension, Ints.concat(this.ignoreItems, ignoredItems));
+		return new ConcatenatedCompressedDataset(upper, extension, ignoredItems);
 	}
 
 }

@@ -1,16 +1,11 @@
 package fr.liglab.lcm;
 
-import java.util.Arrays;
-import java.util.Set;
-
-import com.google.common.collect.TreeMultimap;
-
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
-import gnu.trove.list.TIntList;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
+
+import java.util.Arrays;
 
 public final class StackedJob {
 	private final ExtensionsIterator iterator;
@@ -18,7 +13,6 @@ public final class StackedJob {
 	private final int[] pattern;
 	private final int[] sortedfreqs;
 	private final TIntIntMap failedpptests;
-	private final TreeMultimap<Integer, Integer> failedPPtestsByParent;
 	private int previousItem;
 	private int previousResult;
 
@@ -31,7 +25,6 @@ public final class StackedJob {
 		this.previousItem = -1;
 		this.previousResult = -1;
 		this.failedpptests = new TIntIntHashMap();
-		this.failedPPtestsByParent = TreeMultimap.create();
 	}
 
 	public synchronized void updateExploreResults(int previousItem, int previousResult) {
@@ -45,23 +38,6 @@ public final class StackedJob {
 		synchronized (this.failedpptests) {
 			this.failedpptests.put(item, parent);
 		}
-		synchronized (this.failedPPtestsByParent) {
-			this.failedPPtestsByParent.put(parent, item);
-		}
-	}
-
-	public int[] getRemovedItems(int extension) {
-		synchronized (this.failedPPtestsByParent) {
-			Set<Integer> keys = this.failedPPtestsByParent.keySet().tailSet(extension, false);
-			if (!keys.isEmpty()) {
-				TIntList l = new TIntArrayList();
-				for (Integer k : keys) {
-					l.addAll(this.failedPPtestsByParent.get(k));
-				}
-				return l.toArray();
-			}
-		}
-		return null;
 	}
 
 	@Override

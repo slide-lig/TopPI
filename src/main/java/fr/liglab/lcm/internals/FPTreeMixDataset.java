@@ -60,15 +60,13 @@ public class FPTreeMixDataset extends FilteredDataset {
 	}
 
 	@Override
-	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
-		return new ConcatenatedUnfilteredDataset(upper, extension, ignoreItems);
+	public Dataset createUnfilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
+		return new ConcatenatedUnfilteredDataset(upper, extension);
 	}
 
 	@Override
-	public Dataset createFilteredDataset(FilteredDataset upper, int extension, int[] ignoreItems)
-			throws DontExploreThisBranchException {
-		return new FPTreeMixDataset(upper, extension, ignoreItems);
+	public Dataset createFilteredDataset(FilteredDataset upper, int extension) throws DontExploreThisBranchException {
+		return new FPTreeMixDataset(upper, extension);
 	}
 
 	@Override
@@ -108,7 +106,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				this.index = fptreeStart;
 			}
 		}
-
+		
 		public boolean hasNext() {
 			if (inFPTree) {
 				return true;
@@ -116,7 +114,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				return this.length > 0;
 			}
 		}
-
+		
 		public int next() {
 			int val;
 			if (this.inFPTree) {
@@ -134,7 +132,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			// System.out.println("reading " + val);
 			return val;
 		}
-
+		
 		public int getTransactionSupport() {
 			return 1;
 		}
@@ -153,7 +151,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			this.buffer = new TIntArrayList(fptreeLimit);
 			this.fpTreeIndex = new TObjectIntHashMap<WrappedArray>();
 		}
-
+		
 		public void addItem(int item) {
 			if (item > fptreeLimit) {
 				if (!fpTreeDone) {
@@ -172,7 +170,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 				this.buffer.add(item);
 			}
 		}
-
+		
 		public int endTransaction(int freq) {
 			if (!fpTreeDone) {
 				if (!this.buffer.isEmpty()) {
@@ -238,7 +236,7 @@ public class FPTreeMixDataset extends FilteredDataset {
 			// pos);
 			return pos;
 		}
-
+		
 		public TIntList getTids() {
 			TIntList localTids = this.tids;
 			this.tids = null;
