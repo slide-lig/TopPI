@@ -25,6 +25,7 @@ import fr.liglab.lcm.internals.UnfilteredDataset;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.NullCollector;
+import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
 import fr.liglab.lcm.io.RebaserCollector;
@@ -323,7 +324,7 @@ public class PLCM {
 		FileReader reader = new FileReader(args[0]);
 		int minsup = Integer.parseInt(args[1]);
 
-		RebasedConcatenatedDataset dataset = null;
+		Dataset dataset = null;
 		try {
 			dataset = new RebasedConcatenatedDataset(minsup, reader);
 		} catch (DontExploreThisBranchException e) {
@@ -371,7 +372,7 @@ public class PLCM {
 	 * stand-alone mode we're always rebasing so we need the dataset
 	 */
 	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath,
-			RebasedDataset rebasedDataset, Dataset dataset) {
+			Dataset rebasedDataset, Dataset dataset) {
 
 		PatternsCollector collector = null;
 
@@ -389,8 +390,11 @@ public class PLCM {
 			} else {
 				collector = new StdOutCollector();
 			}
+			collector = new PatternSortCollector(collector);
 
-			collector = new RebaserCollector(collector, rebasedDataset);
+			if (rebasedDataset instanceof RebasedDataset) {
+				collector = new RebaserCollector(collector, (RebasedDataset) rebasedDataset);
+			}
 		}
 
 		if (cmd.hasOption('k')) {
