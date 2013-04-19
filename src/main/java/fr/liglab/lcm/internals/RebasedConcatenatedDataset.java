@@ -1,11 +1,9 @@
 package fr.liglab.lcm.internals;
 
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.TIntIntMap;
-
 import java.util.Iterator;
+
+import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import gnu.trove.map.TIntIntMap;
 
 /**
  * a ConcatenatedDataset rebased at first-loading time 
@@ -34,18 +32,8 @@ public class RebasedConcatenatedDataset extends ConcatenatedDataset
 	
 	@Override
 	protected void prepareOccurences() {
-		
-		// Rebaser instanciation will nullify supportCounts - grab it while it's there ! 
-		TIntIntIterator counts = this.supportCounts.iterator();
-		
 		this.rebaser = new Rebaser(this);
-		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		
-		while (counts.hasNext()) {
-			counts.advance();
-			int rebasedItem = rebasing.get(counts.key());
-			this.occurrences.put(rebasedItem, new TIntArrayList(counts.value()));
-		}
+		super.prepareOccurences();
 	}
 	
 	@Override
