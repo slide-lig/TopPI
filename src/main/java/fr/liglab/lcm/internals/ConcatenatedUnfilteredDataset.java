@@ -8,7 +8,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 
-public class ConcatenatedUnfilteredDataset extends Dataset {
+class ConcatenatedUnfilteredDataset extends Dataset {
 	public static final double FILTERING_THRESHOLD = 0.15;
 	
 	protected final ConcatenatedDataset parent;
