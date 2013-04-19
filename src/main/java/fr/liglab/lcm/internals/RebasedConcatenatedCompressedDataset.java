@@ -1,15 +1,19 @@
 package fr.liglab.lcm.internals;
 
-import java.util.Iterator;
-
 import fr.liglab.lcm.LCM.DontExploreThisBranchException;
+import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
+
+import java.util.Arrays;
+import java.util.Iterator;
 
 /**
  * a ConcatenatedDataset rebased at first-loading time use it with a
  * RebaserCollector
  */
-public class RebasedConcatenatedCompressedDataset extends ConcatenatedCompressedDataset implements RebasedDataset {
+public class RebasedConcatenatedCompressedDataset extends
+		ConcatenatedCompressedDataset implements RebasedDataset {
 
 	private Rebaser rebaser;
 
@@ -22,41 +26,63 @@ public class RebasedConcatenatedCompressedDataset extends ConcatenatedCompressed
 	 * 
 	 * the difference with parent class is in the overloaded sub-function
 	 * "filter"
-	 * 
-	 * @throws DontExploreThisBranchException
+	 * @throws DontExploreThisBranchException 
 	 */
-	public RebasedConcatenatedCompressedDataset(final int minimumsupport, final Iterator<int[]> transactions)
-			throws DontExploreThisBranchException {
-
+	public RebasedConcatenatedCompressedDataset(final int minimumsupport,
+			final Iterator<int[]> transactions) 
+					throws DontExploreThisBranchException {
+		
 		super(minimumsupport, transactions);
 	}
 
 	@Override
 	protected void prepareOccurences() {
+
+		// Rebaser instanciation will nullify supportCounts - grab it while it's
+		// there !
+		TIntIntIterator counts = this.supportCounts.iterator();
+
 		this.rebaser = new Rebaser(this);
-		super.prepareOccurences();
+		TIntIntMap rebasing = this.rebaser.getRebasingMap();
+
+		while (counts.hasNext()) {
+			counts.advance();
+			int rebasedItem = rebasing.get(counts.key());
+			this.occurrences
+					.put(rebasedItem, new TIntArrayList(counts.value()));
+		}
 	}
 
 	@Override
-	protected void filter(Iterable<int[]> transactions) {
+	protected TIntArrayList filter(Iterable<int[]> transactions) {
 		TIntIntMap rebasing = this.rebaser.getRebasingMap();
-		TransactionsWriter tw = this.getTransactionsWriter(false);
+		TIntArrayList transactionsList = new TIntArrayList();
+		int i = 2;
+		int tIndex = 1;
+
 		for (int[] transaction : transactions) {
-			boolean transactionExists = false;
+			int length = 0;
+
 			for (int item : transaction) {
 				if (rebasing.containsKey(item)) {
-					transactionExists = true;
 					int rebased = rebasing.get(item);
-					tw.addItem(rebased);
+					this.concatenated[i] = rebased;
+					this.occurrences.get(rebased).add(tIndex);
+					length++;
+					i++;
 				}
 			}
-			if (transactionExists) {
-				int tid = tw.endTransaction(1);
-				TransactionReader read = this.readTransaction(tid);
-				while (read.hasNext()) {
-					this.occurrences.get(read.next()).add(tid);
-				}
+
+			if (length > 0) {
+				transactionsList.add(tIndex);
+				this.concatenated[tIndex] = length;
+				this.concatenated[tIndex - 1] = 1;
+				Arrays.sort(this.concatenated, tIndex + 1, i);
+				i++;
+				tIndex = i;
+				i++;
 			}
 		}
+		return transactionsList;
 	}
 }

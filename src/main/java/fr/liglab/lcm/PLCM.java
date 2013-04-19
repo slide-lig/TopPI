@@ -21,7 +21,6 @@ import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
 import fr.liglab.lcm.internals.RebasedDataset;
-import fr.liglab.lcm.internals.UnfilteredDataset;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.NullCollector;
@@ -295,7 +294,6 @@ public class PLCM {
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("t", true, "How many threads will be launched (defaults to 8)");
-		options.addOption("f", true, "Filtering threshold (must be between 0 and 1, defaults to 0.15)");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -341,14 +339,7 @@ public class PLCM {
 		PatternsCollector collector = instanciateCollector(cmd, outputPath, dataset, dataset);
 
 		long time = System.currentTimeMillis();
-
-		if (cmd.hasOption('f')) {
-			double threshold = Double.parseDouble(cmd.getOptionValue('f'));
-			if (threshold >= 0 && threshold <= 1) {
-				UnfilteredDataset.FILTERING_THRESHOLD = threshold;
-			}
-		}
-
+		
 		PLCM miner;
 		if (cmd.hasOption('t')) {
 			int nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
