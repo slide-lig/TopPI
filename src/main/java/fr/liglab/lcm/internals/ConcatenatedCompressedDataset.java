@@ -16,15 +16,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * Here all transactions are prefixed by their length and concatenated in a
- * single int[]
- * 
- * This dataset internally performs - basic reduction : transactions contain
- * only items having a support count in [minusp, 100% [ - occurrence delivery :
- * occurrences are stored as indexes in the concatenated array - fast
- * prefix-preserving test (see inner class CandidatesIterator)
- */
+
 public class ConcatenatedCompressedDataset extends Dataset {
 	/**
 	 * Support list will contain transactions with 0 frequency because
@@ -204,21 +196,6 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		}
 	}
 
-	/**
-	 * @return true if there is no int j > candidate having the same support as
-	 *         candidate
-	 */
-	public boolean prefixPreservingTest(final int candidate) {
-		int candidateIdx = Arrays.binarySearch(frequentItems, candidate);
-		if (candidateIdx < 0) {
-			throw new RuntimeException(
-					"Unexpected : prefixPreservingTest of an infrequent item, "
-							+ candidate);
-		}
-
-		return ppTest(candidateIdx);
-	}
-
 	private void compress(TIntArrayList transactionsList) {
 		if (!transactionsList.isEmpty()) {
 			ArrayList<Integer> sortedList = new ArrayList<Integer>(
@@ -346,23 +323,23 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	 * @return true if there is no int j > candidate having the same support as
 	 *         candidate at the given index
 	 */
-	private boolean ppTest(final int candidateIndex) {
+	private int ppTest(final int candidateIndex) {
 		final int candidate = frequentItems[candidateIndex];
 		final int candidateSupport = supportCounts.get(candidate);
 		TIntArrayList candidateOccurrences = occurrences.get(candidate);
 
-		for (int i = candidateIndex + 1; i < frequentItems.length; i++) {
+		for (int i = frequentItems.length - 1; i > candidateIndex ; i--) {
 			int j = frequentItems[i];
 
 			if (supportCounts.get(j) >= candidateSupport) {
 				TIntArrayList jOccurrences = occurrences.get(j);
 				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-					return false;
+					return j;
 				}
 			}
 		}
 
-		return true;
+		return -1;
 	}
 
 	/**
@@ -449,7 +426,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 			candidatesLength = -coreItemIndex - 1;
 		}
 
-		public int getExtension() {
+		public int getExtension() throws DontExploreThisBranchException {
 			if (candidatesLength < 0) {
 				return -1;
 			}
@@ -461,8 +438,13 @@ public class ConcatenatedCompressedDataset extends Dataset {
 				}
 				if (next_index_local >= this.candidatesLength) {
 					return -1;
-				} else if (ppTest(next_index_local)) {
-					return frequentItems[next_index_local];
+				} else {
+					int parent = ppTest(next_index_local);
+					if (parent == -1) {
+						return frequentItems[next_index_local];
+					} else {
+						throw new DontExploreThisBranchException(frequentItems[next_index_local], parent);
+					}
 				}
 			}
 		}
@@ -495,39 +477,5 @@ public class ConcatenatedCompressedDataset extends Dataset {
 			}
 		}
 		return sb.toString();
-	}
-
-	public int getRealSize() {
-		int i = 0;
-		int size = 0;
-		while (i < this.concatenated.length) {
-			if (this.concatenated[i] > 0) {
-				size += 2;
-				for (int j = i + 2; j < i+2+this.concatenated[i + 1]; j++) {
-					if (this.concatenated[j] >= 0) {
-						size++;
-					}
-				}
-				
-			}
-			i += 2 + this.concatenated[i + 1];
-		}
-		return size;
-	}
-	
-	public int transactionsAtZero;
-	
-	public int computeTransactionsCount() {
-		int i = 0;
-		int size = 0;
-		while (i < this.concatenated.length) {
-			if (this.concatenated[i] > 0) {
-				size += this.concatenated[i];
-			} else {
-				transactionsAtZero++;
-			}
-			i += 2 + this.concatenated[i + 1];
-		}
-		return size;
 	}
 }
