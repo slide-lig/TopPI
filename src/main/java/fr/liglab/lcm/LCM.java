@@ -99,6 +99,10 @@ public class LCM {
 			try {
 				candidate = iterator.getExtension();
 				
+				if (candidate < 0) {
+					return;
+				}
+				
 				int explore = collector.explore(pattern, candidate, sortedFreqs,
 						supportCounts, failedPPTests, previousCandidate,
 						previousExplore);
