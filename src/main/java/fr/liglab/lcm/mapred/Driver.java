@@ -43,11 +43,6 @@ public final class Driver {
 	public static final String KEY_GROUPER_CLASS = "lcm.grouper";
 	
 	/**
-	 * 1 (naive top-k filtering, with starters), 2 (group-only top-k filtering, without starters) or 3 (two-phases mining)
-	 */
-	public static final String KEY_MINING_ALGO = "lcm.mapred.algo";
-	
-	/**
 	 * For profiling and testing only : the given groups'ID will be the only generated and mined sub-DB
 	 */
 	public static final String KEY_SINGLE_GROUP_ID = "lcm.single-group";
@@ -127,8 +122,6 @@ public final class Driver {
 	public int run() throws Exception {
 		System.out.println(this.toString());
 		
-		int miningAlgo = this.originalConf.getInt(KEY_MINING_ALGO, 3);
-		
 		String rebasingMapPath = this.output + "/" + DistCache.REBASINGMAP_DIRNAME;
 		String rawPatternsPath = this.output + "/" + "rawMinedPatterns";
 		String patternsPath = output + "/" + "topPatterns";
@@ -138,49 +131,30 @@ public final class Driver {
 			Configuration confWithRebasing = new Configuration(this.originalConf);
 			DistCache.copyToCache(confWithRebasing, rebasingMapPath);
 			
-			switch (miningAlgo) {
-			case 1:
-				if (miningJob(confWithRebasing, this.input, rawPatternsPath, false) &&
-						aggregateTopK(confWithRebasing, patternsPath, rawPatternsPath)) {
+
+			String patterns1 = rawPatternsPath + "/1";
+			String patterns2 = rawPatternsPath + "/2";
+			String subDBsPath = this.output + "/" + "subDBs";
+			String boundsPath = this.output + "/" + DistCache.BOUNDS_DIRNAME;
+			
+			Configuration miningConf = new Configuration(this.originalConf);
+			
+			if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
+					miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
+				
+				if (this.originalConf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
+					return 0;
+				}
+				
+				if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
+					DistCache.copyToCache(miningConf, boundsPath);
+				}
+				
+				if (miningPhase2(miningConf, subDBsPath, patterns2) &&
+						aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
 					
 					return 0;
 				}
-				break;
-			
-			case 2:
-				if (miningJob(confWithRebasing, this.input, patternsPath, true)) {
-					return 0;
-				}
-				break;
-			
-			case 3:
-			default:
-				String patterns1 = rawPatternsPath + "/1";
-				String patterns2 = rawPatternsPath + "/2";
-				String subDBsPath = this.output + "/" + "subDBs";
-				String boundsPath = this.output + "/" + DistCache.BOUNDS_DIRNAME;
-				
-				Configuration miningConf = new Configuration(this.originalConf);
-				
-				if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
-						miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
-					
-					if (this.originalConf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
-						return 0;
-					}
-					
-					if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
-						DistCache.copyToCache(miningConf, boundsPath);
-					}
-					
-					if (miningPhase2(miningConf, subDBsPath, patterns2) &&
-							aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
-						
-						return 0;
-					}
-					
-				}
-				break;
 			}
 		}
 		
@@ -224,42 +198,6 @@ public final class Driver {
 		}
 		
 		return success;
-	}
-	
-	/**
-	 * Mining in a single job
-	 * @param conf with rebasing map in distcache
-	 * @param input
-	 * @param output
-	 * @param useGroupOnly when set to true, rely on MiningGroupOnlyReducer, which doesn't need aggregation
-	 * @return true on success
-	 */
-	private static boolean miningJob(final Configuration conf, 
-			final String input, final String output, final boolean useGroupOnly) 
-			throws IOException, InterruptedException, ClassNotFoundException {
-		
-		Job job = new Job(conf, "Mining frequent itemsets from "+input);
-		job.setJarByClass(Driver.class);
-		
-		job.setInputFormatClass(TextInputFormat.class);
-		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		job.setOutputKeyClass(ItemAndSupportWritable.class);
-		job.setOutputValueClass(SupportAndTransactionWritable.class);
-		
-		FileInputFormat.addInputPath(job, new Path(input) );
-		FileOutputFormat.setOutputPath(job, new Path(output));
-		
-		job.setMapperClass(MiningMapper.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(TransactionWritable.class);
-		
-		if (useGroupOnly) {
-			job.setReducerClass(MiningGroupOnlyReducer.class);
-		} else {
-			job.setReducerClass(MiningReducer.class);
-		}
-		
-		return job.waitForCompletion(true);
 	}
 	
 	/**

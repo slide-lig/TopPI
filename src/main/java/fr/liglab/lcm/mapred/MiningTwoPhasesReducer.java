@@ -9,10 +9,10 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.ConcatenatedCompressedDataset;
 import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.ExtensionsIterator;
 import fr.liglab.lcm.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.lcm.mapred.groupers.Grouper;
