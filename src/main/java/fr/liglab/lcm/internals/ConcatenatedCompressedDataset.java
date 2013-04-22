@@ -236,7 +236,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 				}
 				int pointerCurrentRef = 1;
 				int pointerTrans = 1;
-				final int prefixEnd = Integer.MAX_VALUE;
+				final int prefixEnd = coreItem;
 				while (true) {
 					if (pointerCurrentRef > currentRefLength) {
 						if (pointerTrans > transLength
