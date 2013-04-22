@@ -1,5 +1,7 @@
 package fr.liglab.lcm.mapred;
 
+import java.util.Arrays;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
@@ -52,7 +54,9 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Transa
 		}
 		
 		if (!destinations.isEmpty()) {
-			this.valueW.set(this.transaction.get());
+			int[] trans = this.transaction.get();
+			Arrays.sort(trans);
+			this.valueW.set(trans);
 			
 			TIntIterator it = this.destinations.iterator();
 			while (it.hasNext()) {
