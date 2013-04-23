@@ -2,12 +2,14 @@ package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
+import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.TIntSet;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Item counting and all other stats available from a single pass
@@ -46,6 +48,11 @@ public class DatasetCounters {
 	 * Items found to have a 100% support count
 	 */
 	public final int[] closure;
+	
+	/**
+	 * items having a support count in [minSup; 100% [, sorted
+	 */
+	public final int[] sortedFrequents;
 	
 	
 	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions) {
@@ -104,15 +111,9 @@ public class DatasetCounters {
 		
 		this.closure = builder.get();
 		this.supportsSum = remainingSupportsSum;
-	}
-	
-	/**
-	 * @return items having a support count in [minSup; 100% [ (sorted in ascending)
-	 */
-	public final int[] getSortedFrequents() {
-		int[] frequents = this.supportCounts.keys();
-		Arrays.sort(frequents);
-		return frequents;
+		
+		this.sortedFrequents = this.supportCounts.keys();
+		Arrays.sort(this.sortedFrequents);
 	}
 	
 	/**
@@ -120,5 +121,44 @@ public class DatasetCounters {
 	 */
 	public final TIntSet getFrequents() {
 		return this.supportCounts.keySet();
+	}
+	
+	
+	/**
+	 * Thread-safe iterator over sortedFrequents
+	 */
+	public class FrequentsIterator implements TIntIterator {
+		private final AtomicInteger index;
+		private final int max;
+		
+		/**
+		 * will provide an iterator on frequent items in [0,to[
+		 */
+		public FrequentsIterator(int to) {
+			this.index = new AtomicInteger(0);
+			
+			int toIndex = Arrays.binarySearch(sortedFrequents, to);
+			if (toIndex < 0) {
+				// binarySearch returns -(insertion_point)-1
+				// where insertion_point == index of first element greater OR
+				// a.length
+				this.max = -toIndex - 1;
+			} else {
+				this.max = toIndex;
+			}
+		}
+		
+		@Override
+		public final boolean hasNext() {
+			return this.index.get() < this.max;
+		}
+		
+		@Override
+		public final int next() {
+			return sortedFrequents[this.index.getAndIncrement()];
+		}
+		
+		@Override
+		public final void remove() {}
 	}
 }
