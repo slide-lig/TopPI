@@ -17,6 +17,10 @@ public class DatasetRebaserCounters extends DatasetCounters {
 	public final int[] reverseMap;
 	
 	public TIntIntMap rebaseMap;
+
+	public DatasetRebaserCounters(int minsup, Iterator<TransactionReader> transactions) {
+		this(minsup, transactions, null);
+	}
 	
 	public DatasetRebaserCounters(int minimumSupport, Iterator<TransactionReader> transactions, int[] ignoredItems) {
 		super(minimumSupport, transactions, ignoredItems);
