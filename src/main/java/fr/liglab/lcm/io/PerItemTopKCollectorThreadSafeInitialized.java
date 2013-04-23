@@ -20,14 +20,14 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 			final PatternsCollector decorated, Dataset dataset, final int k) {
 		this(decorated, k, dataset, false);
 	}
-
+	
 	public PerItemTopKCollectorThreadSafeInitialized(
 			final PatternsCollector follower, final int k, Dataset dataset,
 			final boolean outputEachPatternOnce) {
-		this(follower, k, dataset.getSupportCounts().keySet().iterator(),
-				outputEachPatternOnce);
+		
+		this(follower, k, dataset.getCounters().getFrequentsIterator(), outputEachPatternOnce);
 	}
-
+	
 	public PerItemTopKCollectorThreadSafeInitialized(
 			final PatternsCollector follower, final int k, TIntIterator items,
 			final boolean outputEachPatternOnce) {
@@ -44,15 +44,15 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 		super(follower, k, mineInGroup, mineOutGroup);
 		
 		// FIXME - maybe this would better happen in setGroup ?
-		this.init(dataset.getSupportCounts().keySet().iterator());
+		this.init(dataset.getCounters().getFrequentsIterator());
 	}
-
+	
 	private void init(final TIntIterator items) {
 		while (items.hasNext()) {
 			this.topK.put(items.next(), new PatternWithFreq[k]);
 		}
 	}
-
+	
 	@Override
 	protected void insertPatternInTop(final int support, final int[] pattern,
 			final int item) {

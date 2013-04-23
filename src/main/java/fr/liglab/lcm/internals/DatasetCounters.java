@@ -55,6 +55,27 @@ public class DatasetCounters {
 	public final int[] sortedFrequents;
 	
 	
+	/**
+	 * @return item having a support count in [minSup; 100% [
+	 */
+	public final TIntSet getFrequents() {
+		return this.supportCounts.keySet();
+	}
+	
+	/**
+	 * @return an iterator on frequent items in ascending order, up to "max" (excluded)
+	 */
+	public final TIntIterator getFrequentsIteratorTo(int max) {
+		return new FrequentsIterator(max);
+	}
+
+	/**
+	 * @return an iterator on frequent items (in ascending order)
+	 */
+	public final TIntIterator getFrequentsIterator() {
+		return new FrequentsIterator(Integer.MAX_VALUE);
+	}
+
 	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions) {
 		this(minimumSupport, transactions, null);
 	}
@@ -116,18 +137,11 @@ public class DatasetCounters {
 		Arrays.sort(this.sortedFrequents);
 	}
 	
-	/**
-	 * @return item having a support count in [minSup; 100% [
-	 */
-	public final TIntSet getFrequents() {
-		return this.supportCounts.keySet();
-	}
-	
 	
 	/**
 	 * Thread-safe iterator over sortedFrequents
 	 */
-	public class FrequentsIterator implements TIntIterator {
+	protected class FrequentsIterator implements TIntIterator {
 		private final AtomicInteger index;
 		private final int max;
 		

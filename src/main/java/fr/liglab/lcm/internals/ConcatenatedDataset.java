@@ -13,9 +13,12 @@ import org.apache.commons.lang.NotImplementedException;
  * In this dataset (which does implement occurrence-delivery) transactions are 
  * prefixed by their length and concatenated in a single int[] 
  * 
- * It DOES NOT stores transactions' weights
+ * It does NOT stores transactions' weights
+ * 
+ * It does NOT override ppTest (although it could easily) coz it's made for 
+ * really sparse datasets.
  */
-public class ConcatenatedDataset extends Dataset {
+class ConcatenatedDataset extends Dataset {
 
 	protected final DatasetCounters counters;
 	protected final int[] concatenated;
@@ -26,7 +29,7 @@ public class ConcatenatedDataset extends Dataset {
 	 */
 	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
 	
-	public ConcatenatedDataset(final DatasetCounters counts,
+	ConcatenatedDataset(final DatasetCounters counts,
 			final Iterator<TransactionReader> transactions) {
 		
 		this.counters = counts;
