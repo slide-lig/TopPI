@@ -12,7 +12,6 @@ import java.util.Iterator;
  * // TODO put ppTest somewhere else ! 
  */
 public abstract class Dataset {
-	public abstract Iterator<TransactionReader> getAll();
 	public abstract Iterator<TransactionReader> getSupport(int item);
 	public abstract DatasetCounters getCounters();
 	
