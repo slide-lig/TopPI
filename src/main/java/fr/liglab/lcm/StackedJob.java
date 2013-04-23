@@ -17,10 +17,10 @@ final class StackedJob {
 	private int previousItem;
 	private int previousResult;
 
-	public StackedJob(Dataset dataset, int[] pattern) {
+	public StackedJob(Dataset dataset, int[] pattern, FrequentsIterator it) {
 		super();
 		DatasetCounters counters = dataset.getCounters();
-		this.iterator = counters.getFrequentsIterator();
+		this.iterator = it;
 		this.dataset = dataset;
 		this.pattern = pattern;
 		this.sortedfreqs = counters.sortedFrequents;

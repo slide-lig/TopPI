@@ -18,6 +18,7 @@ import org.apache.commons.cli.PosixParser;
 
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.DatasetCounters;
+import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
 import fr.liglab.lcm.internals.DatasetFactory;
 import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.DatasetRebaserCounters;
@@ -163,7 +164,8 @@ public class PLCM {
 		}
 
 		private void init(Dataset dataset, int[] pattern) {
-			StackedJob sj = new StackedJob(dataset, pattern);
+			FrequentsIterator it = dataset.getCounters().getFrequentsIterator();
+			StackedJob sj = new StackedJob(dataset, pattern, it);
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(sj);
 			this.lock.writeLock().unlock();
@@ -223,7 +225,7 @@ public class PLCM {
 			try {
 				dataset = DatasetFactory.project(sj.dataset, extension);
 			} catch (DontExploreThisBranchException e) {
-				sj.updatepptestfail(extension, e.firstParent);
+				sj.updatepptestfail(e.extension, e.firstParent);
 				pptestFailed.incrementAndGet();
 				return;
 			}
@@ -242,7 +244,7 @@ public class PLCM {
 			int[] Q = ItemsetsFactory.extend(counters.closure, extension, sj.pattern);
 			collect(counters.transactionsCount, Q);
 			
-			StackedJob nj = new StackedJob(dataset, Q);
+			StackedJob nj = new StackedJob(dataset, Q, counters.getFrequentsIteratorTo(extension));
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(nj);
 			this.lock.writeLock().unlock();

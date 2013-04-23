@@ -51,11 +51,14 @@ class ConcatenatedDataset extends Dataset {
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
 			while (transaction.hasNext()) {
-				this.concatenated[i++] = transaction.next();
+				int item = transaction.next();
+				this.concatenated[i++] = item;
+				this.occurrences.get(item).add(tIdx);
 				tLen++;
 			}
 			this.concatenated[tIdx] = tLen;
-			tIdx = i;
+			tIdx = i++;
+			tLen = 0;
 		}
 	}
 	
@@ -96,11 +99,11 @@ class ConcatenatedDataset extends Dataset {
 		
 		void setCursor(int at) {
 			this.i = at+1;
-			this.max = at + concatenated[at];
+			this.max = this.i + concatenated[at];
 		}
 		
 		@Override public int getTransactionSupport() { return 1; }
 		@Override public int next() { return concatenated[this.i++]; }
-		@Override public boolean hasNext() { return this.i <= this.max; }
+		@Override public boolean hasNext() { return this.i < this.max; }
 	}
 }
