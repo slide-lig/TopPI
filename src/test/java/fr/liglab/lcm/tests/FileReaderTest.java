@@ -1,6 +1,11 @@
 package fr.liglab.lcm.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Iterator;
 
 import org.junit.Test;
 
@@ -161,6 +166,8 @@ public class FileReaderTest {
 		readLine(reader.next(), 3,2,7);
 		readLine(reader.next(), 5,3,1,6,7);
 		assertFalse(reader.hasNext());
+		
+		reader.close();
 	}
 	
 	private void readLine(TransactionReader lineReader, int... items) {
@@ -169,5 +176,31 @@ public class FileReaderTest {
 			assertEquals(item, lineReader.next());
 		}
 	}
-
+	
+	@Test
+	public void testReIteration() {
+		FileReader reader = FileReaderTest.getMicroReader();
+		while (reader.hasNext()) {
+			TransactionReader transactionReader = reader.next();
+			while (transactionReader.hasNext()) {
+				@SuppressWarnings("unused")
+				int item = transactionReader.next();
+			}
+		}
+		
+		reader.close();
+		
+		Iterator<int[]> iterator = reader.iterator();
+		assertTrue(iterator.hasNext());
+		assertArrayEquals(new int[] {5,3,1,6,7}, iterator.next());
+		assertTrue(iterator.hasNext());
+		assertArrayEquals(new int[] {5,3,1,2,6}, iterator.next());
+		assertTrue(iterator.hasNext());
+		assertArrayEquals(new int[] {5,7}, iterator.next());
+		assertTrue(iterator.hasNext());
+		assertArrayEquals(new int[] {3,2,7}, iterator.next());
+		assertTrue(iterator.hasNext());
+		assertArrayEquals(new int[] {5,3,1,6,7}, iterator.next());
+		assertFalse(iterator.hasNext());
+	}
 }
