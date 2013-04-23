@@ -7,16 +7,27 @@ import fr.liglab.lcm.mapred.writables.TransactionWritable;
 
 public final class DatasetFactory {
 	
-	public static Dataset fromFile(int minsup, FileReader reader) {
-		// TODO 
-		// wrap reader in a copier-n-translator-to-TransactionsReader
-		// add TransactionsRebasingDecorator(int[] original)
+	/**
+	 * @param minsup
+	 * @param path on local filesystem to an ASCII transaction database (@see fr.liglab.lcm.io.FileReader)
+	 * @return a rebased dataset
+	 */
+	public static Dataset fromFile(int minsup, String path) {
+		FileReader reader = new FileReader(path);
+		
+		DatasetRebaserCounters counters = new DatasetRebaserCounters(minsup, reader);
+		reader.close();
+		
+		reader = new FileReader(path);
+		TransactionsRebasingDecorator filtered = new TransactionsRebasingDecorator(reader, counters.rebaseMap);
+		
+		return new ConcatenatedDataset(counters, filtered);
 	}
 	
 	public static Dataset fromHadoop(int minsup, Iterator<TransactionWritable> input) {
 		// TODO
 		// wrap input in another copier-n-translator
-		// add TransactionsFilteringDecorator(int[] original)
+		// add TransactionsSortingDecorator(int[] original)
 	}
 	
 	public static Dataset project(Dataset parent, int extension)
