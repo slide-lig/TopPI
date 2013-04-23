@@ -65,14 +65,14 @@ public class DatasetCounters {
 	/**
 	 * @return an iterator on frequent items in ascending order, up to "max" (excluded)
 	 */
-	public final TIntIterator getFrequentsIteratorTo(int max) {
+	public final FrequentsIterator getFrequentsIteratorTo(int max) {
 		return new FrequentsIterator(max);
 	}
 
 	/**
 	 * @return an iterator on frequent items (in ascending order)
 	 */
-	public final TIntIterator getFrequentsIterator() {
+	public final FrequentsIterator getFrequentsIterator() {
 		return new FrequentsIterator(Integer.MAX_VALUE);
 	}
 
@@ -141,7 +141,7 @@ public class DatasetCounters {
 	/**
 	 * Thread-safe iterator over sortedFrequents
 	 */
-	protected class FrequentsIterator implements TIntIterator {
+	public class FrequentsIterator implements TIntIterator {
 		private final AtomicInteger index;
 		private final int max;
 		

@@ -1,14 +1,14 @@
 package fr.liglab.lcm;
 
+import java.util.Arrays;
+
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.ExtensionsIterator;
+import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 
-import java.util.Arrays;
-
 public final class StackedJob {
-	private final ExtensionsIterator iterator;
+	private final FrequentsIterator iterator;
 	private final Dataset dataset;
 	private final int[] pattern;
 	private final int[] sortedfreqs;
@@ -16,7 +16,7 @@ public final class StackedJob {
 	private int previousItem;
 	private int previousResult;
 
-	public StackedJob(ExtensionsIterator iterator, Dataset dataset, int[] pattern, int[] sortedfreqs) {
+	public StackedJob(FrequentsIterator iterator, Dataset dataset, int[] pattern, int[] sortedfreqs) {
 		super();
 		this.iterator = iterator;
 		this.dataset = dataset;
@@ -45,7 +45,7 @@ public final class StackedJob {
 		return "StackedJob [pattern=" + Arrays.toString(pattern) + "]";
 	}
 
-	public final ExtensionsIterator getIterator() {
+	public final FrequentsIterator getIterator() {
 		return iterator;
 	}
 
