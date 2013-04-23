@@ -4,6 +4,7 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import fr.liglab.lcm.util.ReIterableTransactionWritable;
 
 public final class DatasetFactory {
 	
@@ -25,9 +26,14 @@ public final class DatasetFactory {
 	}
 	
 	public static Dataset fromHadoop(int minsup, Iterator<TransactionWritable> input) {
-		// TODO
-		// wrap input in another copier-n-translator
-		// add TransactionsSortingDecorator(int[] original)
+		ReIterableTransactionWritable adapter = new ReIterableTransactionWritable(input);
+		
+		DatasetCounters counters = new DatasetCounters(minsup, adapter);
+		
+		Iterator<TransactionReader> reInput = adapter.reIterate();
+		TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(reInput, counters.getFrequents());
+		
+		return new ConcatenatedDataset(counters, filtered);
 	}
 	
 	public static Dataset project(Dataset parent, int extension)

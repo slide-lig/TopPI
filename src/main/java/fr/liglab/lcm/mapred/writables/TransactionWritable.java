@@ -4,16 +4,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Iterator;
 
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Writable;
-
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
-import fr.liglab.lcm.internals.ConcatenatedDataset;
-import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.mapred.Driver;
 
 public class TransactionWritable implements Writable {
 
@@ -90,42 +82,5 @@ public class TransactionWritable implements Writable {
 	@Override
 	public int hashCode() {
 		return Arrays.hashCode(this.transaction);
-	}
-	
-	
-	public static final Dataset buildDataset(Configuration conf, Iterator<TransactionWritable> transactions) {
-		final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions);
-		int minSupport = conf.getInt(Driver.KEY_MINSUP, 10);
-		
-		ConcatenatedDataset dataset = null;
-		try {
-			dataset = new ConcatenatedDataset(minSupport, input);
-		} catch (DontExploreThisBranchException e) {
-			// with initial support coreItem = MAX_ITEM , this won't happen
-			e.printStackTrace();
-		}
-		
-		return dataset;
-	}
-	
-	public static final class WritableTransactionsIterator implements Iterator<int[]> {
-		
-		private final Iterator<TransactionWritable> wrapped;
-		
-		public WritableTransactionsIterator(Iterator<TransactionWritable> original) {
-			this.wrapped = original;
-		}
-		
-		public boolean hasNext() {
-			return this.wrapped.hasNext();
-		}
-
-		public int[] next() {
-			return this.wrapped.next().get();
-		}
-
-		public void remove() {
-			throw new NotImplementedException();
-		}
 	}
 }
