@@ -35,6 +35,8 @@ public abstract class PatternsCollector {
 	}
 
 	/*
+	 * FIXME maybe this one only needs a DatasetCounters instance (and previous flags)
+	 * 
 	 * @param resultForPreviousItem What was the explore result for the previous
 	 * item in the sequence
 	 */

@@ -140,6 +140,7 @@ public class DatasetCounters {
 	
 	/**
 	 * Thread-safe iterator over sortedFrequents
+	 * FIXME : do it really need to be a TIntIterator ?
 	 */
 	public class FrequentsIterator implements TIntIterator {
 		private final AtomicInteger index;
@@ -162,14 +163,26 @@ public class DatasetCounters {
 			}
 		}
 		
+		/**
+		 * You'd better check if next() returns -1 or not
+		 */
 		@Override
+		@Deprecated
 		public final boolean hasNext() {
 			return this.index.get() < this.max;
 		}
 		
+		/**
+		 * @return -1 if iterator is finished
+		 */
 		@Override
 		public final int next() {
-			return sortedFrequents[this.index.getAndIncrement()];
+			final int nextIndex = this.index.getAndIncrement();
+			if (nextIndex < this.max) {
+				return sortedFrequents[nextIndex];
+			} else {
+				return -1;
+			}
 		}
 		
 		@Override

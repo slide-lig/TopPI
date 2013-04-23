@@ -3,25 +3,27 @@ package fr.liglab.lcm;
 import java.util.Arrays;
 
 import fr.liglab.lcm.internals.Dataset;
+import fr.liglab.lcm.internals.DatasetCounters;
 import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 
-public final class StackedJob {
-	private final FrequentsIterator iterator;
-	private final Dataset dataset;
-	private final int[] pattern;
-	private final int[] sortedfreqs;
-	private final TIntIntMap failedpptests;
+final class StackedJob {
+	public final FrequentsIterator iterator;
+	public final Dataset dataset;
+	public final int[] pattern;
+	public final int[] sortedfreqs;
+	public final TIntIntMap failedpptests;
 	private int previousItem;
 	private int previousResult;
 
-	public StackedJob(FrequentsIterator iterator, Dataset dataset, int[] pattern, int[] sortedfreqs) {
+	public StackedJob(Dataset dataset, int[] pattern) {
 		super();
-		this.iterator = iterator;
+		DatasetCounters counters = dataset.getCounters();
+		this.iterator = counters.getFrequentsIterator();
 		this.dataset = dataset;
 		this.pattern = pattern;
-		this.sortedfreqs = sortedfreqs;
+		this.sortedfreqs = counters.sortedFrequents;
 		this.previousItem = -1;
 		this.previousResult = -1;
 		this.failedpptests = new TIntIntHashMap();
@@ -43,26 +45,6 @@ public final class StackedJob {
 	@Override
 	public String toString() {
 		return "StackedJob [pattern=" + Arrays.toString(pattern) + "]";
-	}
-
-	public final FrequentsIterator getIterator() {
-		return iterator;
-	}
-
-	public final Dataset getDataset() {
-		return dataset;
-	}
-
-	public final int[] getPattern() {
-		return pattern;
-	}
-
-	public final int[] getSortedfreqs() {
-		return sortedfreqs;
-	}
-
-	public final TIntIntMap getFailedpptests() {
-		return failedpptests;
 	}
 
 	public final int getPreviousItem() {

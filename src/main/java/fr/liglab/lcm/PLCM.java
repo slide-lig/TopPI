@@ -16,13 +16,12 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
-import fr.liglab.lcm.LCM.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.ExtensionsIterator;
-import fr.liglab.lcm.internals.RebasedConcatenatedDataset;
-import fr.liglab.lcm.internals.RebasedDataset;
+import fr.liglab.lcm.internals.DatasetCounters;
+import fr.liglab.lcm.internals.DatasetFactory;
+import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
+import fr.liglab.lcm.internals.DatasetRebaserCounters;
 import fr.liglab.lcm.io.FileCollector;
-import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
@@ -71,9 +70,9 @@ public class PLCM {
 			previousItem = sj.getPreviousItem();
 			previousResult = sj.getPreviousResult();
 		}
-		synchronized (sj.getFailedpptests()) {
-			return this.collector.explore(sj.getPattern(), extension, sj.getSortedfreqs(), sj.getDataset()
-					.getSupportCounts(), sj.getFailedpptests(), previousItem, previousResult);
+		synchronized (sj.failedpptests) {
+			return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
+					sj.dataset.getCounters().supportCounts, sj.failedpptests, previousItem, previousResult);
 		}
 	}
 
@@ -81,17 +80,15 @@ public class PLCM {
 	 * Initial invocation
 	 */
 	public void lcm(final Dataset dataset) {
-		lcm(dataset, dataset.getCandidatesIterator());
-	}
-
-	public void lcm(final Dataset dataset, ExtensionsIterator iterator) {
-		int[] pattern = dataset.getDiscoveredClosureItems();
-
+		final DatasetCounters counters = dataset.getCounters();
+		
+		final int[] pattern = counters.closure;
+		
 		if (pattern.length > 0) {
-			collector.collect(dataset.getTransactionsCount(), pattern);
+			collector.collect(counters.transactionsCount, pattern);
 		}
 
-		this.threads.get(0).init(iterator, dataset, pattern);
+		this.threads.get(0).init(dataset, pattern);
 		for (PLCMThread t : this.threads) {
 			// System.out.println("Starting thread " + t.id);
 			t.start();
@@ -121,22 +118,13 @@ public class PLCM {
 						StackedJob sj = t.stackedJobs.get(0);
 						t.lock.readLock().unlock();
 						
-						boolean notAFirstParent = true;
-						while(notAFirstParent) {
-							try {
-								int extension = sj.getIterator().getExtension();
-								
-								// no DontExploreThisBranchException happened
-								notAFirstParent = false;
-								if (extension != -1) {
-									// need to copy because of possible inconsistencies
-									// in previous explore results (no lock to
-									// read/update them)
-									return new StolenJob(extension, sj);
-								}
-							} catch (DontExploreThisBranchException e) {
-								// try again
-							}
+						int extension = sj.iterator.next();
+						
+						if (extension != -1) {
+							// need to copy because of possible inconsistencies
+							// in previous explore results (no lock to
+							// read/update them)
+							return new StolenJob(extension, sj);
 						}
 					} else {
 						t.lock.readLock().unlock();
@@ -174,8 +162,8 @@ public class PLCM {
 			this.ultraVerbose = enabled;
 		}
 
-		private void init(ExtensionsIterator iterator, Dataset dataset, int[] pattern) {
-			StackedJob sj = new StackedJob(iterator, dataset, pattern, null);
+		private void init(Dataset dataset, int[] pattern) {
+			StackedJob sj = new StackedJob(dataset, pattern);
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(sj);
 			this.lock.writeLock().unlock();
@@ -198,19 +186,14 @@ public class PLCM {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
 				}
 				if (sj != null) {
-					try {
-						extension = sj.getIterator().getExtension();
-						// iterator is finished, remove it from the stack
-						if (extension == -1) {
-							this.lock.writeLock().lock();
-							this.stackedJobs.remove(this.stackedJobs.size() - 1);
-							this.lock.writeLock().unlock();
-						} else {
-							this.lcm(sj, extension);
-						}
-					} catch (DontExploreThisBranchException e) {
-						sj.updatepptestfail(e.extension, e.firstParent);
-						pptestFailed.incrementAndGet();
+					extension = sj.iterator.next();
+					// iterator is finished, remove it from the stack
+					if (extension == -1) {
+						this.lock.writeLock().lock();
+						this.stackedJobs.remove(this.stackedJobs.size() - 1);
+						this.lock.writeLock().unlock();
+					} else {
+						this.lcm(sj, extension);
 					}
 					
 				} else { // our list was empty, we should steal from another thread
@@ -228,45 +211,41 @@ public class PLCM {
 		}
 
 		private void lcm(StackedJob sj, int extension) {
-			int explore;
-			if (sj.getSortedfreqs() == null) {
-				explore = -1;
-			} else {
-				explore = explore(sj, extension);
-			}
-			if (explore < 0) {
-				explored.incrementAndGet();
-
-				if (this.ultraVerbose) {
-					System.out
-							.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n",
-									Calendar.getInstance(), this.id, Arrays.toString(sj.getPattern()), sj.getDataset()
-											.getTransactionsCount(), extension);
-				}
-
-				Dataset dataset = null;
-				try {
-					dataset = sj.getDataset().getProjection(extension);
-				} catch (DontExploreThisBranchException e) {
-					// may happen in getProjection, in which case we should just
-					// continue with next candidate
-					sj.updatepptestfail(extension, e.firstParent);
-					pptestFailed.incrementAndGet();
-					return;
-				}
-				int[] Q = ItemsetsFactory.extend(dataset.getDiscoveredClosureItems(), extension, sj.getPattern());
-				collect(dataset.getTransactionsCount(), Q);
-				ExtensionsIterator iterator = dataset.getCandidatesIterator();
-				int[] sortedFreqs = iterator.getSortedFrequents();
-				StackedJob nj = new StackedJob(iterator, dataset, Q, sortedFreqs);
-				this.lock.writeLock().lock();
-				this.stackedJobs.add(nj);
-				this.lock.writeLock().unlock();
-
-			} else {
+			int explore = explore(sj, extension);
+			
+			if (explore >= 0) {
 				sj.updateExploreResults(extension, explore);
 				cut.incrementAndGet();
+				return;
 			}
+			
+			Dataset dataset = null;
+			try {
+				dataset = DatasetFactory.project(sj.dataset, extension);
+			} catch (DontExploreThisBranchException e) {
+				sj.updatepptestfail(extension, e.firstParent);
+				pptestFailed.incrementAndGet();
+				return;
+			}
+			
+			explored.incrementAndGet();
+
+			if (this.ultraVerbose) {
+				System.out
+						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n",
+								Calendar.getInstance(), this.id, Arrays.toString(sj.pattern), 
+								sj.dataset.getCounters().transactionsCount, extension);
+			}
+			
+			DatasetCounters counters = dataset.getCounters();
+			
+			int[] Q = ItemsetsFactory.extend(counters.closure, extension, sj.pattern);
+			collect(counters.transactionsCount, Q);
+			
+			StackedJob nj = new StackedJob(dataset, Q);
+			this.lock.writeLock().lock();
+			this.stackedJobs.add(nj);
+			this.lock.writeLock().unlock();
 		}
 	}
 
@@ -288,12 +267,9 @@ public class PLCM {
 		CommandLineParser parser = new PosixParser();
 
 		options.addOption("h", false, "Show help");
-		options.addOption(
-				"b",
-				false,
-				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
+		options.addOption("b", false, "(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
-		options.addOption("t", true, "How many threads will be launched (defaults to 8)");
+		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -319,24 +295,16 @@ public class PLCM {
 
 	public static void standalone(CommandLine cmd) {
 		String[] args = cmd.getArgs();
-
-		FileReader reader = new FileReader(args[0]);
 		int minsup = Integer.parseInt(args[1]);
-
-		Dataset dataset = null;
-		try {
-			dataset = new RebasedConcatenatedDataset(minsup, reader);
-		} catch (DontExploreThisBranchException e) {
-			// this won't ever happen with initial constructor
-			e.printStackTrace();
-		}
-
+		
+		Dataset dataset = DatasetFactory.fromFile(minsup, args[0]);
+		
 		String outputPath = null;
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
 
-		PatternsCollector collector = instanciateCollector(cmd, outputPath, dataset, dataset);
+		PatternsCollector collector = instanciateCollector(cmd, outputPath, dataset);
 
 		long time = System.currentTimeMillis();
 		
@@ -354,17 +322,14 @@ public class PLCM {
 			time = System.currentTimeMillis() - time;
 			System.err.println(miner.toString() + " // mined in " + time + "ms");
 		}
-
-		reader.close();
+		
 		collector.close();
 	}
 
 	/**
-	 * Parse command-line arguments to instanciate the right collector in
-	 * stand-alone mode we're always rebasing so we need the dataset
+	 * Parse command-line arguments to instanciate the right collector
 	 */
-	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath,
-			Dataset rebasedDataset, Dataset dataset) {
+	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, Dataset dataset) {
 
 		PatternsCollector collector = null;
 
@@ -383,12 +348,12 @@ public class PLCM {
 				collector = new StdOutCollector();
 			}
 			collector = new PatternSortCollector(collector);
-
-			if (rebasedDataset instanceof RebasedDataset) {
-				collector = new RebaserCollector(collector, (RebasedDataset) rebasedDataset);
+			
+			if (dataset.getCounters() instanceof DatasetRebaserCounters) {
+				collector = new RebaserCollector(collector, (DatasetRebaserCounters) dataset.getCounters());
 			}
 		}
-
+		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
 			collector = new PerItemTopKCollectorThreadSafeInitialized(collector, k, dataset, true);
