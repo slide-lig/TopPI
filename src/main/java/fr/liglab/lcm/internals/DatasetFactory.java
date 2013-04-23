@@ -33,23 +33,40 @@ public final class DatasetFactory {
 	public static Dataset project(Dataset parent, int extension)
 		throws DontExploreThisBranchException {
 		
+		final int firstParent = parent.ppTest();
+		if (firstParent >= 0) {
+			throw new DontExploreThisBranchException(extension, firstParent);
+		}
 		
 		/**
+		 * TODO
 		 * if (parent instanceof concatenatedDatasetView)
 		 * 	parent.getIgnoredItems
-		 * 
-		 * if (parent.ppTest >= 0)
-		 * 	throw new DontExploreThisBranchException
-		 * 
-		 * counter = new DatasetCounters(parent.getCounters().minSup, parent.getSupport(extension), ignoredItems + extension )
-		 * 
-		 * if (max(counter.closure) > extension))
-		 * 	throw new DontExploreThisBranchException
-		 * 
-		 * 
-		 * then invoke actual dataset's constructor
-		 * 
 		 */
+		final int[] ignored = new int[] {extension};
+		final int minsup = parent.getCounters().minSup;
+		Iterator<TransactionReader> support = parent.getSupport(extension);
+		
+		DatasetCounters counters = new DatasetCounters(minsup, support, ignored);
+		
+		final int biggestClosureItem = maxItem(counters.closure);
+		if (biggestClosureItem > extension) {
+			throw new DontExploreThisBranchException(extension, biggestClosureItem);
+		}
+		
+		support = parent.getSupport(extension);
+		TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support, counters.getFrequents());
+		return new ConcatenatedDataset(counters, filtered);
+	}
+	
+	private static int maxItem(int[] of) {
+		int max = Integer.MIN_VALUE;
+		for(int item: of) {
+			if (item > max) {
+				max = item;
+			}
+		}
+		return max;
 	}
 	
 	/**
