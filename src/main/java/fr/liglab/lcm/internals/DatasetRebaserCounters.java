@@ -44,6 +44,7 @@ public class DatasetRebaserCounters extends DatasetCounters {
 			
 			for (int i = 0; i < closureLength; i++) {
 				this.reverseMap[i] = this.closure[i];
+				this.sortedFrequents[i] = i;
 				this.closure[i] = i;
 			}
 			
@@ -55,6 +56,7 @@ public class DatasetRebaserCounters extends DatasetCounters {
 				this.rebaseMap.put(entry.item, i);
 				
 				this.supportCounts.put(i, entry.support);
+				this.sortedFrequents[i] = i;
 				
 				entry = heap.poll();
 			}
