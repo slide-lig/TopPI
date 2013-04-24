@@ -29,6 +29,11 @@ class ConcatenatedDataset extends Dataset {
 	 */
 	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
 	
+	protected ConcatenatedDataset(final DatasetCounters counts, int[] transactions) {
+		this.counters = counts;
+		this.concatenated = transactions;
+	}
+	
 	ConcatenatedDataset(final DatasetCounters counts,
 			final Iterator<TransactionReader> transactions) {
 		

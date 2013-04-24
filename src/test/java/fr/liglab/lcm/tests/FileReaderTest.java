@@ -17,9 +17,7 @@ public class FileReaderTest {
 	/**
 	 * made for minsup=2
 	 */
-	public static FileReader getMicroReader() {
-		return new FileReader("target/test-classes/micro.dat");
-	}
+	public static final String PATH_MICRO = "target/test-classes/micro.dat";
 	
 	/**
 	 * minsup=2
@@ -40,9 +38,7 @@ public class FileReaderTest {
 	/**
 	 * made for minsup=2
 	 */
-	public static FileReader getGlobalClosure() {
-		return new FileReader("target/test-classes/globalclosure.dat");
-	}
+	public static final String PATH_GLOBAL_CLOSURE = "target/test-classes/globalclosure.dat";
 	
 	/**
 	 * minsup=2
@@ -57,10 +53,8 @@ public class FileReaderTest {
 	/**
 	 * made for minsup=2
 	 */
-	public static FileReader getFakeGlobalClosure() {
-		return new FileReader("target/test-classes/fakeglobalclosure.dat");
-	}
-
+	public static final String PATH_FAKE_GLOBAL_CLOSURE = "target/test-classes/fakeglobalclosure.dat";
+	
 	/**
 	 * minsup=2
 	 */
@@ -75,9 +69,7 @@ public class FileReaderTest {
 	 * recommanded minsup = 4
 	 * First 50 lines of retail.dat
 	 */
-	public static FileReader get50Retail() {
-		return new FileReader("target/test-classes/50retail.dat");
-	}
+	public static final String PATH_50_RETAIL = "target/test-classes/50retail.dat";
 	
 	/**
 	 * minsup = 4
@@ -106,9 +98,7 @@ public class FileReaderTest {
 	 * made for minsup=2
 	 * In order to ease testing, each item in this file is equal to its support count
 	 */
-	public static FileReader getRebasing() {
-		return new FileReader("target/test-classes/rebasing.dat");
-	}
+	public static final String PATH_REBASING = "target/test-classes/rebasing.dat";
 	
 	/**
 	 * To be wrapped in a RebaserCollector !!
@@ -127,9 +117,7 @@ public class FileReaderTest {
 	/**
 	 * made for minsup=1, k=2
 	 */
-	public static FileReader getTestExplore() {
-		return new FileReader("target/test-classes/testExplore.dat");
-	}
+	public static final String PATH_TEST_EXPLORE = "target/test-classes/testExplore.dat";
 	
 	/**
 	 * minsup=1, k=2
@@ -147,15 +135,14 @@ public class FileReaderTest {
 	/**
 	 * made for 1 < minsup < 12
 	 */
-	public static FileReader getTestUnfiltering() {
-		return new FileReader("target/test-classes/testUnfiltering.txt");
-	}
+	public static final String PATH_TEST_UNFILTERING = "target/test-classes/testUnfiltering.txt";
 	
 	public static StubPatternsCollector getTestUnfilteringPatterns() {
 		StubPatternsCollector patterns = new StubPatternsCollector();
-		patterns.expectCollect(14, 	4, 0, 1);
-		patterns.expectCollect(13, 	0, 1, 2, 4);
-		patterns.expectCollect(12, 	0, 1, 2, 4, 3);
+		patterns.expectCollect(11, 	0);
+		patterns.expectCollect(10, 	1);
+		patterns.expectCollect(8, 	2, 0);
+		patterns.expectCollect(6, 	0, 1, 2);
 		return patterns;
 	}
 	
@@ -168,7 +155,7 @@ public class FileReaderTest {
 	 * note : the empty line in micro.dat *is intentional*
 	 */
 	public void testMicroLoading() {
-		FileReader reader = FileReaderTest.getMicroReader();
+		FileReader reader = new FileReader(PATH_MICRO);
 		assertTrue(reader.hasNext());
 		readLine(reader.next(), 5,3,1,6,7);
 		readLine(reader.next(), 5,3,1,2,6);

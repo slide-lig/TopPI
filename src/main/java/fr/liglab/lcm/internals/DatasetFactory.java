@@ -4,6 +4,7 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
+import fr.liglab.lcm.util.ItemsetsFactory;
 import fr.liglab.lcm.util.ReIterableTransactionWritable;
 
 public final class DatasetFactory {
@@ -44,15 +45,18 @@ public final class DatasetFactory {
 			throw new DontExploreThisBranchException(extension, firstParent);
 		}
 		
-		/**
-		 * TODO
-		 * if (parent instanceof concatenatedDatasetView)
-		 * 	parent.getIgnoredItems
-		 */
-		final int[] ignored = new int[] {extension};
+		////////////// counting //////////////////////////
+		
+		int[] ignored;
+		if (parent instanceof ConcatenatedDatasetView) {
+			ConcatenatedDatasetView casted = (ConcatenatedDatasetView) parent;
+			ignored = ItemsetsFactory.extend(casted.ignoreItems, extension);
+		} else {
+			ignored = new int[] { extension };
+		}
+		
 		final int minsup = parent.getCounters().minSup;
 		Iterator<TransactionReader> support = parent.getSupport(extension);
-		
 		DatasetCounters counters = new DatasetCounters(minsup, support, ignored);
 		
 		final int biggestClosureItem = maxItem(counters.closure);
@@ -60,7 +64,34 @@ public final class DatasetFactory {
 			throw new DontExploreThisBranchException(extension, biggestClosureItem);
 		}
 		
-		support = parent.getSupport(extension);
+		////////////// actual instanciations //////////////////////////
+		
+		if (parent instanceof ConcatenatedDatasetView) {
+			ConcatenatedDatasetView casted = (ConcatenatedDatasetView) parent;
+			return project(casted, counters, extension, casted.getParentTransactionCount());
+			
+		} else if (parent instanceof ConcatenatedDataset) {
+			return project((ConcatenatedDataset) parent, counters, extension, 
+					parent.getCounters().transactionsCount);
+			
+		} else {
+			return null; // if that happens, you've forgot a test above !
+		}
+	}
+	
+	private static Dataset project(ConcatenatedDataset parent, DatasetCounters counters, 
+			int extension, double parentCount) {
+		
+		if ((counters.transactionsCount / parentCount) > ConcatenatedDatasetView.THRESHOLD) {
+			return new ConcatenatedDatasetView(counters, parent, extension);
+		} else {
+			return buildConcatenated(parent, counters, extension);
+		}
+	}
+	
+	
+	private static ConcatenatedDataset buildConcatenated(Dataset parent, DatasetCounters counters, int extension) {
+		Iterator<TransactionReader> support = parent.getSupport(extension);
 		TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support, counters.getFrequents());
 		return new ConcatenatedDataset(counters, filtered);
 	}
