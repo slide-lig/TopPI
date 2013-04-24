@@ -144,6 +144,21 @@ public class FileReaderTest {
 		return patterns;
 	}
 	
+	/**
+	 * made for 1 < minsup < 12
+	 */
+	public static FileReader getTestUnfiltering() {
+		return new FileReader("target/test-classes/testUnfiltering.txt");
+	}
+	
+	public static StubPatternsCollector getTestUnfilteringPatterns() {
+		StubPatternsCollector patterns = new StubPatternsCollector();
+		patterns.expectCollect(14, 	4, 0, 1);
+		patterns.expectCollect(13, 	0, 1, 2, 4);
+		patterns.expectCollect(12, 	0, 1, 2, 4, 3);
+		return patterns;
+	}
+	
 	
 	
 	
