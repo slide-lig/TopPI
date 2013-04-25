@@ -1,7 +1,5 @@
 package fr.liglab.lcm.internals;
 
-import gnu.trove.list.array.TIntArrayList;
-
 import java.util.Iterator;
 
 
@@ -29,7 +27,7 @@ public abstract class Dataset {
 	 * Some lazy implementations may keep useless items in their transactions
 	 * These will override this method so that such items will be ignored by DatasetCounters too 
 	 */
-	TIntArrayList getItemsIgnoredForCounting() {
+	int[] getItemsIgnoredForCounting() {
 		return null;
 	}
 	

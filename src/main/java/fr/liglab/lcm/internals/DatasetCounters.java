@@ -2,8 +2,6 @@ package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.TIntSet;
@@ -89,7 +87,7 @@ public class DatasetCounters {
 	 * @param ignoreItems (may be null) items that may appear in transactions but should to be counted 
 	 */
 	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions, 
-			int ingoredItem, TIntArrayList ignoredItems) {
+			int ingoredItem, int[] ignoredItems) {
 		this.minSup = minimumSupport;
 		
 		int lineCount = 0;
@@ -114,9 +112,8 @@ public class DatasetCounters {
 		supportCounts.remove(ingoredItem);
 		
 		if (ignoredItems != null) {
-			final TIntIterator iterator = ignoredItems.iterator();
-			while (iterator.hasNext()) {
-				supportCounts.remove(iterator.next());
+			for (int item : ignoredItems) {
+				supportCounts.remove(item);
 			}
 		}
 		

@@ -1,7 +1,6 @@
 package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.util.ItemAndSupport;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.procedure.TIntIntProcedure;
@@ -24,7 +23,7 @@ public class DatasetRebaserCounters extends DatasetCounters {
 	}
 	
 	public DatasetRebaserCounters(int minimumSupport, Iterator<TransactionReader> transactions, 
-			int ingoredItem, TIntArrayList ignoredItems) {
+			int ingoredItem, int[] ignoredItems) {
 		super(minimumSupport, transactions, ingoredItem, ignoredItems);
 		
 		final int nbItems = this.supportCounts.size();
