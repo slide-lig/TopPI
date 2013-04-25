@@ -50,7 +50,8 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 	
 	@Override
 	public Iterator<TransactionReader> getSupport(int item) {
-		return new OccurrencesIterator(getExtensionTIDs(item));
+		TIntIterator it = getExtensionTIDs(item).iterator();
+		return new ConcatenatedTransactionsReader(this.concatenated, it, false);
 	}
 	
 	/**

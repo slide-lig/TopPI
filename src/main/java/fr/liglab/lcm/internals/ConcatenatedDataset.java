@@ -7,8 +7,6 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.Iterator;
 
-import org.apache.commons.lang.NotImplementedException;
-
 /**
  * In this dataset (which does implement occurrence-delivery) transactions are 
  * prefixed by their length and concatenated in a single int[] 
@@ -93,40 +91,7 @@ class ConcatenatedDataset extends Dataset {
 	
 	@Override
 	public Iterator<TransactionReader> getSupport(int item) {
-		return new OccurrencesIterator(this.occurrences.get(item));
-	}
-	
-	
-	protected final class OccurrencesIterator implements Iterator<TransactionReader> {
-		private final TIntIterator indexes;
-		private final Reader reader = new Reader();
-		
-		OccurrencesIterator(TIntArrayList occurrencesIndexes) {
-			this.indexes = occurrencesIndexes.iterator();
-		}
-		
-		@Override
-		public TransactionReader next() {
-			this.reader.setCursor(this.indexes.next());
-			return this.reader;
-		}
-		
-		@Override public boolean hasNext() { return this.indexes.hasNext(); }
-		@Override public void remove() { throw new NotImplementedException(); }
-	}
-	
-	
-	protected final class Reader implements TransactionReader {
-		private int i = 0;
-		private int max = 0;
-		
-		void setCursor(int at) {
-			this.i = at+1;
-			this.max = this.i + concatenated[at];
-		}
-		
-		@Override public int getTransactionSupport() { return 1; }
-		@Override public int next() { return concatenated[this.i++]; }
-		@Override public boolean hasNext() { return this.i < this.max; }
+		TIntIterator it = this.occurrences.get(item).iterator();
+		return new ConcatenatedTransactionsReader(this.concatenated, it, false);
 	}
 }

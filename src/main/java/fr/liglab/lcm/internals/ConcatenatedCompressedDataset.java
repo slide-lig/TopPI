@@ -226,8 +226,8 @@ public class ConcatenatedCompressedDataset extends Dataset {
 
 	@Override
 	public Iterator<TransactionReader> getSupport(int item) {
-		// TODO Auto-generated method stub
-		return null;
+		TIntIterator it = this.occurrences.get(item).iterator();
+		return new ConcatenatedTransactionsReader(this.concatenated, it, true);
 	}
 
 	@Override
