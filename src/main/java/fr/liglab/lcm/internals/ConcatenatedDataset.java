@@ -24,11 +24,12 @@ class ConcatenatedDataset extends Dataset {
 	 * frequent item => array of occurrences indexes in "concatenated"
 	 * Transactions are added in the same order in all occurrences-arrays.
 	 */
-	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
+	protected final TIntObjectHashMap<TIntArrayList> occurrences;
 	
 	protected ConcatenatedDataset(final DatasetCounters counts, int[] transactions) {
 		super(counts);
 		this.concatenated = transactions;
+		this.occurrences = null;
 	}
 	
 	ConcatenatedDataset(final DatasetCounters counts,
@@ -40,6 +41,7 @@ class ConcatenatedDataset extends Dataset {
 		this.concatenated = new int[tableLength];
 		
 		// prepare occurrences lists
+		this.occurrences = new TIntObjectHashMap<TIntArrayList>();
 		TIntIntIterator supports = counts.supportCounts.iterator();
 		while (supports.hasNext()) {
 			supports.advance();
