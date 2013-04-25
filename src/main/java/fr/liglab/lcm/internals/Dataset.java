@@ -17,6 +17,10 @@ public abstract class Dataset {
 	
 	abstract Dataset project(int extension, DatasetCounters extensionCounters);
 	
+	/**
+	 * Some lazy implementations may keep useless items in their transactions
+	 * These will override this method so that such items will be ignored by DatasetCounters too 
+	 */
 	int[] getItemsIgnoredForCounting() {
 		return new int[0];
 	}
