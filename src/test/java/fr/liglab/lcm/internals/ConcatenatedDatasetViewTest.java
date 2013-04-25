@@ -6,10 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.DatasetCounters;
-import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
-import fr.liglab.lcm.internals.DatasetFactory;
 import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
 import fr.liglab.lcm.tests.FileReaderTest;
 
@@ -20,7 +16,7 @@ public class ConcatenatedDatasetViewTest {
 		Dataset root = DatasetFactory.fromFile(2, FileReaderTest.PATH_TEST_UNFILTERING);
 		
 		Dataset projected_2 = DatasetFactory.project(root, 2);
-		DatasetCounters counters_2 = projected_2.getCounters();
+		DatasetCounters counters_2 = projected_2.counters;
 		assertArrayEquals(new int[] {0}, counters_2.closure);
 		assertArrayEquals(new int[] {1}, counters_2.sortedFrequents);
 		
@@ -32,7 +28,7 @@ public class ConcatenatedDatasetViewTest {
 		
 		assertTrue(projected_2_1 instanceof ConcatenatedDatasetView);
 		ConcatenatedDatasetView casted = (ConcatenatedDatasetView) projected_2_1;
-		assertEquals(root.getCounters().transactionsCount, casted.getParentTransactionCount());
+		assertEquals(root.counters.transactionsCount, casted.getConcatenatedTransactionCount(), 1);
 	}
 
 }

@@ -8,12 +8,18 @@ import java.util.Iterator;
  * *may* perform some indexing for occurence delivery.
  * 
  * All actual implementations are package-visible - use DatasetFactory
- * 
- * // TODO put ppTest somewhere else ?
  */
 public abstract class Dataset {
+	public final DatasetCounters counters;
+	
+	/**
+	 * This constructor is only here to please the compiler
+	 */
+	protected Dataset(DatasetCounters counted) {
+		this.counters = counted;
+	}
+	
 	public abstract Iterator<TransactionReader> getSupport(int item);
-	public abstract DatasetCounters getCounters();
 	
 	abstract Dataset project(int extension, DatasetCounters extensionCounters);
 	

@@ -18,7 +18,6 @@ import java.util.Iterator;
  */
 class ConcatenatedDataset extends Dataset {
 
-	protected final DatasetCounters counters;
 	protected final int[] concatenated;
 	
 	/**
@@ -28,14 +27,14 @@ class ConcatenatedDataset extends Dataset {
 	protected final TIntObjectHashMap<TIntArrayList> occurrences = new TIntObjectHashMap<TIntArrayList>();
 	
 	protected ConcatenatedDataset(final DatasetCounters counts, int[] transactions) {
-		this.counters = counts;
+		super(counts);
 		this.concatenated = transactions;
 	}
 	
 	ConcatenatedDataset(final DatasetCounters counts,
 			final Iterator<TransactionReader> transactions) {
 		
-		this.counters = counts;
+		super(counts);
 		
 		int tableLength = counts.supportsSum + counts.transactionsCount;
 		this.concatenated = new int[tableLength];
@@ -82,11 +81,6 @@ class ConcatenatedDataset extends Dataset {
 	
 	protected double getConcatenatedTransactionCount() {
 		return this.counters.transactionsCount;
-	}
-
-	@Override
-	public DatasetCounters getCounters() {
-		return this.counters;
 	}
 	
 	@Override

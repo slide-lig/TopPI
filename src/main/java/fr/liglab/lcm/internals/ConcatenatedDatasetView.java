@@ -45,7 +45,7 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 	
 	@Override
 	protected final double getConcatenatedTransactionCount() {
-		return this.parent.getCounters().transactionsCount;
+		return this.parent.counters.transactionsCount;
 	}
 	
 	@Override

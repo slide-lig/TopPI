@@ -11,6 +11,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * TODO : refactor the hierarchy. There's 4 levels above the Hadoop version !
+ */
 public class PerItemTopKCollector extends PatternsCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a

@@ -73,7 +73,7 @@ public class PLCM {
 		}
 		synchronized (sj.failedpptests) {
 			return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
-					sj.dataset.getCounters().supportCounts, sj.failedpptests, previousItem, previousResult);
+					sj.dataset.counters.supportCounts, sj.failedpptests, previousItem, previousResult);
 		}
 	}
 
@@ -89,12 +89,10 @@ public class PLCM {
 	 * "starters" may be null
 	 */
 	public void lcm(final Dataset dataset, FrequentsIterator starters) {
-		final DatasetCounters counters = dataset.getCounters();
-		
-		final int[] pattern = counters.closure;
+		final int[] pattern = dataset.counters.closure;
 		
 		if (pattern.length > 0) {
-			collector.collect(counters.transactionsCount, pattern);
+			collector.collect(dataset.counters.transactionsCount, pattern);
 		}
 
 		this.threads.get(0).init(dataset, pattern);
@@ -177,7 +175,7 @@ public class PLCM {
 		
 		private void init(Dataset dataset, int[] pattern, FrequentsIterator starters) {
 			if (starters == null) {
-				starters = dataset.getCounters().getFrequentsIterator();
+				starters = dataset.counters.getFrequentsIterator();
 			}
 			
 			StackedJob sj = new StackedJob(dataset, pattern, starters);
@@ -248,10 +246,10 @@ public class PLCM {
 				System.out
 						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n",
 								Calendar.getInstance(), this.id, Arrays.toString(sj.pattern), 
-								sj.dataset.getCounters().transactionsCount, extension);
+								sj.dataset.counters.transactionsCount, extension);
 			}
 			
-			DatasetCounters counters = dataset.getCounters();
+			DatasetCounters counters = dataset.counters;
 			
 			int[] Q = ItemsetsFactory.extend(counters.closure, extension, sj.pattern);
 			collect(counters.transactionsCount, Q);
@@ -363,8 +361,8 @@ public class PLCM {
 			}
 			collector = new PatternSortCollector(collector);
 			
-			if (dataset.getCounters() instanceof DatasetRebaserCounters) {
-				collector = new RebaserCollector(collector, (DatasetRebaserCounters) dataset.getCounters());
+			if (dataset.counters instanceof DatasetRebaserCounters) {
+				collector = new RebaserCollector(collector, (DatasetRebaserCounters) dataset.counters);
 			}
 		}
 		

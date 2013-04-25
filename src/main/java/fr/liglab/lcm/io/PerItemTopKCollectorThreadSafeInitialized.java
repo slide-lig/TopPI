@@ -25,7 +25,7 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 			final PatternsCollector follower, final int k, Dataset dataset,
 			final boolean outputEachPatternOnce) {
 		
-		this(follower, k, dataset.getCounters().getFrequentsIterator(), outputEachPatternOnce);
+		this(follower, k, dataset.counters.getFrequentsIterator(), outputEachPatternOnce);
 	}
 	
 	public PerItemTopKCollectorThreadSafeInitialized(
@@ -44,7 +44,7 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 		super(follower, k, mineInGroup, mineOutGroup);
 		
 		// FIXME - maybe this would better happen in setGroup ?
-		this.init(dataset.getCounters().getFrequentsIterator());
+		this.init(dataset.counters.getFrequentsIterator());
 	}
 	
 	private void init(final FrequentsIterator iterator) {

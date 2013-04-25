@@ -48,7 +48,7 @@ public final class DatasetFactory {
 		////////////// counting //////////////////////////
 		
 		final int[] ignored = ItemsetsFactory.extend(parent.getItemsIgnoredForCounting(), extension);
-		final int minsup = parent.getCounters().minSup;
+		final int minsup = parent.counters.minSup;
 		Iterator<TransactionReader> support = parent.getSupport(extension);
 		
 		DatasetCounters counters = new DatasetCounters(minsup, support, ignored);

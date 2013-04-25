@@ -3,7 +3,6 @@ package fr.liglab.lcm;
 import java.util.Arrays;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.DatasetCounters;
 import fr.liglab.lcm.internals.FrequentsIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -19,11 +18,10 @@ final class StackedJob {
 
 	public StackedJob(Dataset dataset, int[] pattern, FrequentsIterator it) {
 		super();
-		DatasetCounters counters = dataset.getCounters();
 		this.iterator = it;
 		this.dataset = dataset;
 		this.pattern = pattern;
-		this.sortedfreqs = counters.sortedFrequents;
+		this.sortedfreqs = dataset.counters.sortedFrequents;
 		this.previousItem = -1;
 		this.previousResult = -1;
 		this.failedpptests = new TIntIntHashMap();

@@ -24,8 +24,6 @@ import java.util.Iterator;
  */
 public class ConcatenatedCompressedDataset extends Dataset {
 	
-	protected final DatasetCounters counters; // TODO find a way to put this in Dataset without getting boring
-	
 	/**
 	 * Support list will contain transactions with 0 frequency because
 	 * compression occurs AFTER their construction
@@ -59,7 +57,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 	ConcatenatedCompressedDataset(final DatasetCounters counts, 
 			final Iterator<TransactionReader> transactions, int coreItem) {
 		
-		this.counters = counts;
+		super(counts);
 		
 		TIntIntIterator supIterator = counts.supportCounts.iterator();
 		while (supIterator.hasNext()) {
@@ -229,12 +227,7 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		TIntIterator it = this.occurrences.get(item).iterator();
 		return new ConcatenatedTransactionsReader(this.concatenated, it, true);
 	}
-
-	@Override
-	public final DatasetCounters getCounters() {
-		return this.counters;
-	}
-
+	
 	@Override
 	Dataset project(int extension, DatasetCounters extensionCounters) {
 		Iterator<TransactionReader> support = this.getSupport(extension);

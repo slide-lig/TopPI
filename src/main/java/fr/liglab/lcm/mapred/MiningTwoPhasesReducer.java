@@ -119,7 +119,7 @@ public class MiningTwoPhasesReducer extends
 			}
 			extensionsIterator = fakeIt;
 		} else {
-			extensionsIterator = dataset.getCounters().getFrequentsIterator();
+			extensionsIterator = dataset.counters.getFrequentsIterator();
 		}
 		
 		lcm.lcm(dataset, extensionsIterator);
