@@ -1,6 +1,5 @@
 package fr.liglab.lcm.internals;
 
-import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -16,7 +15,7 @@ import java.util.Iterator;
 class ConcatenatedDatasetView extends ConcatenatedDataset {
 	static final double THRESHOLD = 0.15;
 	
-	protected final int[] ignoreItems; // items known to have a 100% support in parent.concatenated
+	protected final TIntArrayList ignoreItems; // items known to have a 100% support in parent.concatenated
 	protected final ConcatenatedDataset parent;
 	protected final TIntArrayList tids;
 	
@@ -30,16 +29,23 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 			ConcatenatedDatasetView upperView = (ConcatenatedDatasetView) upper;
 			this.parent = upperView.parent;
 			this.tids = upperView.getExtensionTIDs(extension);
-			this.ignoreItems = ItemsetsFactory.extend(counts.closure, extension, upperView.ignoreItems);
+			
+			this.ignoreItems = new TIntArrayList(1 + counts.closure.length + upperView.ignoreItems.size());
+			this.ignoreItems.add(counts.closure);
+			this.ignoreItems.add(extension);
+			this.ignoreItems.addAll(upperView.ignoreItems);
 		} else {
 			this.parent = upper;
 			this.tids = this.parent.occurrences.get(extension);
-			this.ignoreItems = ItemsetsFactory.extend(counts.closure, extension);
+			
+			this.ignoreItems = new TIntArrayList(1 + counts.closure.length);
+			this.ignoreItems.add(counts.closure);
+			this.ignoreItems.add(extension);
 		}
 	}
 	
 	@Override
-	final int[] getItemsIgnoredForCounting() {
+	final TIntArrayList getItemsIgnoredForCounting() {
 		return this.ignoreItems;
 	}
 	

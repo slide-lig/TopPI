@@ -5,6 +5,7 @@ import java.util.Iterator;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
 import fr.liglab.lcm.util.ReIterableTransactionWritable;
+import gnu.trove.list.array.TIntArrayList;
 
 public final class DatasetFactory {
 	
@@ -46,7 +47,7 @@ public final class DatasetFactory {
 		
 		////////////// counting //////////////////////////
 		
-		final int[] ignored = parent.getItemsIgnoredForCounting();
+		final TIntArrayList ignored = parent.getItemsIgnoredForCounting();
 		final int minsup = parent.counters.minSup;
 		Iterator<TransactionReader> support = parent.getSupport(extension);
 		
