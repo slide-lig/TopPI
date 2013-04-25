@@ -18,10 +18,10 @@ import org.apache.commons.cli.PosixParser;
 
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.DatasetCounters;
-import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
 import fr.liglab.lcm.internals.DatasetFactory;
 import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
 import fr.liglab.lcm.internals.DatasetRebaserCounters;
+import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternSortCollector;
@@ -81,6 +81,14 @@ public class PLCM {
 	 * Initial invocation
 	 */
 	public void lcm(final Dataset dataset) {
+		lcm (dataset, null);
+	}
+	
+	/**
+	 * Initial invocation
+	 * "starters" may be null
+	 */
+	public void lcm(final Dataset dataset, FrequentsIterator starters) {
 		final DatasetCounters counters = dataset.getCounters();
 		
 		final int[] pattern = counters.closure;
@@ -162,10 +170,17 @@ public class PLCM {
 		public void setUltraVerboseMode(boolean enabled) {
 			this.ultraVerbose = enabled;
 		}
-
+		
 		private void init(Dataset dataset, int[] pattern) {
-			FrequentsIterator it = dataset.getCounters().getFrequentsIterator();
-			StackedJob sj = new StackedJob(dataset, pattern, it);
+			this.init(dataset, pattern, null);
+		}
+		
+		private void init(Dataset dataset, int[] pattern, FrequentsIterator starters) {
+			if (starters == null) {
+				starters = dataset.getCounters().getFrequentsIterator();
+			}
+			
+			StackedJob sj = new StackedJob(dataset, pattern, starters);
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(sj);
 			this.lock.writeLock().unlock();

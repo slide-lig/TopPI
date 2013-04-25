@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.DatasetCounters;
-import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
+import fr.liglab.lcm.internals.FrequentsIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 

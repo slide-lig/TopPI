@@ -10,17 +10,14 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.lcm.PLCM;
-import fr.liglab.lcm.internals.ConcatenatedCompressedDataset;
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.DatasetFactory.DontExploreThisBranchException;
-import fr.liglab.lcm.internals.ExtensionsIterator;
+import fr.liglab.lcm.internals.DatasetFactory;
+import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import fr.liglab.lcm.mapred.writables.TransactionWritable.WritableTransactionsIterator;
-import fr.liglab.lcm.util.FakeExtensionsIterator;
 import fr.liglab.lcm.util.HeapDumper;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -93,19 +90,7 @@ public class MiningTwoPhasesReducer extends
 		int STAHP = conf.getInt(Driver.KEY_STOP_AT, -1);
 		int minsup = conf.getInt(Driver.KEY_MINSUP, 10);
 		
-		Dataset dataset;
-		
-		if (singleStarter >= 0) {
-			final WritableTransactionsIterator input = new WritableTransactionsIterator(transactions.iterator());
-			try {
-				dataset = new ConcatenatedCompressedDataset(minsup, input);
-			} catch (DontExploreThisBranchException e) {
-				e.printStackTrace();
-				return;
-			}
-		} else {
-			dataset = TransactionWritable.buildDataset(context.getConfiguration(), transactions.iterator());
-		}
+		Dataset dataset = DatasetFactory.fromHadoop(minsup, transactions.iterator());
 		
 		context.progress(); // ping master, otherwise long mining tasks get killed
 		
@@ -121,35 +106,20 @@ public class MiningTwoPhasesReducer extends
 		this.collector.setGroup(new TIntHashSet(starters));
 
 		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
-		ExtensionsIterator extensionsIterator;
+		FrequentsIterator extensionsIterator;
 		
-		int[] sortedFrequents = dataset.getCandidatesIterator().getSortedFrequents();
 		if (singleStarter >= 0) {
-			extensionsIterator = new SingleStarter.SingleExtensionIterator(singleStarter, sortedFrequents);
+			extensionsIterator = new SingleStarter.SingleExtensionIterator(singleStarter);
 			SingleStarter.preFillCollector(context.getConfiguration(), this.collector);
-			
-			// lol
-			try {
-				TIntIntMap supportCounts = dataset.getProjection(singleStarter).getSupportCounts();
-				System.out.println("=item,support entries in projected dataset of :"+singleStarter);
-				TIntIntIterator supportsiterator = supportCounts.iterator();
-				while (supportsiterator.hasNext()) {
-					supportsiterator.advance();
-					System.out.format("=%d,%d\n", supportsiterator.key(), supportsiterator.value());
-				}
-			} catch (DontExploreThisBranchException e) {
-				// ffffffuuuuuu
-			}
-			
 		} else if (this.phase == 1) {
-			FakeExtensionsIterator fakeIt = new FakeExtensionsIterator(sortedFrequents, starters.iterator());
+			FakeExtensionsIterator fakeIt = new FakeExtensionsIterator(starters.iterator());
 			
 			if (STAHP > 0) {
 				fakeIt.interruptAt(STAHP);
 			}
 			extensionsIterator = fakeIt;
 		} else {
-			extensionsIterator = dataset.getCandidatesIterator();
+			extensionsIterator = dataset.getCounters().getFrequentsIterator();
 		}
 		
 		lcm.lcm(dataset, extensionsIterator);

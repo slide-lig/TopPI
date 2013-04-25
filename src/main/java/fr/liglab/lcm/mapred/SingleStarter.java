@@ -18,7 +18,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
-import fr.liglab.lcm.internals.ExtensionsIterator;
+import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
@@ -127,21 +127,15 @@ public class SingleStarter extends Configured implements Tool{
 		}
 	}
 	
-	static class SingleExtensionIterator implements ExtensionsIterator {
+	static class SingleExtensionIterator implements FrequentsIterator {
 		
-		private final int[] realcandidates;
 		private int extension;
 		
-		public SingleExtensionIterator(int singleExtension, int[] sortedFrequents) {
-			this.realcandidates = sortedFrequents;
+		public SingleExtensionIterator(int singleExtension) {
 			this.extension = singleExtension;
 		}
 		
-		public int[] getSortedFrequents() {
-			return this.realcandidates;
-		}
-
-		public int getExtension() {
+		public final int next() {
 			if (this.extension > 0) {
 				int val = this.extension;
 				this.extension = -1;

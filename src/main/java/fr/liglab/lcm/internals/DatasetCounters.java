@@ -65,14 +65,14 @@ public class DatasetCounters {
 	 * @return an iterator on frequent items in ascending order, up to "max" (excluded)
 	 */
 	public final FrequentsIterator getFrequentsIteratorTo(int max) {
-		return new FrequentsIterator(max);
+		return new AllFrequentsIterator(max);
 	}
 
 	/**
 	 * @return an iterator on frequent items (in ascending order)
 	 */
 	public final FrequentsIterator getFrequentsIterator() {
-		return new FrequentsIterator(Integer.MAX_VALUE);
+		return new AllFrequentsIterator(Integer.MAX_VALUE);
 	}
 
 	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions) {
@@ -140,14 +140,14 @@ public class DatasetCounters {
 	/**
 	 * Thread-safe iterator over sortedFrequents
 	 */
-	public class FrequentsIterator {
+	protected class AllFrequentsIterator implements FrequentsIterator {
 		private final AtomicInteger index;
 		private final int max;
 		
 		/**
 		 * will provide an iterator on frequent items in [0,to[
 		 */
-		public FrequentsIterator(int to) {
+		public AllFrequentsIterator(int to) {
 			this.index = new AtomicInteger(0);
 			
 			int toIndex = Arrays.binarySearch(sortedFrequents, to);

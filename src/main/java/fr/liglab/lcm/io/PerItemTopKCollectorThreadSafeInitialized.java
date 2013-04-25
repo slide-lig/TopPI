@@ -1,7 +1,7 @@
 package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
+import fr.liglab.lcm.internals.FrequentsIterator;
 
 public class PerItemTopKCollectorThreadSafeInitialized extends
 		PerItemGroupTopKCollector {
