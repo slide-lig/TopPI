@@ -47,16 +47,10 @@ public final class DatasetFactory {
 		
 		////////////// counting //////////////////////////
 		
-		int[] ignored;
-		if (parent instanceof ConcatenatedDatasetView) {
-			ConcatenatedDatasetView casted = (ConcatenatedDatasetView) parent;
-			ignored = ItemsetsFactory.extend(casted.ignoreItems, extension);
-		} else {
-			ignored = new int[] { extension };
-		}
-		
+		final int[] ignored = ItemsetsFactory.extend(parent.getItemsIgnoredForCounting(), extension);
 		final int minsup = parent.getCounters().minSup;
 		Iterator<TransactionReader> support = parent.getSupport(extension);
+		
 		DatasetCounters counters = new DatasetCounters(minsup, support, ignored);
 		
 		final int biggestClosureItem = maxItem(counters.closure);

@@ -9,11 +9,15 @@ import java.util.Iterator;
  * 
  * All actual implementations are package-visible - use DatasetFactory
  * 
- * // TODO put ppTest somewhere else ! 
+ * // TODO put ppTest somewhere else ?
  */
 public abstract class Dataset {
 	public abstract Iterator<TransactionReader> getSupport(int item);
 	public abstract DatasetCounters getCounters();
+	
+	int[] getItemsIgnoredForCounting() {
+		return new int[0];
+	}
 	
 	public int ppTest() {
 		return -1;

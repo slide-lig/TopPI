@@ -38,6 +38,11 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 		}
 	}
 	
+	@Override
+	final int[] getItemsIgnoredForCounting() {
+		return this.ignoreItems;
+	}
+	
 	final int getParentTransactionCount() {
 		return this.parent.getCounters().transactionsCount;
 	}
