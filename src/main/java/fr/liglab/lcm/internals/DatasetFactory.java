@@ -4,7 +4,6 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.mapred.writables.TransactionWritable;
-import fr.liglab.lcm.util.ItemsetsFactory;
 import fr.liglab.lcm.util.ReIterableTransactionWritable;
 
 public final class DatasetFactory {
@@ -47,11 +46,11 @@ public final class DatasetFactory {
 		
 		////////////// counting //////////////////////////
 		
-		final int[] ignored = ItemsetsFactory.extend(parent.getItemsIgnoredForCounting(), extension);
+		final int[] ignored = parent.getItemsIgnoredForCounting();
 		final int minsup = parent.counters.minSup;
 		Iterator<TransactionReader> support = parent.getSupport(extension);
 		
-		DatasetCounters counters = new DatasetCounters(minsup, support, ignored);
+		DatasetCounters counters = new DatasetCounters(minsup, support, extension, ignored);
 		
 		final int biggestClosureItem = maxItem(counters.closure);
 		if (biggestClosureItem > extension) {

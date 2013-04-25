@@ -28,7 +28,7 @@ public abstract class Dataset {
 	 * These will override this method so that such items will be ignored by DatasetCounters too 
 	 */
 	int[] getItemsIgnoredForCounting() {
-		return new int[0];
+		return null;
 	}
 	
 	public int ppTest(int extension) {

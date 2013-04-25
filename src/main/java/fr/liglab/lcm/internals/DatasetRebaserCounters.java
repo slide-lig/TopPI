@@ -19,11 +19,12 @@ public class DatasetRebaserCounters extends DatasetCounters {
 	public TIntIntMap rebaseMap;
 
 	public DatasetRebaserCounters(int minsup, Iterator<TransactionReader> transactions) {
-		this(minsup, transactions, null);
+		this(minsup, transactions, Integer.MIN_VALUE, null);
 	}
 	
-	public DatasetRebaserCounters(int minimumSupport, Iterator<TransactionReader> transactions, int[] ignoredItems) {
-		super(minimumSupport, transactions, ignoredItems);
+	public DatasetRebaserCounters(int minimumSupport, Iterator<TransactionReader> transactions, 
+			int ingoredItem, int[] ignoredItems) {
+		super(minimumSupport, transactions, ingoredItem, ignoredItems);
 		
 		final int nbItems = this.supportCounts.size();
 		final int closureLength = this.closure.length;

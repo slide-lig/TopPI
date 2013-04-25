@@ -76,16 +76,18 @@ public class DatasetCounters {
 	}
 
 	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions) {
-		this(minimumSupport, transactions, null);
+		this(minimumSupport, transactions, Integer.MIN_VALUE, null);
 	}
 	
 	/**
 	 * Counts items appearing in provided transactions
 	 * @param minimumSupport
 	 * @param transactions
+	 * @param ingoreItem avoids building an array when there's only extension to be ignored
 	 * @param ignoreItems (may be null) items that may appear in transactions but should to be counted 
 	 */
-	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions, int[] ignoredItems) {
+	DatasetCounters(int minimumSupport, Iterator<TransactionReader> transactions, 
+			int ingoredItem, int[] ignoredItems) {
 		this.minSup = minimumSupport;
 		
 		int lineCount = 0;
@@ -106,6 +108,8 @@ public class DatasetCounters {
 		
 		this.transactionsCount = lineCount;
 		this.itemsRead = itemCount;
+		
+		supportCounts.remove(ingoredItem);
 		
 		if (ignoredItems != null) {
 			for (int item : ignoredItems) {
