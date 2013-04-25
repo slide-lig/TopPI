@@ -58,36 +58,9 @@ public final class DatasetFactory {
 			throw new DontExploreThisBranchException(extension, biggestClosureItem);
 		}
 		
-		////////////// actual instanciations //////////////////////////
+		////////////// actual projection is delegated to implementations
 		
-		if (parent instanceof ConcatenatedDatasetView) {
-			ConcatenatedDatasetView casted = (ConcatenatedDatasetView) parent;
-			return project(casted, counters, extension, casted.getParentTransactionCount());
-			
-		} else if (parent instanceof ConcatenatedDataset) {
-			return project((ConcatenatedDataset) parent, counters, extension, 
-					parent.getCounters().transactionsCount);
-			
-		} else {
-			return null; // if that happens, you've forgot a test above !
-		}
-	}
-	
-	private static Dataset project(ConcatenatedDataset parent, DatasetCounters counters, 
-			int extension, double parentCount) {
-		
-		if ((counters.transactionsCount / parentCount) > ConcatenatedDatasetView.THRESHOLD) {
-			return new ConcatenatedDatasetView(counters, parent, extension);
-		} else {
-			return buildConcatenated(parent, counters, extension);
-		}
-	}
-	
-	
-	private static ConcatenatedDataset buildConcatenated(Dataset parent, DatasetCounters counters, int extension) {
-		Iterator<TransactionReader> support = parent.getSupport(extension);
-		TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support, counters.getFrequents());
-		return new ConcatenatedDataset(counters, filtered);
+		return parent.project(extension, counters);
 	}
 	
 	private static int maxItem(int[] of) {

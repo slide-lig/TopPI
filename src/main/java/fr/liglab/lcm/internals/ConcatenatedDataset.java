@@ -67,7 +67,25 @@ class ConcatenatedDataset extends Dataset {
 		}
 	}
 	
+
+	@Override
+	Dataset project(int extension, DatasetCounters extensionCounters) {
+		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
+		
+		if (reductionRate > ConcatenatedDatasetView.THRESHOLD) {
+			return new ConcatenatedDatasetView(extensionCounters, this, extension);
+		} else {
+			Iterator<TransactionReader> support = this.getSupport(extension);
+			TransactionsFilteringDecorator filtered = 
+					new TransactionsFilteringDecorator(support, extensionCounters.getFrequents());
+			return new ConcatenatedDataset(extensionCounters, filtered);
+		}
+	}
 	
+	protected double getConcatenatedTransactionCount() {
+		return this.counters.transactionsCount;
+	}
+
 	@Override
 	public DatasetCounters getCounters() {
 		return this.counters;

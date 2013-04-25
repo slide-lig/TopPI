@@ -15,6 +15,8 @@ public abstract class Dataset {
 	public abstract Iterator<TransactionReader> getSupport(int item);
 	public abstract DatasetCounters getCounters();
 	
+	abstract Dataset project(int extension, DatasetCounters extensionCounters);
+	
 	int[] getItemsIgnoredForCounting() {
 		return new int[0];
 	}

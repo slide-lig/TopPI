@@ -43,10 +43,10 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 		return this.ignoreItems;
 	}
 	
-	final int getParentTransactionCount() {
+	@Override
+	protected final double getConcatenatedTransactionCount() {
 		return this.parent.getCounters().transactionsCount;
 	}
-	
 	
 	@Override
 	public Iterator<TransactionReader> getSupport(int item) {
