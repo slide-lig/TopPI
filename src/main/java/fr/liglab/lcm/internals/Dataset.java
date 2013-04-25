@@ -21,7 +21,7 @@ public abstract class Dataset {
 		return new int[0];
 	}
 	
-	public int ppTest() {
+	public int ppTest(int extension) {
 		return -1;
 	}
 }

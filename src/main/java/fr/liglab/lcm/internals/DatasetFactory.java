@@ -40,7 +40,7 @@ public final class DatasetFactory {
 	public static Dataset project(Dataset parent, int extension)
 		throws DontExploreThisBranchException {
 		
-		final int firstParent = parent.ppTest();
+		final int firstParent = parent.ppTest(extension);
 		if (firstParent >= 0) {
 			throw new DontExploreThisBranchException(extension, firstParent);
 		}
