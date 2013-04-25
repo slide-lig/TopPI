@@ -1,7 +1,7 @@
 package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.internals.Dataset;
-import gnu.trove.iterator.TIntIterator;
+import fr.liglab.lcm.internals.DatasetCounters.FrequentsIterator;
 
 public class PerItemTopKCollectorThreadSafeInitialized extends
 		PerItemGroupTopKCollector {
@@ -29,7 +29,7 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 	}
 	
 	public PerItemTopKCollectorThreadSafeInitialized(
-			final PatternsCollector follower, final int k, TIntIterator items,
+			final PatternsCollector follower, final int k, FrequentsIterator items,
 			final boolean outputEachPatternOnce) {
 		super(follower, k);
 		// we may want to hint a default size, it is at least the group size,
@@ -47,9 +47,9 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 		this.init(dataset.getCounters().getFrequentsIterator());
 	}
 	
-	private void init(final TIntIterator items) {
-		while (items.hasNext()) {
-			this.topK.put(items.next(), new PatternWithFreq[k]);
+	private void init(final FrequentsIterator iterator) {
+		for (int item = iterator.next(); item != -1; item = iterator.next()) {
+			this.topK.put(item, new PatternWithFreq[k]);
 		}
 	}
 	

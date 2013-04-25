@@ -2,7 +2,6 @@ package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.set.TIntSet;
@@ -140,9 +139,8 @@ public class DatasetCounters {
 	
 	/**
 	 * Thread-safe iterator over sortedFrequents
-	 * FIXME : do it really need to be a TIntIterator ?
 	 */
-	public class FrequentsIterator implements TIntIterator {
+	public class FrequentsIterator {
 		private final AtomicInteger index;
 		private final int max;
 		
@@ -164,19 +162,9 @@ public class DatasetCounters {
 		}
 		
 		/**
-		 * You'd better check if next() returns -1 or not
-		 */
-		@Override
-		@Deprecated
-		public final boolean hasNext() {
-			return this.index.get() < this.max;
-		}
-		
-		/**
 		 * @return -1 if iterator is finished
 		 */
-		@Override
-		public final int next() {
+		public int next() {
 			final int nextIndex = this.index.getAndIncrement();
 			if (nextIndex < this.max) {
 				return sortedFrequents[nextIndex];
@@ -184,8 +172,5 @@ public class DatasetCounters {
 				return -1;
 			}
 		}
-		
-		@Override
-		public final void remove() {}
 	}
 }
