@@ -7,9 +7,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.SequenceFile.Reader;
@@ -20,24 +18,6 @@ import org.apache.hadoop.io.SequenceFile.Reader;
 class DistCache {
 	static final String REBASINGMAP_DIRNAME = "rebasing";
 	static final String BOUNDS_DIRNAME = "bounds";
-	
-	/**
-	 * Adds given path to conf's distributed cache
-	 */
-	static void copyToCache(Configuration conf, String path) throws IOException {
-		FileSystem fs = FileSystem.get(conf);
-		Path qualifiedPath = fs.makeQualified(new Path(path));
-		FileStatus[] statuses = fs.listStatus(qualifiedPath);
-		
-		for (Path file : FileUtil.stat2Paths(statuses)) {
-			String stringified = file.toString();
-			int lastSlash = stringified.lastIndexOf('/');
-			
-			if (stringified.charAt(lastSlash+1) != '_') {
-				DistributedCache.addCacheFile(file.toUri(), conf);
-			}
-		}
-	}
 	
 	/**
 	 * @return a map which associates (to any frequent item) its new item ID
