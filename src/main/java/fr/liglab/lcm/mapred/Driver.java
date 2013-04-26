@@ -62,6 +62,11 @@ public final class Driver {
 	 */
 	public static final String KEY_STOP_AT = "lcm.mining.stopAt";
 	
+	/**
+	 * Testing only : it changes manually ConcatenatedDataset's long transaction mode threshold
+	 */
+	public static final String KEY_LONG_TRANSACTION_MODE_THRESHOLD = "lcm.pptest-first.threshold";
+	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
 	/**

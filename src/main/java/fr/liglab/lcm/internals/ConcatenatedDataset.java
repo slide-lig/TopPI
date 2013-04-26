@@ -17,8 +17,17 @@ import java.util.Iterator;
  * really sparse datasets.
  */
 class ConcatenatedDataset extends Dataset {
-
+	
+	/**
+	 * if we construct on transactions having an average length above this value :
+	 *  - fast-prefix-preserving test will be done
+	 *  - it will never project to a ConcatenatedDatasetView (however it may go back to normal mode if transactions get shorter)
+	 */
+	static int LONG_TRANSACTION_MODE_THRESHOLD = 5000;
+	
 	protected final int[] concatenated;
+	
+	protected boolean longTransactionMode = false;
 	
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
@@ -64,6 +73,8 @@ class ConcatenatedDataset extends Dataset {
 			tIdx = i++;
 			tLen = 0;
 		}
+		
+		this.longTransactionMode = (counts.supportsSum / counts.transactionsCount) > LONG_TRANSACTION_MODE_THRESHOLD;
 	}
 	
 
@@ -71,7 +82,7 @@ class ConcatenatedDataset extends Dataset {
 	Dataset project(int extension, DatasetCounters extensionCounters) {
 		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
 		
-		if (reductionRate > ConcatenatedDatasetView.THRESHOLD) {
+		if (!this.longTransactionMode && reductionRate > ConcatenatedDatasetView.THRESHOLD) {
 			return new ConcatenatedDatasetView(extensionCounters, this, extension);
 		} else {
 			Iterator<TransactionReader> support = this.getSupport(extension);
@@ -89,5 +100,14 @@ class ConcatenatedDataset extends Dataset {
 	public Iterator<TransactionReader> getSupport(int item) {
 		TIntIterator it = this.occurrences.get(item).iterator();
 		return new ConcatenatedTransactionsReader(this.concatenated, it, false);
+	}
+	
+	@Override
+	public final int ppTest(int extension) {
+		if (this.longTransactionMode) {
+			return FastPrefixPreservingTest.ppTest(extension, this.counters, this.occurrences);
+		} else {
+			return -1;
+		}
 	}
 }

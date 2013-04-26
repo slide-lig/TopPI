@@ -77,6 +77,12 @@ public class MiningTwoPhasesReducer extends
 		this.grouper = Grouper.factory(conf);
 		
 		this.nbThreads = conf.getInt(Driver.KEY_NB_THREADS, 1);
+		
+		final int longTransThreshold = conf.getInt(Driver.KEY_LONG_TRANSACTION_MODE_THRESHOLD, -1);
+		if (longTransThreshold > 0) {
+			DatasetFactory.setLongTransactionModeThreshold(longTransThreshold);
+		}
+		
 	}
 	
 	

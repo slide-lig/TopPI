@@ -3,7 +3,6 @@ package fr.liglab.lcm.internals;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 import java.util.ArrayList;
@@ -236,65 +235,12 @@ public class ConcatenatedCompressedDataset extends Dataset {
 		return new ConcatenatedCompressedDataset(extensionCounters, filtered, extension);
 	}
 	
-	
-	
 	@Override
-	public int ppTest(int extension) {
-		int index = Arrays.binarySearch(this.counters.sortedFrequents, extension);
-		return this.ppTest(index, this.counters.sortedFrequents, this.counters.supportCounts);
+	public final int ppTest(int extension) {
+		return FastPrefixPreservingTest.ppTest(extension, this.counters, this.occurrences);
 	}
 	
-	/**
-	 * @return true if there is no int j > candidate having the same support as
-	 *         candidate at the given index
-	 */
-	private int ppTest(final int candidateIndex, final int[] frequentItems, final TIntIntMap supportCounts) {
-		final int candidate = frequentItems[candidateIndex];
-		final int candidateSupport = supportCounts.get(candidate);
-		TIntArrayList candidateOccurrences = occurrences.get(candidate);
 
-		for (int i = frequentItems.length - 1; i > candidateIndex ; i--) {
-			int j = frequentItems[i];
-
-			if (supportCounts.get(j) >= candidateSupport) {
-				TIntArrayList jOccurrences = occurrences.get(j);
-				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-					return j;
-				}
-			}
-		}
-
-		return -1;
-	}
-
-	/**
-	 * Assumptions : - both contain array indexes appended in increasing order -
-	 * you already tested that B.size >= A.size
-	 * 
-	 * @return true if A is included in B
-	 */
-	public boolean isAincludedInB(final TIntArrayList a, final TIntArrayList b) {
-		TIntIterator aIt = a.iterator();
-		TIntIterator bIt = b.iterator();
-
-		int tidA = 0;
-		int tidB = 0;
-
-		while (aIt.hasNext() && bIt.hasNext()) {
-			tidA = aIt.next();
-			tidB = bIt.next();
-
-			while (tidB < tidA && bIt.hasNext()) {
-				tidB = bIt.next();
-			}
-
-			if (tidB > tidA) {
-				return false;
-			}
-		}
-
-		return tidA == tidB && !aIt.hasNext();
-	}
 
 	@Override
 	public String toString() {

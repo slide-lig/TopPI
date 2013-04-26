@@ -8,6 +8,7 @@ import fr.liglab.lcm.util.ReIterableTransactionWritable;
 
 public final class DatasetFactory {
 	
+	
 	/**
 	 * @param minsup
 	 * @param path on local filesystem to an ASCII transaction database (@see fr.liglab.lcm.io.FileReader)
@@ -60,6 +61,13 @@ public final class DatasetFactory {
 		////////////// actual projection is delegated to implementations
 		
 		return parent.project(extension, counters);
+	}
+	
+	/**
+	 * Testing-only
+	 */
+	public static void setLongTransactionModeThreshold(int t) {
+		ConcatenatedDataset.LONG_TRANSACTION_MODE_THRESHOLD = t;
 	}
 	
 	private static int maxItem(int[] of) {
