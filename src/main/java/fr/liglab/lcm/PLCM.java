@@ -95,7 +95,7 @@ public class PLCM {
 			collector.collect(dataset.counters.transactionsCount, pattern);
 		}
 
-		this.threads.get(0).init(dataset, pattern);
+		this.threads.get(0).init(dataset, pattern, starters);
 		for (PLCMThread t : this.threads) {
 			// System.out.println("Starting thread " + t.id);
 			t.start();
@@ -167,10 +167,6 @@ public class PLCM {
 
 		public void setUltraVerboseMode(boolean enabled) {
 			this.ultraVerbose = enabled;
-		}
-		
-		private void init(Dataset dataset, int[] pattern) {
-			this.init(dataset, pattern, null);
 		}
 		
 		private void init(Dataset dataset, int[] pattern, FrequentsIterator starters) {
