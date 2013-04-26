@@ -57,8 +57,6 @@ class ConcatenatedDatasetView extends ConcatenatedDataset {
 	/**
 	 * buildExtensionTIDs with memoization : it's usually invoked twice
 	 * for the same extension : once by getSupport and, likely, again by constructor
-	 * 
-	 * TODO verify "synchronized" use
 	 */
 	private synchronized TIntArrayList getExtensionTIDs(int extension) {
 		if (this.latestBuiltExtension != extension) {
