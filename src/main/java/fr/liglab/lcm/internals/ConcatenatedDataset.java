@@ -23,7 +23,7 @@ class ConcatenatedDataset extends Dataset {
 	 *  - fast-prefix-preserving test will be done
 	 *  - it will never project to a ConcatenatedDatasetView (however it may go back to normal mode if transactions get shorter)
 	 */
-	static int LONG_TRANSACTION_MODE_THRESHOLD = 5000;
+	static int LONG_TRANSACTION_MODE_THRESHOLD = 2000;
 	
 	protected final int[] concatenated;
 	
