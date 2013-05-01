@@ -112,6 +112,8 @@ public class MiningTwoPhasesReducer extends
 		this.collector.setGroup(new TIntHashSet(starters));
 
 		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
+		lcm.setVerboseMode(logger.isDebugEnabled());
+		
 		FrequentsIterator extensionsIterator;
 		
 		if (singleStarter >= 0) {
@@ -143,6 +145,8 @@ public class MiningTwoPhasesReducer extends
 			
 			context.getCounter(COUNTER_GROUP, COUNTER_BOUNDS_COUNT).increment(nbBounds);
 		}
+		
+		this.logger.debug("group " + gid.get() + " done - " + lcm.toString());
 		
 		this.collector.close();
 	}

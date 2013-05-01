@@ -151,12 +151,19 @@ public class PLCM {
 			t.setUltraVerboseMode(enabled);
 		}
 	}
+	
+	public void setVerboseMode(boolean enabled) {
+		for (PLCMThread t : this.threads) {
+			t.setVerboseMode(enabled);
+		}
+	}
 
 	private class PLCMThread extends Thread {
 		private final ReadWriteLock lock;
 		private final List<StackedJob> stackedJobs;
 		private final int id;
 		private boolean ultraVerbose = false;
+		private boolean verbose = false;
 
 		public PLCMThread(final int id) {
 			super("PLCMThread" + id);
@@ -165,8 +172,18 @@ public class PLCM {
 			this.lock = new ReentrantReadWriteLock();
 		}
 
+		/**
+		 * Write info to stdout about every explored pattern
+		 */
 		public void setUltraVerboseMode(boolean enabled) {
 			this.ultraVerbose = enabled;
+		}
+		
+		/**
+		 * Write starters info to stdout 
+		 */
+		public void setVerboseMode(boolean enabled) {
+			this.verbose = enabled;
 		}
 		
 		private void init(Dataset dataset, int[] pattern, FrequentsIterator starters) {
@@ -238,11 +255,11 @@ public class PLCM {
 			
 			explored.incrementAndGet();
 
-			if (this.ultraVerbose) {
+			if ((this.verbose && sj.pattern.length == 0) || this.ultraVerbose) {
 				System.out
-						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s (%4$d transactions in DB) with %5$d\n",
+						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s with %5$d (support = %4$d)\n",
 								Calendar.getInstance(), this.id, Arrays.toString(sj.pattern), 
-								sj.dataset.counters.transactionsCount, extension);
+								dataset.counters.transactionsCount, extension);
 			}
 			
 			DatasetCounters counters = dataset.counters;
