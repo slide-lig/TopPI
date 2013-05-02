@@ -70,6 +70,11 @@ public final class Driver {
 	 */
 	public static final String KEY_LONG_TRANSACTION_MODE_THRESHOLD = "lcm.pptest-first.threshold";
 	
+	/**
+	 * Testing only : when it's set to an positive integer it only generates sub-databases 
+	 */
+	public static final String KEY_GEN_DBS_ONLY = "lcm.genDB.only";
+	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
 	/**
@@ -147,21 +152,25 @@ public final class Driver {
 			
 			Configuration miningConf = new Configuration(this.originalConf);
 			
-			if (buildSubDBs(confWithRebasing, input, subDBsPath) &&
-					miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
-				
-				if (this.originalConf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
+			if (buildSubDBs(confWithRebasing, input, subDBsPath)) {
+				if (this.originalConf.getInt(KEY_GEN_DBS_ONLY, -1) > 0) {
 					return 0;
 				}
 				
-				if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
-					copyToCache(miningConf, boundsPath);
-				}
-				
-				if (miningPhase2(miningConf, subDBsPath, patterns2) &&
-						aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
+				if (miningPhase1(miningConf, subDBsPath, patterns1, boundsPath)) {
+					if (this.originalConf.getInt(Driver.KEY_STOP_AT, -1) > 0) {
+						return 0;
+					}
 					
-					return 0;
+					if (miningConf.getLong(KEY_BOUNDS_IN_DISTCACHE, -1) > 0) {
+						copyToCache(miningConf, boundsPath);
+					}
+					
+					if (miningPhase2(miningConf, subDBsPath, patterns2) &&
+							aggregateTopK(confWithRebasing, patternsPath, patterns1, patterns2)) {
+						
+						return 0;
+					}
 				}
 			}
 		}
