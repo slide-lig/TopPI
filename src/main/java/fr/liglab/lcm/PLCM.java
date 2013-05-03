@@ -257,9 +257,9 @@ public class PLCM {
 
 			if ((this.verbose && sj.pattern.length == 0) || this.ultraVerbose) {
 				System.out
-						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s with %5$d (support = %4$d)\n",
+						.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d exploring %3$s with %5$d %4$s\n",
 								Calendar.getInstance(), this.id, Arrays.toString(sj.pattern), 
-								dataset.counters.transactionsCount, extension);
+								dataset.counters.toString(), extension);
 			}
 			
 			DatasetCounters counters = dataset.counters;
