@@ -1,5 +1,7 @@
 package fr.liglab.lcm.mapred;
 
+import java.util.Iterator;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -29,23 +31,22 @@ public class AggregationReducer extends
 		}
 	}
 
-	protected void reduce(ItemAndSupportWritable key, java.lang.Iterable<SupportAndTransactionWritable> patterns,
-			Context context) throws java.io.IOException, InterruptedException {
+	protected void reduce(ItemAndSupportWritable key, Iterable<SupportAndTransactionWritable> patterns, Context context)
+			throws java.io.IOException, InterruptedException {
 
 		int rebased = this.reverseBase.get(key.getItem());
 		this.keyW.set(rebased);
 		int count = 0;
-		for (SupportAndTransactionWritable entry : patterns) {
+		Iterator<SupportAndTransactionWritable> iter = patterns.iterator();
+		while (count < this.k && iter.hasNext()) {
+			count++;
+			SupportAndTransactionWritable entry = iter.next();
 			int[] transaction = entry.getTransaction();
 			for (int i = 0; i < transaction.length; i++) {
 				transaction[i] = this.reverseBase.get(transaction[i]);
 			}
 			this.valueW.set(entry.getSupport(), transaction);
 			context.write(this.keyW, this.valueW);
-			count++;
-			if (count == this.k) {
-				break;
-			}
 		}
 	}
 
