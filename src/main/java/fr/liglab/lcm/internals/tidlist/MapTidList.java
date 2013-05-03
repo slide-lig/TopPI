@@ -27,13 +27,25 @@ public class MapTidList extends TidList {
 	}
 
 	@Override
-	public TIntIterator getTidList(final int item) {
+	public TIntIterator get(final int item) {
 		final TIntList l = this.occurrences.get(item);
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		} else {
 			return l.iterator();
 		}
+	}
+
+	@Override
+	public TIntIterable getIterable(int item) {
+		final TIntList l = this.occurrences.get(item);
+		return new TIntIterable() {
+
+			@Override
+			public TIntIterator iterator() {
+				return l.iterator();
+			}
+		};
 	}
 
 	@Override

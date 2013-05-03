@@ -44,7 +44,7 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 
 	@Override
-	public TransactionIterator getTransaction(int transaction) {
+	public TransactionIterator get(int transaction) {
 		if (transaction >= this.transactions.size()) {
 			throw new IllegalArgumentException("transaction " + transaction + " does not exist");
 		}

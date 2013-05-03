@@ -11,12 +11,28 @@ public abstract class ConcatenatedTidList extends TidList {
 	}
 
 	@Override
-	public TIntIterator getTidList(final int item) {
+	public TIntIterator get(final int item) {
 		final int start = this.getPosition(item);
 		if (start < 0) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		} else {
 			return new ConcatenatedIterator(start);
+		}
+	}
+
+	@Override
+	public TIntIterable getIterable(int item) {
+		final int start = this.getPosition(item);
+		if (start < 0) {
+			throw new IllegalArgumentException("item " + item + " has no tidlist");
+		} else {
+			return new TIntIterable() {
+
+				@Override
+				public TIntIterator iterator() {
+					return new ConcatenatedIterator(start);
+				}
+			};
 		}
 	}
 

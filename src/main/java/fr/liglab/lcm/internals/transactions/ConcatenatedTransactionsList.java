@@ -16,7 +16,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 	}
 
 	@Override
-	public TransactionIterator getTransaction(int transaction) {
+	public TransactionIterator get(int transaction) {
 		if (transaction >= this.concatenated.length) {
 			throw new IllegalArgumentException("transaction " + transaction + " does not exist");
 		}

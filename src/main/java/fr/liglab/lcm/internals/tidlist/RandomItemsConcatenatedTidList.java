@@ -9,6 +9,19 @@ public class RandomItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	private final TIntIntMap startPositions;
 
+	public RandomItemsConcatenatedTidList(final boolean sorted, final int[] lengths) {
+		super(sorted);
+		int startPos = 0;
+		this.startPositions = new TIntIntHashMap(lengths.length, Constants.DEFAULT_LOAD_FACTOR, -1, -1);
+		for (int i = 0; i < lengths.length; i++) {
+			if (lengths[i] > 0) {
+				this.startPositions.put(i, startPos);
+				startPos += (1 + lengths[i]);
+			}
+		}
+		this.concatenated = new int[startPos];
+	}
+
 	public RandomItemsConcatenatedTidList(final boolean sorted, final TIntIntMap lengths) {
 		super(sorted);
 		int startPos = 0;

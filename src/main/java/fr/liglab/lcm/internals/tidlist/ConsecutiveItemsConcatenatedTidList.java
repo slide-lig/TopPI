@@ -7,6 +7,19 @@ public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	private final int[] startPositions;
 
+	public ConsecutiveItemsConcatenatedTidList(final boolean sorted, final int[] lengths) {
+		super(sorted);
+		int startPos = 0;
+		this.startPositions = new int[lengths.length];
+		for (int i = 0; i < lengths.length; i++) {
+			if (lengths[i] > 0) {
+				this.startPositions[i] = startPos;
+				startPos += (1 + lengths[i]);
+			}
+		}
+		this.concatenated = new int[startPos];
+	}
+
 	public ConsecutiveItemsConcatenatedTidList(final boolean sorted, final TIntIntMap lengths) {
 		super(sorted);
 		int startPos = 0;

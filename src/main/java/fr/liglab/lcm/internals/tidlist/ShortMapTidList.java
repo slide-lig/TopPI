@@ -28,7 +28,7 @@ public class ShortMapTidList extends TidList {
 	}
 
 	@Override
-	public TIntIterator getTidList(final int item) {
+	public TIntIterator get(final int item) {
 		final TShortList l = this.occurrences.get(item);
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
@@ -52,6 +52,35 @@ public class ShortMapTidList extends TidList {
 				}
 			};
 		}
+	}
+
+	@Override
+	public TIntIterable getIterable(int item) {
+		final TShortList l = this.occurrences.get(item);
+		return new TIntIterable() {
+
+			@Override
+			public TIntIterator iterator() {
+				final TShortIterator iter = l.iterator();
+				return new TIntIterator() {
+
+					@Override
+					public void remove() {
+						iter.remove();
+					}
+
+					@Override
+					public boolean hasNext() {
+						return iter.hasNext();
+					}
+
+					@Override
+					public int next() {
+						return iter.next();
+					}
+				};
+			}
+		};
 	}
 
 	@Override

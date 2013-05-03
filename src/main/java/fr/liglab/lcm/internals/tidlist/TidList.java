@@ -17,7 +17,13 @@ public abstract class TidList {
 		this.sorted = sorted;
 	}
 
-	abstract public TIntIterator getTidList(final int item);
+	abstract public TIntIterator get(final int item);
+
+	abstract public TIntIterable getIterable(final int item);
 
 	abstract public void addTransaction(final int item, final int transaction);
+
+	public interface TIntIterable {
+		public TIntIterator iterator();
+	}
 }
