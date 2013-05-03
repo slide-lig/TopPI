@@ -3,8 +3,7 @@ package fr.liglab.lcm.io;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.FrequentsIterator;
 
-public class PerItemTopKCollectorThreadSafeInitialized extends
-		PerItemGroupTopKCollector {
+public class PerItemTopKCollectorThreadSafeInitialized extends PerItemGroupTopKCollector {
 	/*
 	 * If we go for threads, how do we make this threadsafe ? If this is not a
 	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
@@ -16,52 +15,47 @@ public class PerItemTopKCollectorThreadSafeInitialized extends
 	 * the close, so when we execute several maps on the same mapper they all
 	 * benefit from the top-k of the others
 	 */
-	public PerItemTopKCollectorThreadSafeInitialized(
-			final PatternsCollector decorated, Dataset dataset, final int k) {
+	public PerItemTopKCollectorThreadSafeInitialized(final PatternsCollector decorated, Dataset dataset, final int k) {
 		this(decorated, k, dataset, false);
 	}
-	
-	public PerItemTopKCollectorThreadSafeInitialized(
-			final PatternsCollector follower, final int k, Dataset dataset,
+
+	public PerItemTopKCollectorThreadSafeInitialized(final PatternsCollector follower, final int k, Dataset dataset,
 			final boolean outputEachPatternOnce) {
-		
+
 		this(follower, k, dataset.counters.getFrequentsIterator(), outputEachPatternOnce);
 	}
-	
-	public PerItemTopKCollectorThreadSafeInitialized(
-			final PatternsCollector follower, final int k, FrequentsIterator items,
-			final boolean outputEachPatternOnce) {
+
+	public PerItemTopKCollectorThreadSafeInitialized(final PatternsCollector follower, final int k,
+			FrequentsIterator items, final boolean outputEachPatternOnce) {
 		super(follower, k);
 		// we may want to hint a default size, it is at least the group size,
 		// but in practice much bigger
 		this.init(items);
 	}
-	
-	public PerItemTopKCollectorThreadSafeInitialized(
-			final PatternsCollector follower, final int k, Dataset dataset,
+
+	public PerItemTopKCollectorThreadSafeInitialized(final PatternsCollector follower, final int k, Dataset dataset,
 			final boolean mineInGroup, final boolean mineOutGroup) {
-		
+
 		super(follower, k, mineInGroup, mineOutGroup);
-		
+
 		// FIXME - maybe this would better happen in setGroup ?
 		this.init(dataset.counters.getFrequentsIterator());
 	}
-	
+
 	private void init(final FrequentsIterator iterator) {
 		for (int item = iterator.next(); item != -1; item = iterator.next()) {
 			this.topK.put(item, new PatternWithFreq[k]);
 		}
 	}
-	
+
 	@Override
-	protected void insertPatternInTop(final int support, final int[] pattern,
-			final int item) {
+	protected void insertPatternInTop(final int support, final int[] pattern, final int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 		if (itemTopK == null) {
 			throw new RuntimeException("item not initialized " + item);
 		} else {
 			synchronized (itemTopK) {
-				super.updateTop(support, pattern, itemTopK);
+				super.insertPatternInTop(support, pattern, item);
 			}
 		}
 	}
