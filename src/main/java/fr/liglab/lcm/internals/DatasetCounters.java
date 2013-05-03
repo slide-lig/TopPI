@@ -67,6 +67,38 @@ public class DatasetCounters {
 	public final FrequentsIterator getFrequentsIteratorTo(int max) {
 		return new AllFrequentsIterator(max);
 	}
+	
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append('{');
+		
+		sb.append("minSup:");
+		sb.append(minSup);
+		sb.append(',');
+
+		sb.append("transactionsCount:");
+		sb.append(transactionsCount);
+		sb.append(',');
+		
+		sb.append("itemsRead:");
+		sb.append(itemsRead);
+		sb.append(',');
+
+		sb.append("supportsSum:");
+		sb.append(supportsSum);
+		sb.append(',');
+
+		sb.append("closure:");
+		sb.append(Arrays.toString(closure));
+		sb.append(',');
+
+		sb.append("nbFrequents:");
+		sb.append(sortedFrequents.length);
+		
+		sb.append('}');
+		return sb.toString();
+	}
 
 	/**
 	 * @return an iterator on frequent items (in ascending order)

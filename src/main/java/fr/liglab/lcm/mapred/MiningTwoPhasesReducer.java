@@ -119,15 +119,13 @@ public class MiningTwoPhasesReducer extends
 		if (singleStarter >= 0) {
 			extensionsIterator = new SingleStarter.SingleExtensionIterator(singleStarter);
 			SingleStarter.preFillCollector(context.getConfiguration(), this.collector);
-		} else if (this.phase == 1) {
+		} else {
 			FakeExtensionsIterator fakeIt = new FakeExtensionsIterator(starters.iterator());
 			
 			if (STAHP > 0) {
 				fakeIt.interruptAt(STAHP);
 			}
 			extensionsIterator = fakeIt;
-		} else {
-			extensionsIterator = dataset.counters.getFrequentsIterator();
 		}
 		
 		lcm.lcm(dataset, extensionsIterator);
