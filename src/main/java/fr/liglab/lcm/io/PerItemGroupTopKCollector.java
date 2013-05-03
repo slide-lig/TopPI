@@ -15,8 +15,7 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 		this(follower, k, true, true);
 	}
 
-	public PerItemGroupTopKCollector(final PatternsCollector follower, int k,
-			boolean mineInGroup, boolean mineOutGroup) {
+	public PerItemGroupTopKCollector(final PatternsCollector follower, int k, boolean mineInGroup, boolean mineOutGroup) {
 		super(follower, k, false);
 		this.mineInGroup = mineInGroup;
 		this.mineOutGroup = mineOutGroup;
@@ -32,11 +31,14 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 
 	@Override
 	protected void insertPatternInTop(int support, int[] pattern, int item) {
-		if (!this.mineInGroup && this.group.contains(item)) {
-			return;
-		}
-		if (!this.mineOutGroup && !this.group.contains(item)) {
-			return;
+		if (this.group.contains(item)) {
+			if (!this.mineInGroup) {
+				return;
+			}
+		} else {
+			if (!this.mineOutGroup) {
+				return;
+			}
 		}
 		if (this.knownBounds != null && this.knownBounds.get(item) >= support) {
 			return;
@@ -45,9 +47,8 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 	}
 
 	@Override
-	protected int checkExploreOtherItem(final int item, final int itemSupport,
-			final int extension, final int extensionSupport,
-			final TIntIntMap failedPPTests) {
+	protected int checkExploreOtherItem(final int item, final int itemSupport, final int extension,
+			final int extensionSupport, final TIntIntMap failedPPTests) {
 		if (!this.mineInGroup && this.group.contains(item)) {
 			return Integer.MAX_VALUE;
 		} else if (!this.mineOutGroup && !this.group.contains(item)) {
@@ -58,8 +59,7 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 				return knownBound;
 			}
 		}
-		return super.checkExploreOtherItem(item, itemSupport, extension,
-				extensionSupport, failedPPTests);
+		return super.checkExploreOtherItem(item, itemSupport, extension, extensionSupport, failedPPTests);
 	}
 
 	@Override
