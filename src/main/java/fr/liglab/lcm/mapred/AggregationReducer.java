@@ -36,10 +36,8 @@ public class AggregationReducer extends
 
 		int rebased = this.reverseBase.get(key.getItem());
 		this.keyW.set(rebased);
-		int count = 0;
 		Iterator<SupportAndTransactionWritable> iter = patterns.iterator();
-		while (count < this.k && iter.hasNext()) {
-			count++;
+		for (int count = 0; count < this.k && iter.hasNext(); count++) {
 			SupportAndTransactionWritable entry = iter.next();
 			int[] transaction = entry.getTransaction();
 			for (int i = 0; i < transaction.length; i++) {
