@@ -26,7 +26,7 @@ import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
-import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
+import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.RebaserCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 import fr.liglab.lcm.util.ItemsetsFactory;
@@ -381,7 +381,8 @@ public class PLCM {
 		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
-			collector = new PerItemTopKCollectorThreadSafeInitialized(collector, k, dataset, true);
+			collector = new PerItemTopKCollector(collector, k, 
+					dataset.counters.sortedFrequents.length, dataset.counters.getFrequentsIterator());
 		}
 
 		return collector;

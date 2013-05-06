@@ -1,5 +1,6 @@
 package fr.liglab.lcm.io;
 
+import fr.liglab.lcm.internals.FrequentsIterator;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
@@ -12,36 +13,26 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * TODO : refactor the hierarchy. There's 4 levels above the Hadoop version !
+ * Wraps a collector and will limit exploration to top-k-per-items patterns
+ * 
+ * Thread-safe and initialized with known frequent items.
  */
 public class PerItemTopKCollector extends PatternsCollector {
-	/*
-	 * If we go for threads, how do we make this threadsafe ? If this is not a
-	 * bottleneck, synchronized on collect is ok Else, if we want parallelism,
-	 * we need to take a lock when dealing with an item We can use a collection
-	 * of locks and a hash of the item to do that safely, be careful with
-	 * insertions in the map though
-	 * 
-	 * What we should do for MapReduce is create it in the open and close it on
-	 * the close, so when we execute several maps on the same mapper they all
-	 * benefit from the top-k of the others
-	 */
+	
 	private final PatternsCollector decorated;
 	protected final int k;
 	protected final TIntObjectMap<PatternWithFreq[]> topK;
-	private final boolean outputEachPatternOnce;
-
-	public PerItemTopKCollector(final PatternsCollector decorated, final int k) {
-		this(decorated, k, false);
-	}
-
-	public PerItemTopKCollector(final PatternsCollector follower, final int k, final boolean outputEachPatternOnce) {
+	
+	public PerItemTopKCollector(final PatternsCollector follower, final int k, 
+			final int nbItems, final FrequentsIterator items) {
+		
 		this.decorated = follower;
 		this.k = k;
-		// we may want to hint a default size, it is at least the group size,
-		// but in practice much bigger
-		this.topK = new TIntObjectHashMap<PatternWithFreq[]>();
-		this.outputEachPatternOnce = outputEachPatternOnce;
+		this.topK = new TIntObjectHashMap<PatternWithFreq[]>(nbItems);
+		
+		for (int item = items.next(); item != -1; item = items.next()) {
+			this.topK.put(item, new PatternWithFreq[k]);
+		}
 	}
 
 	public void collect(final int support, final int[] pattern) {
@@ -49,17 +40,20 @@ public class PerItemTopKCollector extends PatternsCollector {
 			insertPatternInTop(support, pattern, item);
 		}
 	}
-
+	
 	protected void insertPatternInTop(final int support, final int[] pattern, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
+		
 		if (itemTopK == null) {
-			itemTopK = new PatternWithFreq[this.k];
-			this.topK.put(item, itemTopK);
+			throw new RuntimeException("item not initialized " + item);
+		} else {
+			synchronized (itemTopK) {
+				updateTop(support, pattern, itemTopK);
+			}
 		}
-		updateTop(support, pattern, itemTopK);
 	}
 
-	protected void updateTop(final int support, final int[] pattern, PatternWithFreq[] itemTopK) {
+	private void updateTop(final int support, final int[] pattern, PatternWithFreq[] itemTopK) {
 		// we do not have k patterns for this item yet
 		if (itemTopK[this.k - 1] == null) {
 			// find the position of the last null entry
@@ -107,30 +101,19 @@ public class PerItemTopKCollector extends PatternsCollector {
 	}
 
 	public long close() {
-		if (this.outputEachPatternOnce) {
-			final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
-			for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
-				for (int i = 0; i < itemTopK.length; i++) {
-					if (itemTopK[i] == null) {
-						break;
-					} else {
-						if (dedup.add(itemTopK[i])) {
-							this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
-						}
-					}
-				}
-			}
-		} else {
-			for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
-				for (int i = 0; i < itemTopK.length; i++) {
-					if (itemTopK[i] == null) {
-						break;
-					} else {
+		final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
+		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+			for (int i = 0; i < itemTopK.length; i++) {
+				if (itemTopK[i] == null) {
+					break;
+				} else {
+					if (dedup.add(itemTopK[i])) {
 						this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 					}
 				}
 			}
 		}
+		
 		return this.decorated.close();
 	}
 
@@ -240,6 +223,20 @@ public class PerItemTopKCollector extends PatternsCollector {
 			return potentialExtensionTopK[this.k - 1].getSupportCount();
 		}
 	}
+	
+	public TIntIntMap getTopKBounds() {
+		final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
+		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
+		while (it.hasNext()) {
+			it.advance();
+			int bound = 0;
+			if (it.value()[this.k - 1] != null) {
+				bound = it.value()[this.k - 1].supportCount;
+			}
+			bounds.put(it.key(), bound);
+		}
+		return bounds;
+	}
 
 	@Override
 	public String toString() {
@@ -261,6 +258,9 @@ public class PerItemTopKCollector extends PatternsCollector {
 		});
 		return sb.toString();
 	}
+	
+	
+	
 
 	public static final class PatternWithFreq {
 		private final int supportCount;
@@ -306,35 +306,5 @@ public class PerItemTopKCollector extends PatternsCollector {
 			return true;
 		}
 
-	}
-
-	public TIntIntMap getTopKBounds() {
-		final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
-		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
-		while (it.hasNext()) {
-			it.advance();
-			int bound = 0;
-			if (it.value()[this.k - 1] != null) {
-				bound = it.value()[this.k - 1].supportCount;
-			}
-			bounds.put(it.key(), bound);
-		}
-		return bounds;
-	}
-
-	public static void main(String[] args) {
-		final PerItemTopKCollector topk = new PerItemTopKCollector(new StdOutCollector(), 3, true);
-		topk.collect(10, new int[] { 3, 1, 2 });
-		topk.collect(100, new int[] { 1 });
-		topk.collect(30, new int[] { 1, 3 });
-		topk.collect(20, new int[] { 2, 3 });
-		topk.collect(50, new int[] { 1, 4 });
-		topk.collect(60, new int[] { 5, 4 });
-		topk.collect(70, new int[] { 6, 4 });
-		topk.collect(50, new int[] { 0 });
-		topk.collect(35, new int[] { 1, 0 });
-		topk.collect(20, new int[] { 2, 0 });
-		System.out.println(topk);
-		topk.close();
 	}
 }

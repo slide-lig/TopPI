@@ -1,5 +1,6 @@
 package fr.liglab.lcm.io;
 
+import fr.liglab.lcm.internals.Dataset;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -11,12 +12,11 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 	protected TIntSet group;
 	protected TIntIntMap knownBounds;
 
-	public PerItemGroupTopKCollector(final PatternsCollector follower, int k) {
-		this(follower, k, true, true);
-	}
-
-	public PerItemGroupTopKCollector(final PatternsCollector follower, int k, boolean mineInGroup, boolean mineOutGroup) {
-		super(follower, k, false);
+	public PerItemGroupTopKCollector(final PatternsCollector follower, int k, 
+			boolean mineInGroup, boolean mineOutGroup, Dataset dataset) {
+		
+		super(follower, k, dataset.counters.sortedFrequents.length, dataset.counters.getFrequentsIterator());
+		
 		this.mineInGroup = mineInGroup;
 		this.mineOutGroup = mineOutGroup;
 	}
@@ -49,6 +49,7 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 	@Override
 	protected int checkExploreOtherItem(final int item, final int itemSupport, final int extension,
 			final int extensionSupport, final TIntIntMap failedPPTests) {
+		
 		if (!this.mineInGroup && this.group.contains(item)) {
 			return Integer.MAX_VALUE;
 		} else if (!this.mineOutGroup && !this.group.contains(item)) {

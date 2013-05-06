@@ -5,33 +5,28 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.lcm.internals.Dataset;
-import fr.liglab.lcm.io.PerItemTopKCollectorThreadSafeInitialized;
+import fr.liglab.lcm.io.PerItemGroupTopKCollector;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.lcm.mapred.writables.SupportAndTransactionWritable;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 
-public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeInitialized {
+public class PerItemTopKHadoopCollector extends PerItemGroupTopKCollector {
 	
 	// minimum interval between pokes to job tracker, in milliseconds
 	protected final static int PING_AT_MOST_EVERY = 60000;
 	private static AtomicLong latestPing = new AtomicLong(0);
 	
 	protected final Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context context;
-
-	public PerItemTopKHadoopCollector(
-			int k, Dataset dataset,
-			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext) {
-		this(k, currentContext, dataset, true, true);
-	}
-
+	
 	public PerItemTopKHadoopCollector(
 			int k,
 			Reducer<?, ?, ItemAndSupportWritable, SupportAndTransactionWritable>.Context currentContext,
 			Dataset dataset,
 			boolean mineInGroup, boolean mineOutGroup) {
-		super(null, k, dataset, mineInGroup, mineOutGroup);
+		
+		super(null, k, mineInGroup, mineOutGroup, dataset);
 		this.context = currentContext;
 	}
 	
@@ -48,14 +43,6 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeIn
 	@Override
 	public long close() {
 		return this.close(null);
-	}
-	
-	/**
-	 * for debugging only !
-	 */
-	@Deprecated
-	public TIntObjectMap<PatternWithFreq[]> getTopK() {
-		return this.topK;
 	}
 	
 	/**
@@ -103,6 +90,14 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollectorThreadSafeIn
 			}
 		}
 		return outputted;
+	}
+
+	/**
+	 * for debugging only !
+	 */
+	@Deprecated
+	public TIntObjectMap<PatternWithFreq[]> getTopK() {
+		return this.topK;
 	}
 	
 	/*
