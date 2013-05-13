@@ -81,7 +81,11 @@ class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 		public final int next() {
 			final int value = this.next;
 			this.findNext();
-			return rebasing[value];
+			if (rebasing != null) {
+				return rebasing[value];
+			} else {
+				return value;
+			}
 		}
 
 		@Override
