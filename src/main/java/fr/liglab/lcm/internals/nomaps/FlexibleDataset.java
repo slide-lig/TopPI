@@ -76,6 +76,7 @@ class FlexibleDataset extends Dataset {
 		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
 		if (!this.longTransactionMode && reductionRate > FlexibleDatasetView.THRESHOLD) {
 			extensionCounters.compactRebase(false, null);
+			extensionCounters.reverseRenaming = this.counters.reverseRenaming;
 			return new FlexibleDatasetView(extensionCounters, this, extension);
 		} else {
 			extensionCounters.compactRebase(true, this.counters.reverseRenaming);
