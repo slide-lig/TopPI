@@ -20,6 +20,7 @@ public class DatasetCountersRenamer {
 	 */
 	public final int minSup;
 
+	public AllFrequentsIterator extensionsIterator;
 	/**
 	 * How many transactions have been counted
 	 */
@@ -38,8 +39,8 @@ public class DatasetCountersRenamer {
 	/**
 	 * Support count for each item having a support count in [minSup; 100% [
 	 */
-	public final int[] supportCounts;
-	public final int[] distinctTransactionsCounts;
+	public int[] supportCounts;
+	public int[] distinctTransactionsCounts;
 
 	/**
 	 * Items found to have a 100% support count
@@ -50,26 +51,15 @@ public class DatasetCountersRenamer {
 	 * items having a support count in [minSup; 100% [, sorted
 	 */
 	public final int nbFrequents;
-	public final int[] reverseRenaming;
-	public final int[] renaming;
+	public int[] reverseRenaming;
+	public int[] renaming;
 
-	/**
-	 * @return an iterator on frequent items in ascending order, up to "max"
-	 *         (excluded)
-	 */
-	public final FrequentsIterator getFrequentsIteratorTo(int max) {
-		return new AllFrequentsIterator(max);
-	}
+	private int maxFrequent;
 
-	/**
-	 * @return an iterator on frequent items (in ascending order)
-	 */
-	public final FrequentsIterator getFrequentsIterator() {
-		return new AllFrequentsIterator(Integer.MAX_VALUE);
-	}
+	private final int extension;
 
 	DatasetCountersRenamer(int minimumSupport, Iterator<TransactionReader> transactions, int maxItem) {
-		this(minimumSupport, transactions, Integer.MIN_VALUE, null, maxItem);
+		this(minimumSupport, transactions, Integer.MAX_VALUE, null, maxItem, false);
 	}
 
 	/**
@@ -84,14 +74,15 @@ public class DatasetCountersRenamer {
 	 *            (may be null) items that may appear in transactions but should
 	 *            to be counted
 	 */
-	DatasetCountersRenamer(int minimumSupport, Iterator<TransactionReader> transactions, int ingoredItem,
-			int[] ignoredItems, final int maxItem) {
+	DatasetCountersRenamer(int minimumSupport, Iterator<TransactionReader> transactions, int extension,
+			int[] ignoredItems, final int maxItem, boolean compactRebase) {
+		// fix fake extensions
+		this.extension = Math.min(extension, maxItem + 1);
 		this.minSup = minimumSupport;
-
 		int lineCount = 0;
 		int itemCount = 0;
-		int[] tempTransactionsCounts = new int[maxItem];
-		int[] tempDistinctTransactionsCount = new int[maxItem];
+		this.supportCounts = new int[maxItem];
+		this.distinctTransactionsCounts = new int[maxItem];
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
 			int weight = transaction.getTransactionSupport();
@@ -100,41 +91,41 @@ public class DatasetCountersRenamer {
 			while (transaction.hasNext()) {
 				itemCount++;
 				int item = transaction.next();
-				tempTransactionsCounts[item] += weight;
-				tempDistinctTransactionsCount[item]++;
+				this.supportCounts[item] += weight;
+				this.distinctTransactionsCounts[item]++;
 			}
 		}
 
 		this.transactionsCount = lineCount;
 		this.itemsRead = itemCount;
-
-		tempTransactionsCounts[ingoredItem] = 0;
-		tempDistinctTransactionsCount[ingoredItem] = 0;
+		if (extension != Integer.MAX_VALUE) {
+			this.supportCounts[extension] = 0;
+			this.distinctTransactionsCounts[extension] = 0;
+		}
 		if (ignoredItems != null) {
 			for (int item : ignoredItems) {
-				tempTransactionsCounts[item] = 0;
-				tempDistinctTransactionsCount[item] = 0;
+				this.supportCounts[item] = 0;
+				this.distinctTransactionsCounts[item] = 0;
 			}
 		}
-
 		ItemsetsFactory builder = new ItemsetsFactory();
 		int remainingSupportsSum = 0;
 		int remainingDistinctTransLength = 0;
 		int remainingFrequents = 0;
-		int maxFrequent = -1;
-		for (int i = 0; i < tempTransactionsCounts.length; i++) {
-			if (tempTransactionsCounts[i] < minimumSupport) {
-				tempTransactionsCounts[i] = 0;
-				tempDistinctTransactionsCount[i] = 0;
-			} else if (tempTransactionsCounts[i] == this.transactionsCount) {
+		this.maxFrequent = -1;
+		for (int i = 0; i < this.supportCounts.length; i++) {
+			if (this.supportCounts[i] < minimumSupport) {
+				this.supportCounts[i] = 0;
+				this.distinctTransactionsCounts[i] = 0;
+			} else if (this.supportCounts[i] == this.transactionsCount) {
 				builder.add(i);
-				tempTransactionsCounts[i] = 0;
-				tempDistinctTransactionsCount[i] = 0;
+				this.supportCounts[i] = 0;
+				this.distinctTransactionsCounts[i] = 0;
 			} else {
-				maxFrequent = Math.max(maxFrequent, i);
+				this.maxFrequent = Math.max(this.maxFrequent, i);
 				remainingFrequents++;
-				remainingSupportsSum += tempTransactionsCounts[i];
-				remainingDistinctTransLength += tempDistinctTransactionsCount[i];
+				remainingSupportsSum += this.supportCounts[i];
+				remainingDistinctTransLength += this.distinctTransactionsCounts[i];
 			}
 		}
 
@@ -142,27 +133,38 @@ public class DatasetCountersRenamer {
 		this.supportsSum = remainingSupportsSum;
 		this.distinctTransactionLengthSum = remainingDistinctTransLength;
 		this.nbFrequents = remainingFrequents;
-		this.reverseRenaming = new int[this.nbFrequents];
-		this.renaming = new int[maxFrequent];
-		this.supportCounts = new int[this.nbFrequents];
-		this.distinctTransactionsCounts = new int[this.nbFrequents];
-		int insertPos = 0;
-		for (int i = 0; i < tempTransactionsCounts.length; i++) {
-			if (tempTransactionsCounts[i] > 0) {
-				this.reverseRenaming[insertPos] = i;
-				this.renaming[i] = insertPos;
-				this.supportCounts[insertPos] = tempTransactionsCounts[i];
-				this.distinctTransactionsCounts[insertPos] = tempTransactionsCounts[i];
-			}
-		}
+		this.reverseRenaming = null;
+		this.renaming = null;
 	}
 
-	public void updateReverseRenaming(int[] previousRenaming) {
-		for (int i = 0; i < this.reverseRenaming.length; i++) {
-			this.reverseRenaming[i] = previousRenaming[this.reverseRenaming[i]];
-		}
-		for (int i = 0; i < this.closure.length; i++) {
-			this.closure[i] = previousRenaming[this.closure[i]];
+	public void compactRebase(boolean rebase, int[] previousRenaming) {
+		if (rebase) {
+			int[] newSupportCounts = new int[this.nbFrequents];
+			int[] newDistinctTransactionsCount = new int[this.nbFrequents];
+			this.reverseRenaming = new int[this.nbFrequents];
+			this.renaming = new int[maxFrequent];
+			int insertPos = 0;
+			int maxExtension = -1;
+			for (int i = 0; i < this.supportCounts.length; i++) {
+				if (this.supportCounts[i] > 0) {
+					if (i < extension) {
+						maxExtension = insertPos;
+					}
+					if (previousRenaming == null) {
+						this.reverseRenaming[insertPos] = i;
+					} else {
+						this.reverseRenaming[insertPos] = previousRenaming[this.reverseRenaming[i]];
+					}
+					this.renaming[i] = insertPos;
+					newSupportCounts[insertPos] = this.supportCounts[i];
+					newDistinctTransactionsCount[insertPos] = this.distinctTransactionsCounts[i];
+				}
+			}
+			this.supportCounts = newSupportCounts;
+			this.distinctTransactionsCounts = newDistinctTransactionsCount;
+			this.extensionsIterator = new AllFrequentsIterator(maxExtension);
+		} else {
+			this.extensionsIterator = new AllFrequentsIterator(this.extension);
 		}
 	}
 
@@ -185,11 +187,24 @@ public class DatasetCountersRenamer {
 		 * @return -1 if iterator is finished
 		 */
 		public int next() {
-			final int nextIndex = this.index.getAndIncrement();
-			if (nextIndex < this.max) {
-				return this.max;
+			if (renaming == null) {
+				while (true) {
+					final int nextIndex = this.index.getAndIncrement();
+					if (nextIndex < this.max) {
+						if (supportCounts[nextIndex] > 0) {
+							return nextIndex;
+						}
+					} else {
+						return -1;
+					}
+				}
 			} else {
-				return -1;
+				final int nextIndex = this.index.getAndIncrement();
+				if (nextIndex < this.max) {
+					return nextIndex;
+				} else {
+					return -1;
+				}
 			}
 		}
 	}

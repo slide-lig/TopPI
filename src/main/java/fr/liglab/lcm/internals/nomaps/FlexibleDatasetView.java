@@ -140,15 +140,15 @@ class FlexibleDatasetView extends FlexibleDataset {
 	@Override
 	Dataset project(int extension, DatasetCountersRenamer extensionCounters) {
 		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
-		if (this.counters.renaming != null) {
-			extensionCounters.updateReverseRenaming(this.counters.renaming);
-		}
 		if (!this.longTransactionMode && reductionRate > FlexibleDatasetView.THRESHOLD) {
+			extensionCounters.compactRebase(false, null);
 			return new FlexibleDatasetView(extensionCounters, this, extension);
 		} else {
+			extensionCounters.compactRebase(true, this.counters.reverseRenaming);
 			Iterator<TransactionReader> support = this.getSupport(extension);
 			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support,
 					extensionCounters.supportCounts, extensionCounters.renaming);
+			extensionCounters.renaming = null;
 			return new FlexibleDataset(extensionCounters, filtered);
 		}
 	}
