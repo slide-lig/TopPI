@@ -23,7 +23,7 @@ public class DatasetCountersRenamer {
 	public AllFrequentsIterator extensionsIterator;
 	
 	/**
-	 * How many transactions have been counted
+	 * Sum of counted transactions' weights
 	 */
 	public final int transactionsCount;
 	
@@ -75,13 +75,16 @@ public class DatasetCountersRenamer {
 		// fix fake extensions
 		this.extension = Math.min(extension, maxItem + 1);
 		this.minSup = minimumSupport;
-		int lineCount = 0;
+		int weightsSum = 0;
 		this.supportCounts = new int[maxItem];
 		this.distinctTransactionsCounts = new int[maxItem];
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
 			int weight = transaction.getTransactionSupport();
-			lineCount++;
+			
+			if (transaction.hasNext()) {
+				weightsSum += weight;
+			}
 
 			while (transaction.hasNext()) {
 				int item = transaction.next();
@@ -90,7 +93,7 @@ public class DatasetCountersRenamer {
 			}
 		}
 
-		this.transactionsCount = lineCount;
+		this.transactionsCount = weightsSum;
 		if (extension != Integer.MAX_VALUE) {
 			this.supportCounts[extension] = 0;
 			this.distinctTransactionsCounts[extension] = 0;
