@@ -5,8 +5,8 @@ import java.util.Iterator;
 import fr.liglab.lcm.internals.TransactionReader;
 
 /**
- * Decorates a transactions iterator : transactions are filtered as they're
- * read.
+ * Decorates a transactions iterator : transactions are filtered (and, maybe, rebased) 
+ * as they're read.
  */
 class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 
@@ -15,6 +15,11 @@ class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 	protected final int[] rebasing;
 	protected FilteredTransaction instance;
 
+	/**
+	 * @param filtered
+	 * @param itemSupport - only items having a positive value will be kept from "filtered"
+	 * @param rebasing may be null, in which case no rebasing happens
+	 */
 	public TransactionsFilteringDecorator(Iterator<TransactionReader> filtered, int[] itemSupport, int[] rebasing) {
 		this.wrapped = filtered;
 		this.itemSupport = itemSupport;
