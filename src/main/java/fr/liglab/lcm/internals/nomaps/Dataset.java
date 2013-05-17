@@ -29,7 +29,7 @@ class Dataset {
 		this.tidLists = null;
 	}
 
-	Dataset(final Iterator<TransactionReader> transactions) {
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
 		
 		this.transactions = new ConcatenatedTransactionsList(true, counts.supportsSum, counts.transactionsCount);
 
@@ -93,12 +93,7 @@ class Dataset {
 		};
 	}
 
-	@Override
-	public final int ppTest(int extension) {
-		if (this.longTransactionMode) {
-			return FastPrefixPreservingTest.ppTest(extension, this.counters, this.tidLists);
-		} else {
-			return -1;
-		}
+	int[] getIgnoredItems() {
+		return null;
 	}
 }

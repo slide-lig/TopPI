@@ -20,7 +20,7 @@ class DatasetView extends Dataset {
 	/**
 	 *  items known to have a 100% support in parent.concatenated
 	 */
-	final int[] ignoreItems;
+	protected final int[] ignoreItems;
 										// 
 	protected final Dataset parent;
 	protected final TIntIterable tids;
@@ -130,7 +130,12 @@ class DatasetView extends Dataset {
 			}
 		}
 	}
-
+	
+	@Override
+	int[] getIgnoredItems() {
+		return this.ignoreItems;
+	}
+	
 	@Override
 	Dataset project(int extension, DatasetCountersRenamer extensionCounters) {
 		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();

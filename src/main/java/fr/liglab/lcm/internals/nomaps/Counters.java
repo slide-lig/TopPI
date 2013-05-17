@@ -136,8 +136,11 @@ public final class Counters {
 
 			while (transaction.hasNext()) {
 				int item = transaction.next();
-				this.supportCounts[item] += weight;
-				this.distinctTransactionsCounts[item]++;
+				
+				if (item < maxItem) {
+					this.supportCounts[item] += weight;
+					this.distinctTransactionsCounts[item]++;
+				}
 			}
 		}
 
@@ -149,8 +152,10 @@ public final class Counters {
 		
 		if (ignoredItems != null) {
 			for (int item : ignoredItems) {
-				this.supportCounts[item] = 0;
-				this.distinctTransactionsCounts[item] = 0;
+				if (item < maxItem) {
+					this.supportCounts[item] = 0;
+					this.distinctTransactionsCounts[item] = 0;
+				}
 			}
 		}
 		
@@ -266,7 +271,8 @@ public final class Counters {
 			entry = renamingHeap.poll();
 			newItemID++;
 		}
-		
+
+		this.compactedArrays = true;
 		this.supportCountsSum = remainingSupportsSum;
 		this.distinctTransactionLengthSum = remainingSupportsSum;
 	}
@@ -302,7 +308,7 @@ public final class Counters {
 		// we will always have newItemID <= item
 		int newItemID = 0;
 		
-		for (int item = 0; item < olderReverseRenaming.length; item++) {
+		for (int item = 0; item < this.supportCounts.length; item++) {
 			if (this.supportCounts[item] > 0) {
 				renaming[item] = newItemID;
 				this.reverseRenaming[newItemID] = olderReverseRenaming[item];
@@ -316,11 +322,19 @@ public final class Counters {
 			}
 		}
 		
+		for (int item = this.supportCounts.length; item < olderReverseRenaming.length; item++) {
+			renaming[item] = -1;
+		}
+		
 		this.maxFrequent = newItemID - 1;
+		this.compactedArrays = true;
 		
 		return renaming;
 	}
 	
+	FrequentsIterator getFrequentsIterator(final int to) {
+		return new AllFrequentsIterator(to);
+	}
 	
 	
 	/**
