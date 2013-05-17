@@ -3,7 +3,7 @@ package fr.liglab.lcm.internals.nomaps;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
-final class FastPrefixPreservingTest {
+final class FirstParentTest {
 
 	/**
 	 * @return the biggest j > extension having the same support, or -1 if such

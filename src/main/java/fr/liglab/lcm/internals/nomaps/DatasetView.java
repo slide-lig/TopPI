@@ -14,23 +14,22 @@ import gnu.trove.list.array.TIntArrayList;
 /**
  * Exploits transactions concatenated in another ConcatenatedDataset, keeping
  * only those containing an item
- * 
- * It does NOT stores transactions' weights, nor it performs ppTest and
- * occurrence delivery.
  */
-class FlexibleDatasetView extends FlexibleDataset {
-	static final double THRESHOLD = 0.15;
-
-	protected final int[] ignoreItems; // items known to have a 100% support in
-										// parent.concatenated
-	protected final FlexibleDataset parent;
+class DatasetView extends Dataset {
+	
+	/**
+	 *  items known to have a 100% support in parent.concatenated
+	 */
+	final int[] ignoreItems;
+										// 
+	protected final Dataset parent;
 	protected final TIntIterable tids;
 
 	protected TIntIterable latestBuilt = null;
 	protected int latestBuiltExtension = Integer.MIN_VALUE;
 
-	FlexibleDatasetView(final DatasetCountersRenamer counts, FlexibleDataset upper, int extension) {
-		super(counts, (upper instanceof FlexibleDatasetView) ? ((FlexibleDatasetView) upper).parent.transactions
+	DatasetView(final DatasetCountersRenamer counts, FlexibleDataset upper, int extension) {
+		super(counts, (upper instanceof DatasetView) ? ((FlexibleDatasetView) upper).parent.transactions
 				: upper.transactions);
 
 		if (upper instanceof FlexibleDatasetView) {
@@ -44,12 +43,7 @@ class FlexibleDatasetView extends FlexibleDataset {
 			this.ignoreItems = ItemsetsFactory.extend(counts.closure, extension);
 		}
 	}
-
-	@Override
-	final int[] getItemsIgnoredForCounting() {
-		return this.ignoreItems;
-	}
-
+	
 	@Override
 	protected final double getConcatenatedTransactionCount() {
 		return this.parent.counters.transactionsCount;
