@@ -61,6 +61,24 @@ public class ItemsetsFactory {
 		return extended;
 	}
 
+	/**
+	 * @return a new array concatenating each of its arguments with their contents renamed EXCEPT for 'pattern' !
+	 */
+	public static int[] extendRename(final int[] closure, final int extension, final int[] pattern, 
+			final int[] renaming) {
+		
+		int[] extended = new int[pattern.length + closure.length + 1];
+		
+		for (int i = 0; i < closure.length; i++) {
+			extended[i] = renaming[closure[i]];
+		}
+		
+		extended[closure.length] = renaming[extension];
+		System.arraycopy(pattern, 0, extended, closure.length + 1, pattern.length);
+		
+		return extended;
+	}
+	
 	public static int[] extend(final int[] pattern, final int extension, final int[] closure, final int[] ignoreItems) {
 		if (ignoreItems == null) {
 			return extend(pattern, extension, closure);
