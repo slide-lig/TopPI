@@ -3,30 +3,27 @@ package fr.liglab.lcm.internals.nomaps;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
-final class FirstParentTest {
-
-	/**
-	 * @return the biggest j > extension having the same support, or -1 if such
-	 *         a j does not exist
-	 */
-	public static int ppTest(int extension, DatasetCountersRenamer counters, TidList occurrences) {
-
-		final int candidateSupport = counters.supportCounts[extension];
-
-		for (int i = counters.nbFrequents - 1; i > extension; i--) {
-			if (counters.supportCounts[i] >= candidateSupport) {
-				final TIntIterator candidateOccurrences = occurrences.get(extension);
-				final TIntIterator jOccurrences = occurrences.get(i);
-				if (isAincludedInB(candidateOccurrences, jOccurrences)) {
-					return i;
-				}
-			}
-		}
-
-		return -1;
+/**
+ * A stateless Selector that may throw WrongFirstParentException
+ * 
+ * Allows to perform first-parent test BEFORE performing item counting for a candidate extension
+ */
+final class FirstParentTest extends Selector {
+	
+	FirstParentTest() {
+		super();
+	}
+	
+	FirstParentTest(Selector follower) {
+		super(follower);
+	}
+	
+	@Override
+	protected Selector copy(Selector newNext) {
+		return new FirstParentTest(newNext);
 	}
 
-	private static boolean isAincludedInB(final TIntIterator aIt, final TIntIterator bIt) {
+	private boolean isAincludedInB(final TIntIterator aIt, final TIntIterator bIt) {
 		int tidA = 0;
 		int tidB = 0;
 
@@ -45,4 +42,37 @@ final class FirstParentTest {
 
 		return tidA == tidB && !aIt.hasNext();
 	}
+	
+	/**
+	 * returns true or throws a WrongFirstParentException
+	 */
+	@Override
+	protected boolean allowExploration(int extension, ExplorationStep state)
+			throws WrongFirstParentException {
+		
+		/**
+		 * FIXME maybe fast prefix-preserving state as described by Uno et al. may work with DatasetView
+		 */
+		if (state.dataset instanceof DatasetView) {
+			throw new IllegalArgumentException("FPtest can only be done on Dataset");
+		}
+		
+		final int[] supportCounts = state.counters.supportCounts;
+		final TidList occurrencesLists = state.dataset.tidLists;
+		
+		final int candidateSupport = supportCounts[extension];
+
+		for (int i = state.counters.maxFrequent; i > extension; i--) {
+			if (supportCounts[i] >= candidateSupport) {
+				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
+				final TIntIterator iOccurrences = occurrencesLists.get(i);
+				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
+					throw new WrongFirstParentException(extension, i);
+				}
+			}
+		}
+		
+		return true;
+	}
+
 }
