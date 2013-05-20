@@ -36,6 +36,12 @@ public final class Counters {
 	public final int transactionsCount;
 	
 	/**
+	 * How many transactions have been counted (equals transactionsCount when all transactions
+	 * have a weight of 1)
+	 */
+	public final int distinctTransactionsCount;
+	
+	/**
 	 * Sum of given *filtered* transactions' lengths, ignoring their weight
 	 */
 	public final int distinctTransactionLengthSum;
@@ -51,7 +57,7 @@ public final class Counters {
 	final int[] supportCounts;
 	
 	/**
-	 * supportCounts, summed
+	 * supportCounts, summed - FIXME is this useful ??
 	 */
 	public final int supportCountsSum;
 	
@@ -126,12 +132,15 @@ public final class Counters {
 		// item support and transactions counting
 		
 		int weightsSum = 0;
+		int transactionsCount = 0;
+		
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
 			int weight = transaction.getTransactionSupport();
 			
 			if (transaction.hasNext()) {
 				weightsSum += weight;
+				transactionsCount++;
 			}
 
 			while (transaction.hasNext()) {
@@ -145,6 +154,7 @@ public final class Counters {
 		}
 
 		this.transactionsCount = weightsSum;
+		this.distinctTransactionsCount = transactionsCount;
 		
 		// ignored items
 		this.supportCounts[extension] = 0;
@@ -223,6 +233,7 @@ public final class Counters {
 		}
 		
 		this.transactionsCount = transactionsCounter;
+		this.distinctTransactionsCount = transactionsCounter;
 		this.renaming = new int[biggestItemID];
 		Arrays.fill(renaming, -1);
 		
