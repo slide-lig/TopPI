@@ -3,11 +3,17 @@ package fr.liglab.lcm.internals.transactions;
 import java.util.Iterator;
 
 public class ConcatenatedTransactionsList extends TransactionsList {
+	private int[] concatenated;
+	private int size;
+
 	public ConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
 		this.concatenated = new int[transactionsLength + nbTransactions];
 	}
 
-	private int[] concatenated;
+	@Override
+	public int size() {
+		return this.size;
+	}
 
 	@Override
 	public Iterator<IterableTransaction> iterator() {
@@ -31,6 +37,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 
 			@Override
 			public void endTransaction() {
+				size++;
 				concatenated[this.lastTransactionId] = this.lastTransactionLength;
 			}
 
@@ -103,6 +110,9 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 
 		@Override
 		public void setTransactionSupport(int s) {
+			if (s <= 0) {
+				size--;
+			}
 			concatenated[this.startPos + 1] = s;
 		}
 	}

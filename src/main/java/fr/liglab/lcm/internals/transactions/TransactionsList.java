@@ -14,6 +14,11 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	abstract public TransactionIterator get(final int transaction);
 
 	abstract public TransactionsWriter getWriter();
+	
+	/**
+	 * @return how many IterableTransaction are behind this object
+	 */
+	abstract public int size();
 
 	public void compress(final int prefixEnd) {
 		List<IterableTransaction> sortList = new ArrayList<IterableTransaction>();

@@ -11,7 +11,12 @@ import java.util.List;
 public class BasicTransactionsList extends TransactionsList {
 
 	private List<TIntList> transactions = new ArrayList<TIntList>();
-
+	
+	@Override
+	public int size() {
+		return this.transactions.size();
+	}
+	
 	@Override
 	public Iterator<IterableTransaction> iterator() {
 		final Iterator<TIntList> iter = this.transactions.iterator();

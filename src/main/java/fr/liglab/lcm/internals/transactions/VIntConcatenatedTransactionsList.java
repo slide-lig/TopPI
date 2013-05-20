@@ -7,6 +7,9 @@ import org.omg.CORBA.IntHolder;
 
 public class VIntConcatenatedTransactionsList extends TransactionsList {
 
+	private byte[] concatenated;
+	private int size;
+
 	public VIntConcatenatedTransactionsList(int nbTransactions, int[] distinctItemFreq) {
 		int size = 0;
 		for (int i = 0; i < distinctItemFreq.length; i++) {
@@ -21,8 +24,11 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 	public VIntConcatenatedTransactionsList(int size) {
 		this.concatenated = new byte[size];
 	}
-
-	private byte[] concatenated;
+	
+	@Override
+	public int size() {
+		return this.size;
+	}
 
 	static private int getVIntSize(int val) {
 		if (val < 0) {
@@ -141,6 +147,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 			@Override
 			public void endTransaction() {
+				size++;
 				writeInt(this.lastTransactionId, this.index.value);
 			}
 
@@ -213,6 +220,9 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 		@Override
 		public void setTransactionSupport(int s) {
+			if (s <= 0) {
+				size--;
+			}
 			writeInt(this.startPos + 4, s);
 		}
 	}
