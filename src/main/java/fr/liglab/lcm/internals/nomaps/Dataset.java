@@ -7,36 +7,41 @@ import org.apache.commons.lang.NotImplementedException;
 import fr.liglab.lcm.internals.TransactionReader;
 import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
+import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
 import fr.liglab.lcm.internals.transactions.ConcatenatedTransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsWriter;
 import gnu.trove.iterator.TIntIterator;
 
+/**
+ * Stores transactions and does occurrence delivery
+ */
 class Dataset {
-
+	
 	protected final TransactionsList transactions;
-
-	protected boolean longTransactionMode = false;
-
+	
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
 	 * Transactions are added in the same order in all occurrences-arrays.
 	 */
 	protected final TidList tidLists;
-
-	protected Dataset(TransactionsList transactions) {
+	
+	protected Dataset(TransactionsList transactions, TidList occurrences) {
 		this.transactions = transactions;
-		this.tidLists = null;
+		this.tidLists = occurrences;
 	}
-
+	
+	/**
+	 * @param counters
+	 * @param transactions assumed to be filtered according to counters
+	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
 		
-		this.transactions = new ConcatenatedTransactionsList(true, counts.supportsSum, counts.transactionsCount);
-
-		// prepare occurrences lists
-		this.tidLists = new ConsecutiveItemsConcatenatedTidList(true, counts.supportCounts);
-
-		// COPY
+		this.transactions = new ConcatenatedTransactionsList(true, 
+				counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
+		
+		this.tidLists = new ConsecutiveItemsConcatenatedTidList(true, counters.supportCounts);
+		
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
@@ -48,52 +53,55 @@ class Dataset {
 			}
 		}
 
-		this.longTransactionMode = (counts.supportsSum / counts.transactionsCount) > LONG_TRANSACTION_MODE_THRESHOLD;
 	}
 	
-	Dataset project(int extension, DatasetCountersRenamer extensionCounters) {
-		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
-		if (!this.longTransactionMode && reductionRate > FlexibleDatasetView.THRESHOLD) {
-			extensionCounters.compactRebase(false, null);
-			extensionCounters.reverseRenaming = this.counters.reverseRenaming;
-			return new FlexibleDatasetView(extensionCounters, this, extension);
-		} else {
-			extensionCounters.compactRebase(true, this.counters.reverseRenaming);
-			Iterator<TransactionReader> support = this.getSupport(extension);
-			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support,
-					extensionCounters.supportCounts, extensionCounters.renaming);
-			extensionCounters.renaming = null;
-			return new FlexibleDataset(extensionCounters, filtered);
+	/**
+	 * In this implementation the inputted transactions are assumed to be filtered, therefore it 
+	 * returns null. However this is not true for subclasses.
+	 * @return items known to have a 100% support in this dataset
+	 */
+	int[] getIgnoredItems() {
+		return null; // we assume this class always receives 
+	}
+	
+	public TransactionsIterable getSupport(int item) {
+		return new TransactionsIterable(this.tidLists.getIterable(item));
+	}
+	
+	public final class TransactionsIterable implements Iterable<TransactionReader> {
+		final TIntIterable tids;
+		
+		public TransactionsIterable(TIntIterable tidList) {
+			this.tids = tidList;
+		}
+		
+		@Override
+		public Iterator<TransactionReader> iterator() {
+			return new TransactionsIterator(this.tids.iterator());
 		}
 	}
+	
+	protected final class TransactionsIterator implements Iterator<TransactionReader> {
+		
+		protected final TIntIterator it;
+		
+		public TransactionsIterator(TIntIterator tids) {
+			this.it = tids;
+		}
+		
+		@Override
+		public void remove() {
+			throw new NotImplementedException();
+		}
 
-	protected double getConcatenatedTransactionCount() {
-		return this.counters.transactionsCount;
-	}
-
-	@Override
-	public Iterator<TransactionReader> getSupport(int item) {
-		final TIntIterator it = this.tidLists.get(item);
-		return new Iterator<TransactionReader>() {
-
-			@Override
-			public void remove() {
-				throw new NotImplementedException();
-			}
-
-			@Override
-			public TransactionReader next() {
-				return transactions.get(it.next());
-			}
-
-			@Override
-			public boolean hasNext() {
-				return it.hasNext();
-			}
-		};
-	}
-
-	int[] getIgnoredItems() {
-		return null;
+		@Override
+		public TransactionReader next() {
+			return transactions.get(this.it.next());
+		}
+		
+		@Override
+		public boolean hasNext() {
+			return this.it.hasNext();
+		}
 	}
 }

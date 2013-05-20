@@ -56,7 +56,8 @@ public final class ExplorationStep {
 	/**
 	 * Start exploration on a dataset contained in a file.
 	 * @param minimumSupport
-	 * @param path to an input file in ASCII format. Each line should be a transaction containing space-separated item IDs.
+	 * @param path to an input file in ASCII format. Each line should be a transaction containing 
+	 * space-separated item IDs.
 	 */
 	public ExplorationStep(int minimumSupport, String path) {
 		this.core_item = Integer.MAX_VALUE;
@@ -69,7 +70,8 @@ public final class ExplorationStep {
 		this.pattern = this.counters.closure;
 		
 		reader = new FileReader(path);
-		Iterator<TransactionReader> transactions = new TransactionsRenamerFilterSorter(reader, this.counters.renaming);
+		Iterator<TransactionReader> transactions = 
+				new TransactionsRenamerFilterSorter(reader, this.counters.renaming);
 		this.dataset = new Dataset(this.counters, transactions);
 		reader.close();
 		
@@ -78,7 +80,23 @@ public final class ExplorationStep {
 		this.failedFPTests = new TIntIntHashMap();
 	}
 	
-	
+	/**
+	 * Create a projected dataset. Handles renaming and indexing strategy.
+	 * @param parent
+	 * @param candidate a first-parent extension from parent step
+	 * @param candidateCounts candidate's counters from parent step
+	 */
+	public ExplorationStep(ExplorationStep parent, int candidate,
+			Counters candidateCounts) {
+		
+		this.core_item = candidate;
+		this.counters = candidateCounts;
+		this.selectChain = parent.selectChain;
+		this.candidates = this.counters.getFrequentsIterator(this.core_item);
+		this.failedFPTests = new TIntIntHashMap();
+	}
+
+
 	/**
 	 * Finds an extension for current pattern in current dataset and returns the corresponding 
 	 * ExplorationStep (extensions are enumerated by ascending item IDs - in internal rebasing) 
@@ -92,22 +110,37 @@ public final class ExplorationStep {
 				return null;
 			} else {
 				try {
-					if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-						
-						Iterator<TransactionReader> support = this.dataset.getSupport(candidate);
-						
-						new Counters(this.counters.minSupport, support, candidate, 
-								this.dataset.getIgnoredItems(), this.counters.maxFrequent);
-						
-						// TODO 
-						// check discovered closure
-						// new ExplorationStep(this, candidate, counters) --> will build dataset, handle rebasing and put pattern back to original names
-						
-					}
+					return explore(candidate);
 				} catch (WrongFirstParentException e) {
 					this.failedFPTests.put(e.extension, e.firstParent);
 				}
 			}
 		}
+	}
+
+
+	private ExplorationStep explore(int candidate) throws WrongFirstParentException {
+		if (this.selectChain == null || this.selectChain.select(candidate, this)) {
+			
+			Iterator<TransactionReader> support = this.dataset.getSupport(candidate);
+			
+			Counters candidateCounts = new Counters(this.counters.minSupport, support, 
+					candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
+			
+			int greatest = Integer.MIN_VALUE;
+			for (int i = 0; i < candidateCounts.closure.length; i++) {
+				if (candidateCounts.closure[i] > greatest) {
+					greatest = candidateCounts.closure[i];
+				}
+			}
+			
+			if (greatest > candidate) {
+				throw new WrongFirstParentException(candidate, greatest);
+			}
+			
+			return new ExplorationStep(this, candidate, candidateCounts);
+			
+		}
+		return null;
 	}
 }

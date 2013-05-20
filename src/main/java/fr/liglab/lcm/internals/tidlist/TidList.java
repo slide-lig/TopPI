@@ -16,7 +16,8 @@ public abstract class TidList {
 	public final void setSorted(boolean sorted) {
 		this.sorted = sorted;
 	}
-
+	
+	// FIXME - is it useless ?
 	abstract public TIntIterator get(final int item);
 
 	abstract public TIntIterable getIterable(final int item);

@@ -1,10 +1,5 @@
 package fr.liglab.lcm.internals.nomaps;
 
-import java.util.Iterator;
-
-import org.apache.commons.lang.NotImplementedException;
-
-import fr.liglab.lcm.internals.TransactionReader;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
@@ -12,76 +7,46 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 
 /**
- * Exploits transactions concatenated in another ConcatenatedDataset, keeping
- * only those containing an item
+ * This class references directly parent's tidList and transactions, but will always intersect 
+ * occurrences lists with its own tids. 
+ * In other words, it represents a projected dataset without item filtering and occurrence 
+ * delivery.
  */
 class DatasetView extends Dataset {
 	
 	/**
-	 *  items known to have a 100% support in parent.concatenated
+	 *  items known to have a 100% support in this dataset
 	 */
 	protected final int[] ignoreItems;
-										// 
-	protected final Dataset parent;
+	
 	protected final TIntIterable tids;
-
-	protected TIntIterable latestBuilt = null;
-	protected int latestBuiltExtension = Integer.MIN_VALUE;
-
-	DatasetView(final DatasetCountersRenamer counts, FlexibleDataset upper, int extension) {
-		super(counts, (upper instanceof DatasetView) ? ((FlexibleDatasetView) upper).parent.transactions
-				: upper.transactions);
-
-		if (upper instanceof FlexibleDatasetView) {
-			FlexibleDatasetView upperView = (FlexibleDatasetView) upper;
-			this.parent = upperView.parent;
-			this.tids = upperView.getExtensionTIDs(extension);
-			this.ignoreItems = ItemsetsFactory.extend(counts.closure, extension, upperView.ignoreItems);
-		} else {
-			this.parent = upper;
-			this.tids = this.parent.tidLists.getIterable(extension);
-			this.ignoreItems = ItemsetsFactory.extend(counts.closure, extension);
-		}
+	
+	/**
+	 * This constructor will re-use a transactions collection and ignore some items (ignoredItem 
+	 * and counts' closure)
+	 * @param parent the object containing actual transactions 
+	 * @param counts item counters over viewed transactions
+	 * @param viewed viewed transactions
+	 * @param ignoreItem typically the item on which we're projecting
+	 */
+	DatasetView(final Dataset parent, final Counters counts, TransactionsIterable viewed, int ignoredItem) {
+		super(parent.transactions, parent.tidLists);
+		
+		this.tids = viewed.tids;
+		this.ignoreItems = ItemsetsFactory.extend(counts.closure, ignoredItem, parent.getIgnoredItems());
+	}
+	
+	/**
+	 * @return items known to have a 100% support in this dataset
+	 */
+	@Override
+	int[] getIgnoredItems() {
+		return this.ignoreItems;
 	}
 	
 	@Override
-	protected final double getConcatenatedTransactionCount() {
-		return this.parent.counters.transactionsCount;
-	}
-
-	@Override
-	public Iterator<TransactionReader> getSupport(int item) {
-		final TIntIterator it = getExtensionTIDs(item).iterator();
-		return new Iterator<TransactionReader>() {
-
-			@Override
-			public void remove() {
-				throw new NotImplementedException();
-			}
-
-			@Override
-			public TransactionReader next() {
-				return transactions.get(it.next());
-			}
-
-			@Override
-			public boolean hasNext() {
-				return it.hasNext();
-			}
-		};
-	}
-
-	/**
-	 * buildExtensionTIDs with memoization : it's usually invoked twice for the
-	 * same extension : once by getSupport and, likely, again by constructor
-	 */
-	private synchronized TIntIterable getExtensionTIDs(int extension) {
-		if (this.latestBuiltExtension != extension) {
-			this.latestBuilt = buildExtensionTIDs(extension);
-			this.latestBuiltExtension = extension;
-		}
-
-		return this.latestBuilt;
+	public TransactionsIterable getSupport(int item) {
+		return new TransactionsIterable( new TidlistIterable(buildExtensionTIDs(item)) );
 	}
 
 	/**
@@ -89,11 +54,11 @@ class DatasetView extends Dataset {
 	 * 
 	 * @return current Tids intersected with extension's occurrences
 	 */
-	private TIntIterable buildExtensionTIDs(int extension) {
+	private TIntList buildExtensionTIDs(int extension) {
 		TIntArrayList extensionTids = new TIntArrayList();
 
 		TIntIterator myTidsIt = this.tids.iterator();
-		TIntIterator parentExtTidsIt = this.parent.tidLists.get(extension);
+		TIntIterator parentExtTidsIt = this.tidLists.get(extension);
 
 		int myTid = myTidsIt.next();
 		int parentExtTid = parentExtTidsIt.next();
@@ -102,14 +67,14 @@ class DatasetView extends Dataset {
 
 			while (myTid < parentExtTid) {
 				if (!myTidsIt.hasNext()) {
-					return new TidlistIterable(extensionTids);
+					return extensionTids;
 				}
 				myTid = myTidsIt.next();
 			}
 
 			while (parentExtTid < myTid) {
 				if (!parentExtTidsIt.hasNext()) {
-					return new TidlistIterable(extensionTids);
+					return extensionTids;
 				}
 				parentExtTid = parentExtTidsIt.next();
 			}
@@ -120,38 +85,17 @@ class DatasetView extends Dataset {
 				if (myTidsIt.hasNext()) {
 					myTid = myTidsIt.next();
 				} else {
-					return new TidlistIterable(extensionTids);
+					return extensionTids;
 				}
 				if (parentExtTidsIt.hasNext()) {
 					parentExtTid = parentExtTidsIt.next();
 				} else {
-					return new TidlistIterable(extensionTids);
+					return extensionTids;
 				}
 			}
 		}
 	}
 	
-	@Override
-	int[] getIgnoredItems() {
-		return this.ignoreItems;
-	}
-	
-	@Override
-	Dataset project(int extension, DatasetCountersRenamer extensionCounters) {
-		double reductionRate = extensionCounters.transactionsCount / this.getConcatenatedTransactionCount();
-		if (!this.longTransactionMode && reductionRate > FlexibleDatasetView.THRESHOLD) {
-			extensionCounters.compactRebase(false, null);
-			return new FlexibleDatasetView(extensionCounters, this, extension);
-		} else {
-			extensionCounters.compactRebase(true, this.counters.reverseRenaming);
-			Iterator<TransactionReader> support = this.getSupport(extension);
-			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support,
-					extensionCounters.supportCounts, extensionCounters.renaming);
-			extensionCounters.renaming = null;
-			return new FlexibleDataset(extensionCounters, filtered);
-		}
-	}
-
 	private class TidlistIterable implements TIntIterable {
 		private final TIntList l;
 
