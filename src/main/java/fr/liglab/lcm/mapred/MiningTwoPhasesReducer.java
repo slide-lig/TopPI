@@ -128,7 +128,7 @@ public class MiningTwoPhasesReducer extends
 			extensionsIterator = fakeIt;
 		}
 		
-		lcm.lcm(dataset, extensionsIterator);
+		//lcm.lcm(dataset, extensionsIterator);
 		
 		if (singleStarter >= 0) {
 			System.out.println(lcm.toString());

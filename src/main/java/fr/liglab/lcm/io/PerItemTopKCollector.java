@@ -12,6 +12,23 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+
+/*
+PLCM.explore() used to be 
+		int previousItem = -1;
+		int previousResult = -1;
+		synchronized (sj) {
+			previousItem = sj.getPreviousItem();
+			previousResult = sj.getPreviousResult();
+		}
+		synchronized (sj.failedpptests) {
+			return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
+					sj.dataset.counters.supportCounts, sj.failedpptests, previousItem, previousResult);
+		}
+ */
+
+
+
 /**
  * Wraps a collector and will limit exploration to top-k-per-items patterns
  * 

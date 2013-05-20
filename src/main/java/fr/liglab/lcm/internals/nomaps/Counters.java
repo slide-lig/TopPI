@@ -345,7 +345,11 @@ public final class Counters {
 		return renaming;
 	}
 	
-	FrequentsIterator getFrequentsIterator(final int to) {
+	/**
+	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
+	 * @return an iterator over frequent items (in ascending order) that will stop
+	 */
+	public FrequentsIterator getFrequentsIterator(final int to) {
 		return new AllFrequentsIterator(to);
 	}
 	
