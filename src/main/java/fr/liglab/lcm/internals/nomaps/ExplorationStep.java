@@ -4,8 +4,10 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.TransactionReader;
+import fr.liglab.lcm.internals.nomaps.Dataset.TransactionsIterable;
 import fr.liglab.lcm.internals.nomaps.Selector.WrongFirstParentException;
 import fr.liglab.lcm.io.FileReader;
+import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 /**
@@ -79,23 +81,6 @@ public final class ExplorationStep {
 		
 		this.failedFPTests = new TIntIntHashMap();
 	}
-	
-	/**
-	 * Create a projected dataset. Handles renaming and indexing strategy.
-	 * @param parent
-	 * @param candidate a first-parent extension from parent step
-	 * @param candidateCounts candidate's counters from parent step
-	 */
-	public ExplorationStep(ExplorationStep parent, int candidate,
-			Counters candidateCounts) {
-		
-		this.core_item = candidate;
-		this.counters = candidateCounts;
-		this.selectChain = parent.selectChain;
-		this.candidates = this.counters.getFrequentsIterator(this.core_item);
-		this.failedFPTests = new TIntIntHashMap();
-	}
-
 
 	/**
 	 * Finds an extension for current pattern in current dataset and returns the corresponding 
@@ -118,13 +103,15 @@ public final class ExplorationStep {
 		}
 	}
 
-
+	/**
+	 * This sub-method handles candidates selection and first-parent tests
+	 */
 	private ExplorationStep explore(int candidate) throws WrongFirstParentException {
 		if (this.selectChain == null || this.selectChain.select(candidate, this)) {
 			
-			Iterator<TransactionReader> support = this.dataset.getSupport(candidate);
+			TransactionsIterable support = this.dataset.getSupport(candidate);
 			
-			Counters candidateCounts = new Counters(this.counters.minSupport, support, 
+			Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
 					candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
 			
 			int greatest = Integer.MIN_VALUE;
@@ -138,9 +125,53 @@ public final class ExplorationStep {
 				throw new WrongFirstParentException(candidate, greatest);
 			}
 			
-			return new ExplorationStep(this, candidate, candidateCounts);
+			// instanciateDataset may choose to compress renaming - if not, at least it's set for now.
+			candidateCounts.reuseRenaming(this.counters.reverseRenaming);
+			
+			return new ExplorationStep(this, candidate, candidateCounts, support);
 			
 		}
 		return null;
+	}
+	
+	/**
+	 * Instantiate state for a valid extension.
+	 * @param parent
+	 * @param extension a first-parent extension from parent step
+	 * @param candidateCounts extension's counters from parent step
+	 * @param support previously-computed extension's support
+	 */
+	protected ExplorationStep(ExplorationStep parent, int extension,
+			Counters candidateCounts, TransactionsIterable support) {
+		
+		this.core_item = extension;
+		this.counters = candidateCounts;
+		this.selectChain = parent.selectChain;
+		this.candidates = this.counters.getFrequentsIterator(this.core_item);
+		this.failedFPTests = new TIntIntHashMap();
+		
+		this.pattern = ItemsetsFactory.extendRename(candidateCounts.closure, extension, 
+				parent.pattern, parent.counters.reverseRenaming);
+		
+		this.dataset = instanciateDataset(parent, support);
+	}
+	
+	/**
+	 * @param candidateCounts 
+	 * @param extension 
+	 * 
+	 */
+	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
+		double supportRate = this.counters.distinctTransactionsCount / 
+				(double) parent.dataset.getStoredTransactionsCount();
+		
+		if ((supportRate) > VIEW_SUPPORT_THRESHOLD) {
+			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
+		} else {
+			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(
+					support.iterator(), this.counters.supportCounts, null);
+			
+			return new Dataset(this.counters, filtered);
+		}
 	}
 }

@@ -63,6 +63,15 @@ class Dataset {
 		return null; // we assume this class always receives 
 	}
 	
+	/**
+	 * @return how many transactions (ignoring their weight) are stored behind this dataset
+	 */
+	int getStoredTransactionsCount() {
+		return this.transactions.size();
+	}
+	
+	
+	
 	public TransactionsIterable getSupport(int item) {
 		return new TransactionsIterable(this.tidLists.getIterable(item));
 	}
