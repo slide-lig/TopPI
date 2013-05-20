@@ -9,17 +9,11 @@ import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
-public class ShortMapTidList extends TidList {
+public class ShortMapTidList implements TidList {
 
-	private final TIntObjectMap<TShortList> occurrences;
-
-	public ShortMapTidList(boolean sorted) {
-		super(sorted);
-		this.occurrences = new TIntObjectHashMap<TShortList>();
-	}
-
-	public ShortMapTidList(boolean sorted, final TIntIntMap lengths) {
-		this(sorted);
+	private final TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
+	
+	public ShortMapTidList(final TIntIntMap lengths) {
 		TIntIntIterator iter = lengths.iterator();
 		while (iter.hasNext()) {
 			iter.advance();

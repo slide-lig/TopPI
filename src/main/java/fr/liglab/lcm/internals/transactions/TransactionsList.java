@@ -6,29 +6,16 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * Stores transactions. Items in transactions are assumed to be sorted in increasing order
+ */
 public abstract class TransactionsList implements Iterable<IterableTransaction> {
-	private boolean sorted;
-
-	public TransactionsList(boolean sorted) {
-		this.sorted = sorted;
-	}
-
-	public final boolean isSorted() {
-		return sorted;
-	}
-
-	public final void setSorted(boolean sorted) {
-		this.sorted = sorted;
-	}
-
+	
 	abstract public TransactionIterator get(final int transaction);
 
 	abstract public TransactionsWriter getWriter();
 
 	public void compress(final int prefixEnd) {
-		if (!this.isSorted()) {
-			throw new IllegalArgumentException("each transaction must be sorted before a compression");
-		}
 		List<IterableTransaction> sortList = new ArrayList<IterableTransaction>();
 		for (IterableTransaction trans : this) {
 			sortList.add(trans);

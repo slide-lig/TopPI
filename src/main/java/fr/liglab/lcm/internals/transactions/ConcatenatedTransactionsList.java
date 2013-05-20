@@ -3,8 +3,7 @@ package fr.liglab.lcm.internals.transactions;
 import java.util.Iterator;
 
 public class ConcatenatedTransactionsList extends TransactionsList {
-	public ConcatenatedTransactionsList(boolean sorted, int transactionsLength, int nbTransactions) {
-		super(sorted);
+	public ConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
 		this.concatenated = new int[transactionsLength + nbTransactions];
 	}
 

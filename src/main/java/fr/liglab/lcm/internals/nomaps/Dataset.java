@@ -37,10 +37,10 @@ class Dataset {
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
 		
-		this.transactions = new ConcatenatedTransactionsList(true, 
+		this.transactions = new ConcatenatedTransactionsList(
 				counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
 		
-		this.tidLists = new ConsecutiveItemsConcatenatedTidList(true, counters.supportCounts);
+		this.tidLists = new ConsecutiveItemsConcatenatedTidList(counters.supportCounts);
 		
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
@@ -52,7 +52,6 @@ class Dataset {
 				this.tidLists.addTransaction(item, transId);
 			}
 		}
-
 	}
 	
 	/**

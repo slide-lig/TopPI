@@ -9,8 +9,7 @@ public class RandomItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	private final TIntIntMap startPositions;
 
-	public RandomItemsConcatenatedTidList(final boolean sorted, final int[] lengths) {
-		super(sorted);
+	public RandomItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
 		this.startPositions = new TIntIntHashMap(lengths.length, Constants.DEFAULT_LOAD_FACTOR, -1, -1);
 		for (int i = 0; i < lengths.length; i++) {
@@ -22,8 +21,7 @@ public class RandomItemsConcatenatedTidList extends ConcatenatedTidList {
 		this.concatenated = new int[startPos];
 	}
 
-	public RandomItemsConcatenatedTidList(final boolean sorted, final TIntIntMap lengths) {
-		super(sorted);
+	public RandomItemsConcatenatedTidList(final TIntIntMap lengths) {
 		int startPos = 0;
 		this.startPositions = new TIntIntHashMap(lengths.size(), Constants.DEFAULT_LOAD_FACTOR, -1, -1);
 		TIntIntIterator iter = lengths.iterator();
@@ -39,5 +37,4 @@ public class RandomItemsConcatenatedTidList extends ConcatenatedTidList {
 	protected int getPosition(final int item) {
 		return this.startPositions.get(item);
 	}
-
 }

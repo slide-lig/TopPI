@@ -4,15 +4,13 @@ import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 public class BasicTransactionsList extends TransactionsList {
-	public BasicTransactionsList(boolean sorted) {
-		super(sorted);
-	}
 
-	private List<TIntList> transactions;
+	private List<TIntList> transactions = new ArrayList<TIntList>();
 
 	@Override
 	public Iterator<IterableTransaction> iterator() {

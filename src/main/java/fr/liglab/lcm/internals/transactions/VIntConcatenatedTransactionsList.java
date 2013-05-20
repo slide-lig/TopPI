@@ -7,8 +7,7 @@ import org.omg.CORBA.IntHolder;
 
 public class VIntConcatenatedTransactionsList extends TransactionsList {
 
-	public VIntConcatenatedTransactionsList(boolean sorted, int nbTransactions, int[] distinctItemFreq) {
-		super(sorted);
+	public VIntConcatenatedTransactionsList(int nbTransactions, int[] distinctItemFreq) {
 		int size = 0;
 		for (int i = 0; i < distinctItemFreq.length; i++) {
 			// add 1 because we use the value 0 for empty
@@ -19,8 +18,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		this.concatenated = new byte[size];
 	}
 
-	public VIntConcatenatedTransactionsList(boolean sorted, int size) {
-		super(sorted);
+	public VIntConcatenatedTransactionsList(int size) {
 		this.concatenated = new byte[size];
 	}
 

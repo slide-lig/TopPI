@@ -7,8 +7,7 @@ public class ConsecutiveItemsShortConcatenatedTidList extends ShortConcatenatedT
 
 	private final int[] startPositions;
 
-	public ConsecutiveItemsShortConcatenatedTidList(final boolean sorted, final TIntIntMap lengths) {
-		super(sorted);
+	public ConsecutiveItemsShortConcatenatedTidList(final TIntIntMap lengths) {
 		int startPos = 0;
 		this.startPositions = new int[lengths.size()];
 		TIntIntIterator iter = lengths.iterator();

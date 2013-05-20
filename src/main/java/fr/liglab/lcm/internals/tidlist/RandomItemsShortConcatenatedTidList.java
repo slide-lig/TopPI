@@ -9,8 +9,7 @@ public class RandomItemsShortConcatenatedTidList extends ShortConcatenatedTidLis
 
 	private final TIntIntMap startPositions;
 
-	public RandomItemsShortConcatenatedTidList(final boolean sorted, final TIntIntMap lengths) {
-		super(sorted);
+	public RandomItemsShortConcatenatedTidList(final TIntIntMap lengths) {
 		int startPos = 0;
 		this.startPositions = new TIntIntHashMap(lengths.size(), Constants.DEFAULT_LOAD_FACTOR, -1, -1);
 		TIntIntIterator iter = lengths.iterator();

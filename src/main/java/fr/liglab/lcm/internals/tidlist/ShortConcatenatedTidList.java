@@ -2,14 +2,10 @@ package fr.liglab.lcm.internals.tidlist;
 
 import gnu.trove.iterator.TIntIterator;
 
-public abstract class ShortConcatenatedTidList extends TidList {
+public abstract class ShortConcatenatedTidList implements TidList {
 
 	protected short[] concatenated;
-
-	public ShortConcatenatedTidList(boolean sorted) {
-		super(sorted);
-	}
-
+	
 	@Override
 	public TIntIterator get(final int item) {
 		final int start = this.getPosition(item);
