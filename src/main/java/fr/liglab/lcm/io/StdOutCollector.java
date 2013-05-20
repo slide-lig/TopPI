@@ -2,7 +2,7 @@ package fr.liglab.lcm.io;
 
 import java.util.Arrays;
 
-public class StdOutCollector extends PatternsCollector {
+public class StdOutCollector implements PatternsCollector {
 	
 	protected long collected = 0;
 

@@ -1,8 +1,7 @@
 package fr.liglab.lcm.io;
 
-import gnu.trove.map.TIntIntMap;
 
-public abstract class PatternsCollector {
+public interface PatternsCollector {
 	public abstract void collect(final int support, final int[] pattern);
 
 	/**
@@ -12,38 +11,4 @@ public abstract class PatternsCollector {
 	 * @return outputted pattern count
 	 */
 	public abstract long close();
-
-	/*
-	 * @param currentPattern Pattern corresponding to the current dataset
-	 * 
-	 * @param extension Proposition of an item to extend the current pattern
-	 * 
-	 * @param sortedFreqItems array of remaining frequent items in the current
-	 * data set (sorted in increasing order)
-	 * 
-	 * @param supportCounts Map giving the support for each item present in the
-	 * current dataset
-	 * 
-	 * @return true if it is possible to generate patterns that make it into
-	 * topK by exploring this extension
-	 */
-	public int explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final TIntIntMap failedPPTests) {
-		return this.explore(currentPattern, extension, sortedFreqItems,
-				supportCounts, failedPPTests, -1, -1);
-	}
-
-	/*
-	 * FIXME maybe this one only needs a DatasetCounters instance (and previous flags)
-	 * 
-	 * @param resultForPreviousItem What was the explore result for the previous
-	 * item in the sequence
-	 */
-	public int explore(final int[] currentPattern, final int extension,
-			final int[] sortedFreqItems, final TIntIntMap supportCounts,
-			final TIntIntMap failedPPTest,
-			final int previousItem, final int resultForPreviousItem) {
-		return -1;
-	}
 }

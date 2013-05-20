@@ -6,7 +6,7 @@ import java.util.Arrays;
  * a PatternsCollector decorator : it will sort items in transactions before
  * transmitting them to the enclosed PatternsCollector
  */
-public class PatternSortCollector extends PatternsCollector {
+public class PatternSortCollector implements PatternsCollector {
 
 	protected final PatternsCollector decorated;
 

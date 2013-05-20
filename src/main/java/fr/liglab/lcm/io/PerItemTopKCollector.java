@@ -34,7 +34,7 @@ PLCM.explore() used to be
  * 
  * Thread-safe and initialized with known frequent items.
  */
-public class PerItemTopKCollector extends PatternsCollector {
+public class PerItemTopKCollector implements PatternsCollector {
 	
 	private final PatternsCollector decorated;
 	protected final int k;
@@ -153,7 +153,6 @@ public class PerItemTopKCollector extends PatternsCollector {
 	 */
 	// Assumes that patterns are extended with lower IDs
 	// Also assumes that frequency test is already done
-	@Override
 	public int explore(final int[] currentPattern, final int extension, final int[] sortedFreqItems,
 			final TIntIntMap supportCounts, final TIntIntMap failedPPTests, final int previousItem,
 			final int resultForPreviousItem) {

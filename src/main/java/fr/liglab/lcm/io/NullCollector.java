@@ -4,7 +4,7 @@ package fr.liglab.lcm.io;
 /**
  * The collector that doesn't care at all about outputting
  */
-public class NullCollector extends PatternsCollector {
+public class NullCollector implements PatternsCollector {
 	
 	protected long collectedCount = 0;
 

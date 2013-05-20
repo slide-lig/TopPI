@@ -13,7 +13,7 @@ import java.nio.charset.Charset;
  * a PatternsCollector that write to the path provided at instanciation
  * It will throw an exception if output file already exists
  */
-public class FileCollector extends PatternsCollector {
+public class FileCollector implements PatternsCollector {
 	
 	// this should be profiled and tuned !
 	protected static final int BUFFER_CAPACITY = 4096;
