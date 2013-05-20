@@ -93,45 +93,38 @@ public final class ExplorationStep {
 			
 			if (candidate < 0) {
 				return null;
-			} else {
-				try {
-					return explore(candidate);
-				} catch (WrongFirstParentException e) {
-					this.failedFPTests.put(e.extension, e.firstParent);
+			}
+			
+			try {
+				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
+					
+					TransactionsIterable support = this.dataset.getSupport(candidate);
+					
+					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+							candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
+					
+					int greatest = Integer.MIN_VALUE;
+					for (int i = 0; i < candidateCounts.closure.length; i++) {
+						if (candidateCounts.closure[i] > greatest) {
+							greatest = candidateCounts.closure[i];
+						}
+					}
+					
+					if (greatest > candidate) {
+						throw new WrongFirstParentException(candidate, greatest);
+					}
+					
+					// instanciateDataset may choose to compress renaming - if not, at least it's set for now.
+					candidateCounts.reuseRenaming(this.counters.reverseRenaming);
+					
+					return new ExplorationStep(this, candidate, candidateCounts, support);
 				}
+			} catch (WrongFirstParentException e) {
+				
+				// FIXME rebase ???
+				this.failedFPTests.put(e.extension, e.firstParent);
 			}
 		}
-	}
-
-	/**
-	 * This sub-method handles candidates selection and first-parent tests
-	 */
-	private ExplorationStep explore(int candidate) throws WrongFirstParentException {
-		if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-			
-			TransactionsIterable support = this.dataset.getSupport(candidate);
-			
-			Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
-					candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
-			
-			int greatest = Integer.MIN_VALUE;
-			for (int i = 0; i < candidateCounts.closure.length; i++) {
-				if (candidateCounts.closure[i] > greatest) {
-					greatest = candidateCounts.closure[i];
-				}
-			}
-			
-			if (greatest > candidate) {
-				throw new WrongFirstParentException(candidate, greatest);
-			}
-			
-			// instanciateDataset may choose to compress renaming - if not, at least it's set for now.
-			candidateCounts.reuseRenaming(this.counters.reverseRenaming);
-			
-			return new ExplorationStep(this, candidate, candidateCounts, support);
-			
-		}
-		return null;
 	}
 	
 	/**
@@ -146,9 +139,14 @@ public final class ExplorationStep {
 		
 		this.core_item = extension;
 		this.counters = candidateCounts;
-		this.selectChain = parent.selectChain;
 		this.candidates = this.counters.getFrequentsIterator(this.core_item);
 		this.failedFPTests = new TIntIntHashMap();
+		
+		if (parent.selectChain == null) {
+			this.selectChain = null;
+		} else {
+			this.selectChain = parent.selectChain.copy();
+		}
 		
 		this.pattern = ItemsetsFactory.extendRename(candidateCounts.closure, extension, 
 				parent.pattern, parent.counters.reverseRenaming);

@@ -2,14 +2,6 @@ package fr.liglab.lcm.internals.nomaps;
 
 /**
  * Main class for chained exploration filters, implemented as an immutable chained list.
- * 
- * Stateless selectors should simply inherit from this class (@see FirstParentTest)
- * Stateful selectors should rather implement it as an inner (stateless) class referencing a parent 
- * state class (@see PerItemTopKCollector)
- * 
- * Note on immutability : *many* ExplorationStep will actually use the same selector chain. 
- * Immutability allows to efficiently add (internal) selectors during exploration without 
- * affecting other patterns' explorations.
  */
 public abstract class Selector {
 	
@@ -25,7 +17,7 @@ public abstract class Selector {
 		throws WrongFirstParentException;
 	
 	/**
-	 * @return a new instance of the same selector, which will have another follower
+	 * @return an instance of the same selector for another recursion
 	 */
 	abstract protected Selector copy(Selector newNext);
 	
@@ -48,6 +40,13 @@ public abstract class Selector {
 		
 		return this.allowExploration(extension, state) && 
 				(this.next == null || this.next.select(extension, state));
+	}
+	
+	/**
+	 * @return a new Selector chain for a new recursion
+	 */
+	final Selector copy() {
+		return this.append(null);
 	}
 	
 	/**

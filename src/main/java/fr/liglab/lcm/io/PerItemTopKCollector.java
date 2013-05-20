@@ -1,6 +1,8 @@
 package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.internals.FrequentsIterator;
+import fr.liglab.lcm.internals.nomaps.ExplorationStep;
+import fr.liglab.lcm.internals.nomaps.Selector;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
@@ -12,25 +14,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-
-/*
-PLCM.explore() used to be 
-		int previousItem = -1;
-		int previousResult = -1;
-		synchronized (sj) {
-			previousItem = sj.getPreviousItem();
-			previousResult = sj.getPreviousResult();
-		}
-		synchronized (sj.failedpptests) {
-			return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
-					sj.dataset.counters.supportCounts, sj.failedpptests, previousItem, previousResult);
-		}
- */
-
-
-
 /**
- * Wraps a collector and will limit exploration to top-k-per-items patterns
+ * Wraps a collector. As a (stateful) Selector it will limit exploration to top-k-per-items patterns.
  * 
  * Thread-safe and initialized with known frequent items.
  */
@@ -322,5 +307,47 @@ public class PerItemTopKCollector implements PatternsCollector {
 			return true;
 		}
 
+	}
+	
+	
+	protected final class ExplorationLimiter extends Selector {
+		
+		private int previousItem = -1;
+		private int previousResult = -1;
+		
+		public ExplorationLimiter(Selector follower) {
+			super(follower);
+		}
+		
+		@Override
+		protected boolean allowExploration(int extension, ExplorationStep state)
+				throws WrongFirstParentException {
+			
+			/*
+			PLCM.explore() used to be 
+					int previousItem = -1;
+					int previousResult = -1;
+					synchronized (sj) {
+						previousItem = sj.getPreviousItem();
+						previousResult = sj.getPreviousResult();
+					}
+					synchronized (sj.failedpptests) {
+						return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
+								sj.dataset.counters.supportCounts, sj.failedpptests, previousItem, previousResult);
+					}
+			 */
+
+			
+			/*int explore = explore(final int[] currentPattern, final int extension, final int[] sortedFreqItems,
+					final TIntIntMap supportCounts, final TIntIntMap failedPPTests, final int previousItem,
+					final int resultForPreviousItem);
+			*/
+			return false;
+		}
+
+		@Override
+		protected Selector copy(Selector newNext) {
+			return new ExplorationLimiter(newNext);
+		}
 	}
 }
