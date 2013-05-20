@@ -138,17 +138,19 @@ public final class Counters {
 			TransactionReader transaction = transactions.next();
 			int weight = transaction.getTransactionSupport();
 			
-			if (transaction.hasNext()) {
-				weightsSum += weight;
-				transactionsCount++;
-			}
-
-			while (transaction.hasNext()) {
-				int item = transaction.next();
-				
-				if (item < maxItem) {
-					this.supportCounts[item] += weight;
-					this.distinctTransactionsCounts[item]++;
+			if (weight > 0) {
+				if (transaction.hasNext()) {
+					weightsSum += weight;
+					transactionsCount++;
+				}
+	
+				while (transaction.hasNext()) {
+					int item = transaction.next();
+					
+					if (item < maxItem) {
+						this.supportCounts[item] += weight;
+						this.distinctTransactionsCounts[item]++;
+					}
 				}
 			}
 		}
