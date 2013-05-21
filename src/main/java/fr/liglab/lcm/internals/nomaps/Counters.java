@@ -115,7 +115,7 @@ public final class Counters {
 	/**
 	 * Exclusive index of the first item >= core_item in current base
 	 */
-	protected int maxCandidate = Integer.MAX_VALUE;
+	protected int maxCandidate;
 	
 	
 	/**
@@ -126,13 +126,13 @@ public final class Counters {
 	 * @param ignoredItems may be null, if it's not contained items won't appear in any counter either
 	 * @param maxItem biggest index among items to be found in "transactions"
 	 */
-	Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension,
+	public Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension,
 			int[] ignoredItems, final int maxItem) {
 		
 		this.renaming = null;
 		this.minSupport = minimumSupport;
-		this.supportCounts = new int[maxItem];
-		this.distinctTransactionsCounts = new int[maxItem];
+		this.supportCounts = new int[maxItem+1];
+		this.distinctTransactionsCounts = new int[maxItem+1];
 		
 		// item support and transactions counting
 		
@@ -151,8 +151,7 @@ public final class Counters {
 	
 				while (transaction.hasNext()) {
 					int item = transaction.next();
-					
-					if (item < maxItem) {
+					if (item <= maxItem) {
 						this.supportCounts[item] += weight;
 						this.distinctTransactionsCounts[item]++;
 					}
@@ -170,7 +169,7 @@ public final class Counters {
 		
 		if (ignoredItems != null) {
 			for (int item : ignoredItems) {
-				if (item < maxItem) {
+				if (item <= maxItem) {
 					this.supportCounts[item] = 0;
 					this.distinctTransactionsCounts[item] = 0;
 				}
@@ -242,7 +241,7 @@ public final class Counters {
 		
 		this.transactionsCount = transactionsCounter;
 		this.distinctTransactionsCount = transactionsCounter;
-		this.renaming = new int[biggestItemID];
+		this.renaming = new int[biggestItemID+1];
 		Arrays.fill(renaming, -1);
 		
 		// item filtering and final computations : some are infrequent, some belong to closure 
@@ -253,6 +252,7 @@ public final class Counters {
 		TIntIntIterator iterator = supportsMap.iterator();
 		
 		while (iterator.hasNext()) {
+			iterator.advance();
 			final int item = iterator.key();
 			final int supportCount = iterator.value();
 			
@@ -266,6 +266,7 @@ public final class Counters {
 		this.closure = closureBuilder.get();
 		this.nbFrequents = renamingHeap.size();
 		this.maxFrequent = this.nbFrequents - 1;
+		this.maxCandidate = this.maxFrequent + 1;
 		
 		this.supportCounts = new int[this.nbFrequents];
 		this.distinctTransactionsCounts = new int[this.nbFrequents];
@@ -320,12 +321,13 @@ public final class Counters {
 	 * @param olderReverseRenaming reverseRenaming from the dataset that fed this Counter
 	 * @return the translation from the old renaming to the compressed one (gives -1 for removed items)
 	 */
-	int[] compressRenaming(int[] olderReverseRenaming) {
+	public int[] compressRenaming(int[] olderReverseRenaming) {
 		int[] renaming = new int[olderReverseRenaming.length];
 		this.reverseRenaming = new int[this.nbFrequents];
 		
 		// we will always have newItemID <= item
 		int newItemID = 0;
+		int greatestBelowMaxCandidate = 0;
 		
 		for (int item = 0; item < this.supportCounts.length; item++) {
 			if (this.supportCounts[item] > 0) {
@@ -335,22 +337,18 @@ public final class Counters {
 				this.distinctTransactionsCounts[newItemID] = this.distinctTransactionsCounts[item];
 				this.supportCounts[newItemID] = this.supportCounts[item];
 				
+				if (item < this.maxCandidate) {
+					greatestBelowMaxCandidate = newItemID;
+				}
+				
 				newItemID++;
 			} else {
 				renaming[item] = -1;
 			}
 		}
 		
-		for (int i = this.maxCandidate + 1; i < renaming.length; i++) {
-			if (renaming[i] >= 0) {
-				this.maxCandidate = renaming[i];
-				break;
-			}
-		}
-		
-		for (int item = newItemID; item < olderReverseRenaming.length; item++) {
-			renaming[item] = -1;
-		}
+		this.maxCandidate = greatestBelowMaxCandidate+1;
+		Arrays.fill(renaming, this.supportCounts.length, renaming.length, -1);
 		
 		this.maxFrequent = newItemID - 1;
 		this.compactedArrays = true;
