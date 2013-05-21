@@ -1,5 +1,8 @@
 package fr.liglab.lcm.internals.nomaps;
 
+import fr.liglab.lcm.PLCM;
+import fr.liglab.lcm.PLCM.PLCMCounters;
+
 /**
  * Main class for chained exploration filters, implemented as an immutable chained list.
  */
@@ -21,6 +24,11 @@ public abstract class Selector {
 	 */
 	abstract protected Selector copy(Selector newNext);
 	
+	/**
+	 * @return which enum value from PLCMCounters will be used to count this Selector's rejections
+	 */
+	abstract protected PLCMCounters getCountersKey();
+	
 	public Selector() {
 		this.next = null;
 	}
@@ -37,16 +45,12 @@ public abstract class Selector {
 	 * @throws WrongFirstParentException 
 	 */
 	final boolean select(int extension, ExplorationStep state) throws WrongFirstParentException {
-		
-		return this.allowExploration(extension, state) && 
-				(this.next == null || this.next.select(extension, state));
-	}
-	
-	/**
-	 * @return a new Selector chain for a new recursion
-	 */
-	final Selector copy() {
-		return this.append(null);
+		if (this.allowExploration(extension, state)) {
+			return (this.next == null || this.next.select(extension, state));
+		} else {
+			((PLCM.PLCMThread) Thread.currentThread()).counters[this.getCountersKey().ordinal()].incrementAndGet();
+			return false;
+		}
 	}
 	
 	/**
@@ -59,6 +63,13 @@ public abstract class Selector {
 		} else {
 			return this.copy(this.next.append(s));
 		}
+	}
+
+	/**
+	 * @return a new Selector chain for a new recursion
+	 */
+	final Selector copy() {
+		return this.append(null);
 	}
 	
 	/**

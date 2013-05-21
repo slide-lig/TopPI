@@ -193,7 +193,6 @@ public final class ExplorationStep {
 	/**
 	 * @param candidateCounts 
 	 * @param extension 
-	 * 
 	 */
 	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
 		double supportRate = this.counters.distinctTransactionsCount / 
@@ -225,5 +224,14 @@ public final class ExplorationStep {
 		} else {
 			this.selectChain = this.selectChain.append(s);
 		}
+	}
+	
+	public int getCatchedWrongFirstParentCount() {
+		if (this.failedFPTests == null) {
+			return 0;
+		} else {
+			return this.failedFPTests.size();
+		}
+		
 	}
 }

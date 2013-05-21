@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.nomaps;
 
+import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
@@ -9,6 +10,11 @@ import gnu.trove.iterator.TIntIterator;
  * Allows to perform first-parent test BEFORE performing item counting for a candidate extension
  */
 final class FirstParentTest extends Selector {
+
+	@Override
+	protected PLCMCounters getCountersKey() {
+		return PLCMCounters.FirstParentTestRejections;
+	}
 	
 	FirstParentTest() {
 		super();
@@ -74,5 +80,4 @@ final class FirstParentTest extends Selector {
 		
 		return true;
 	}
-
 }

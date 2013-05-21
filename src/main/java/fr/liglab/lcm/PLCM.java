@@ -3,7 +3,7 @@ package fr.liglab.lcm;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -23,6 +23,8 @@ import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 
+
+
 /**
  * LCM implementation, based on UnoAUA04 :
  * "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
@@ -32,11 +34,9 @@ public class PLCM {
 	private final List<PLCMThread> threads;
 
 	private final PatternsCollector collector;
-
-	private final AtomicInteger explored = new AtomicInteger(0);
-	private final AtomicInteger cut = new AtomicInteger(0);
-	private final AtomicInteger pptestFailed = new AtomicInteger(0);
-
+	
+	private final long[] globalCounters;
+	
 	public PLCM(PatternsCollector patternsCollector) {
 		this(patternsCollector, Runtime.getRuntime().availableProcessors());
 	}
@@ -45,11 +45,13 @@ public class PLCM {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
-		collector = patternsCollector;
+		this.collector = patternsCollector;
 		this.threads = new ArrayList<PLCMThread>(nbThreads);
 		for (int i = 0; i < nbThreads; i++) {
 			this.threads.add(new PLCMThread(i));
 		}
+		
+		this.globalCounters = new long[PLCMCounters.values().length];
 	}
 
 	public final void collect(int support, int[] pattern) {
@@ -68,9 +70,17 @@ public class PLCM {
 		for (PLCMThread t : this.threads) {
 			t.start();
 		}
+		
 		for (PLCMThread t : this.threads) {
 			try {
 				t.join();
+				
+				synchronized (this.globalCounters) {
+					for (int i = 0; i < t.counters.length; i++) {
+						this.globalCounters[i] += t.counters[i].get();
+					}
+					
+				}
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
@@ -78,8 +88,24 @@ public class PLCM {
 	}
 
 	public String toString() {
-		return "LCM exploration : " + explored + " patterns explored / " + cut + " aborted / " + pptestFailed
-				+ " pptest failed";
+		StringBuilder builder = new StringBuilder();
+		
+		builder.append("PLCM exploration (");
+		builder.append(this.threads.size());
+		builder.append(" threads)");
+		
+		PLCMCounters[] counters = PLCMCounters.values();
+		
+		for (int i = 0; i < this.globalCounters.length; i++) {
+			PLCMCounters counter = counters[i];
+			
+			builder.append(", ");
+			builder.append(counter.toString());
+			builder.append(':');
+			builder.append(this.globalCounters[i]);
+		}
+		
+		return builder.toString();
 	}
 
 	public ExplorationStep stealJob(final int id) {
@@ -122,8 +148,22 @@ public class PLCM {
 			t.setVerboseMode(enabled);
 		}
 	}
+	
+	
+	/**
+	 * Some classes in EnumerationStep may declare counters here. see references to PLCMThread.counters
+	 */
+	public enum PLCMCounters {
+		ExplorationStepInstances,
+		ExplorationStepCatchedWrongFirstParents,
+		FirstParentTestRejections,
+		TopKRejections,
+	}
+	
+	
 
-	private class PLCMThread extends Thread {
+	public class PLCMThread extends Thread {
+		public final AtomicLong[] counters;
 		private final ReadWriteLock lock;
 		private final List<ExplorationStep> stackedJobs;
 		private final int id;
@@ -135,6 +175,11 @@ public class PLCM {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
+			
+			this.counters = new AtomicLong[PLCMCounters.values().length];
+			for (int i = 0; i < this.counters.length; i++) {
+				this.counters[i] = new AtomicLong();
+			}
 		}
 
 		/**
@@ -175,7 +220,13 @@ public class PLCM {
 					// iterator is finished, remove it from the stack
 					if (extended == null) {
 						this.lock.writeLock().lock();
+						
 						this.stackedJobs.remove(this.stackedJobs.size() - 1);
+						this.counters[PLCMCounters.ExplorationStepInstances.ordinal()]
+								.incrementAndGet();
+						this.counters[PLCMCounters.ExplorationStepCatchedWrongFirstParents.ordinal()]
+								.addAndGet(sj.getCatchedWrongFirstParentCount());
+						
 						this.lock.writeLock().unlock();
 					} else {
 						this.lcm(extended);
@@ -200,6 +251,9 @@ public class PLCM {
 			this.lock.writeLock().unlock();
 		}
 	}
+	
+	
+	
 
 	
 	
@@ -259,13 +313,16 @@ public class PLCM {
 		}
 
 		miner.lcm(initState);
-
+		
 		if (cmd.hasOption('b')) {
 			time = System.currentTimeMillis() - time;
-			System.err.println(miner.toString() + " // mined in " + time + "ms");
 		}
 		
-		collector.close();
+		long outputted = collector.close();
+
+		if (cmd.hasOption('b')) {
+			System.err.println(miner.toString() + " // mined in " + time + "ms // outputted " + outputted + " patterns");
+		}
 	}
 
 	/**

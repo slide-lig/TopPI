@@ -1,5 +1,6 @@
 package fr.liglab.lcm.io;
 
+import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.nomaps.ExplorationStep;
 import fr.liglab.lcm.internals.nomaps.Selector;
@@ -226,6 +227,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 		
 		ExplorationLimiter(Selector follower) {
 			super(follower);
+		}
+		
+		@Override
+		protected PLCMCounters getCountersKey() {
+			return PLCMCounters.TopKRejections;
 		}
 		
 		private synchronized void updatePrevious(final int i, final int r) {
