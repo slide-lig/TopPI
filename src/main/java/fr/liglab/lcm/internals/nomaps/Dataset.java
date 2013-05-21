@@ -16,7 +16,7 @@ import gnu.trove.iterator.TIntIterator;
 /**
  * Stores transactions and does occurrence delivery
  */
-class Dataset {
+public class Dataset {
 	
 	protected final TransactionsList transactions;
 	
@@ -36,7 +36,6 @@ class Dataset {
 	 * @param transactions assumed to be filtered according to counters
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
-		
 		this.transactions = new ConcatenatedTransactionsList(
 				counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
 		
@@ -45,11 +44,17 @@ class Dataset {
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
-			final int transId = writer.beginTransaction(transaction.getTransactionSupport());
-			while (transaction.hasNext()) {
-				final int item = transaction.next();
-				writer.addItem(item);
-				this.tidLists.addTransaction(item, transId);
+			
+			if (transaction.hasNext()) {
+				final int transId = writer.beginTransaction(transaction.getTransactionSupport());
+				
+				while (transaction.hasNext()) {
+					final int item = transaction.next();
+					writer.addItem(item);
+					this.tidLists.addTransaction(item, transId);
+				}
+				
+				writer.endTransaction();
 			}
 		}
 	}
