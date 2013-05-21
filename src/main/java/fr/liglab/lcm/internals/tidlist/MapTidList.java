@@ -12,6 +12,15 @@ public class MapTidList implements TidList {
 
 	private final TIntObjectMap<TIntList> occurrences = new TIntObjectHashMap<TIntList>();
 	
+	public MapTidList(final int[] supports) {
+		for (int i = 0; i < supports.length; i++) {
+			int j = supports[i];
+			if (j>0) {
+				this.occurrences.put(i, new TIntArrayList(j));
+			}
+		}
+	}
+	
 	public MapTidList(final TIntIntMap lengths) {
 		TIntIntIterator iter = lengths.iterator();
 		while (iter.hasNext()) {
@@ -19,7 +28,12 @@ public class MapTidList implements TidList {
 			this.occurrences.put(iter.key(), new TIntArrayList(iter.value()));
 		}
 	}
-
+	
+	@Override
+	public String toString() {
+		return this.occurrences.toString();
+	}
+	
 	@Override
 	public TIntIterator get(final int item) {
 		final TIntList l = this.occurrences.get(item);
@@ -49,7 +63,7 @@ public class MapTidList implements TidList {
 			l = new TIntArrayList();
 			this.occurrences.put(item, l);
 		}
-		l.add(item);
+		l.add(transaction);
 	}
 
 }
