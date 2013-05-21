@@ -1,0 +1,31 @@
+package fr.liglab.lcm.internals.nomaps;
+
+import fr.liglab.lcm.internals.FrequentsIterator;
+
+/**
+ * Decorates a FrequentsIterator : all items from the wrapped iterator will be renamed according 
+ * to the map provided at instantiation.
+ * 
+ * This decorator won't check that items fit in renaming array.
+ */
+public class FrequentsIteratorRenamer implements FrequentsIterator {
+	
+	private final int[] renaming;
+	private final FrequentsIterator wrapped;
+	
+	public FrequentsIteratorRenamer(final FrequentsIterator decorated, final int[] itemsRenaming) {
+		this.renaming = itemsRenaming;
+		this.wrapped = decorated;
+	}
+	
+	@Override
+	public int next() {
+		final int next = this.wrapped.next();
+		if (next >= 0) {
+			return this.renaming[next];
+		} else {
+			return -1;
+		}
+	}
+
+}

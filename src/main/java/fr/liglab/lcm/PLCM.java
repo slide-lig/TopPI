@@ -15,6 +15,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import fr.liglab.lcm.internals.nomaps.ExplorationStep;
+import fr.liglab.lcm.internals.nomaps.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternSortCollector;
@@ -294,9 +295,14 @@ public class PLCM {
 		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
+			
+			FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
+					initState.counters.getExtensionsIterator(),
+					initState.counters.getReverseRenaming()
+					);
+			
 			PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, 
-					initState.counters.nbFrequents, 
-					initState.counters.getExtensionsIterator()); // TODO renaming !
+					initState.counters.nbFrequents, extensions);
 			
 			initState.appendSelector(topKcoll.asSelector());
 			collector = topKcoll;
