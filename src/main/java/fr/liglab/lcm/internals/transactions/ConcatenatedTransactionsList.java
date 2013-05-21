@@ -7,7 +7,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 	private int size;
 
 	public ConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
-		this.concatenated = new int[transactionsLength + nbTransactions];
+		this.concatenated = new int[transactionsLength + 2*nbTransactions];
 	}
 
 	@Override
@@ -61,7 +61,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 	}
 
 	private final class TransComp extends TransactionIterator {
-		private int length;
+		private int remaining;
 		private int pos;
 		private int nextPos;
 		private final int startPos;
@@ -69,10 +69,11 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 		public TransComp(int startPos) {
 			this.startPos = startPos;
 			this.nextPos = startPos;
-			this.length = concatenated[this.nextPos];
+			this.remaining = concatenated[this.nextPos];
 			this.nextPos++;
-			while (this.length > 0) {
+			while (this.remaining > 0) {
 				this.nextPos++;
+				this.remaining--;
 				if (concatenated[this.nextPos] != -1) {
 					return;
 				}
@@ -83,8 +84,9 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 		@Override
 		public int next() {
 			this.pos = this.nextPos;
-			while (this.length > 0) {
+			while (this.remaining > 0) {
 				this.nextPos++;
+				this.remaining--;
 				if (concatenated[this.nextPos] != -1) {
 					return concatenated[pos];
 				}
