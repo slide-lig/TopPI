@@ -296,7 +296,7 @@ public class PLCM {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
 			collector = new PerItemTopKCollector(collector, k, 
 					initState.counters.nbFrequents, 
-					initState.counters.getFrequentsIterator(Integer.MAX_VALUE)); // TODO renaming !
+					initState.counters.getExtensionsIterator()); // TODO renaming !
 			
 			// TODO initState.prependSelector(collector.getSelector());
 		}

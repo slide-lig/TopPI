@@ -36,7 +36,7 @@ public final class ExplorationStep {
 	/**
 	 * Extension item that led to this recursion step. Already included in "pattern".
 	 */
-	final int core_item;
+	public final int core_item;
 	
 	public final Dataset dataset;
 	
@@ -53,7 +53,7 @@ public final class ExplorationStep {
 	 * When an extension fails first-parent test, it ends up in this map.
 	 * Keys are non-first-parent items associated to their actual first parent.
 	 */
-	final TIntIntHashMap failedFPTests;
+	private final TIntIntHashMap failedFPTests;
 	
 	/**
 	 * Start exploration on a dataset contained in a file.
@@ -77,7 +77,7 @@ public final class ExplorationStep {
 		this.dataset = new Dataset(this.counters, transactions);
 		reader.close();
 		
-		this.candidates = this.counters.getFrequentsIterator(this.core_item);
+		this.candidates = this.counters.getExtensionsIterator();
 		
 		this.failedFPTests = new TIntIntHashMap();
 	}
@@ -120,9 +120,7 @@ public final class ExplorationStep {
 					return new ExplorationStep(this, candidate, candidateCounts, support);
 				}
 			} catch (WrongFirstParentException e) {
-				
-				// FIXME rebase ???
-				this.failedFPTests.put(e.extension, e.firstParent);
+				addFailedFPTest(e.extension, e.firstParent);
 			}
 		}
 	}
@@ -139,7 +137,7 @@ public final class ExplorationStep {
 		
 		this.core_item = extension;
 		this.counters = candidateCounts;
-		this.candidates = this.counters.getFrequentsIterator(this.core_item);
+		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
 		
 		if (parent.selectChain == null) {
@@ -171,5 +169,13 @@ public final class ExplorationStep {
 			
 			return new Dataset(this.counters, filtered);
 		}
+	}
+	
+	public synchronized int getFailedFPTest(final int item) {
+		return this.failedFPTests.get(item);
+	}
+	
+	private synchronized void addFailedFPTest(final int item, final int firstParent) {
+		this.failedFPTests.put(item, firstParent);
 	}
 }

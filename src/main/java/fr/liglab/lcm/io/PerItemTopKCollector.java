@@ -119,109 +119,14 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return this.decorated.close();
 	}
 
-	/*
-	 * @param currentPattern Pattern corresponding to the current dataset
-	 * 
-	 * @param extension Proposition of an item to extend the current pattern
-	 * 
-	 * @param sortedFreqItems array of remaining frequent items in the current
-	 * data set (sorted in increasing order)
-	 * 
-	 * @param supportCounts Map giving the support for each item present in the
-	 * current dataset
-	 * 
-	 * @param failedPPTests Map in which items previously rejected by PPTest are
-	 * associated to their greatest first parent
-	 * 
-	 * @return true if it is possible to generate patterns that make it into
-	 * topK by exploring this extension
-	 */
-	// Assumes that patterns are extended with lower IDs
-	// Also assumes that frequency test is already done
-	public int explore(final int[] currentPattern, final int extension, final int[] sortedFreqItems,
-			final TIntIntMap supportCounts, final TIntIntMap failedPPTests, final int previousItem,
-			final int resultForPreviousItem) {
-
-		if (currentPattern.length == 0) {
-			return -1;
-		}
-		final int extensionSupport = supportCounts.get(extension);
-		int threshold = Integer.MAX_VALUE;
-		boolean shortcut = resultForPreviousItem > extensionSupport;
-		if (shortcut) {
-			threshold = Math.min(resultForPreviousItem, threshold);
-		} else {
-			for (int item : currentPattern) {
-				int itemTest = this.checkExploreInCurrentPattern(item, extensionSupport);
-				if (itemTest == -1) {
-					return -1;
-				} else {
-					threshold = Math.min(threshold, itemTest);
-				}
-			}
-		}
-		// check for extension
-		{
-			int itemTest = this.checkExploreInCurrentPattern(extension, extensionSupport);
-			if (itemTest == -1) {
-				return -1;
-			} else {
-				threshold = Math.min(threshold, itemTest);
-			}
-		}
-		int i = 0;
-		if (shortcut) {
-			i = Arrays.binarySearch(sortedFreqItems, previousItem);
-			if (i < 0) {
-				throw new RuntimeException("previous item not in frequent items");
-			}
-			i++;
-		}
-		// check for items < extension
-		// keep in mind that their max support will be the min of their own
-		// support in current dataset and support of the extension
-		for (; i < sortedFreqItems.length; i++) {
-			int item = sortedFreqItems[i];
-			if (item >= extension) {
-				break;
-			}
-			int itemTest = this.checkExploreOtherItem(item, supportCounts.get(item), extension, extensionSupport,
-					failedPPTests);
-			if (itemTest == -1) {
-				return -1;
-			} else {
-				threshold = Math.min(threshold, itemTest);
-			}
-		}
-		return threshold;
-	}
-
-	protected int checkExploreInCurrentPattern(final int item, final int itemSupport) {
+	protected int getBound(final int item) {
 		final PatternWithFreq[] itemTopK = this.topK.get(item);
 		// itemTopK == null should never happen in theory, as
 		// currentPattern should be in there at least
-		if (itemTopK == null || itemTopK[this.k - 1] == null || itemTopK[this.k - 1].getSupportCount() < itemSupport) {
+		if (itemTopK == null || itemTopK[this.k - 1] == null) {
 			return -1;
 		} else {
 			return itemTopK[this.k - 1].getSupportCount();
-		}
-	}
-
-	protected int checkExploreOtherItem(final int item, final int itemSupport, final int extension,
-			final int extensionSupport, final TIntIntMap failedPPTests) {
-		final PatternWithFreq[] potentialExtensionTopK = this.topK.get(item);
-
-		if (potentialExtensionTopK == null || potentialExtensionTopK[this.k - 1] == null
-				|| potentialExtensionTopK[this.k - 1].getSupportCount() < Math.min(extensionSupport, itemSupport)) {
-
-			if (failedPPTests == null || failedPPTests.get(item) <= extension) {
-				return -1;
-			} else {
-				return Integer.MAX_VALUE;
-			}
-
-		} else {
-			return potentialExtensionTopK[this.k - 1].getSupportCount();
 		}
 	}
 	
@@ -319,29 +224,70 @@ public class PerItemTopKCollector implements PatternsCollector {
 			super(follower);
 		}
 		
+		private synchronized void updatePrevious(final int i, final int r) {
+			if (i > this.previousItem) {
+				this.previousItem = i;
+				this.previousResult = r;
+			}
+		}
+		
 		@Override
 		protected boolean allowExploration(int extension, ExplorationStep state)
 				throws WrongFirstParentException {
 			
-			/*
-			PLCM.explore() used to be 
-					int previousItem = -1;
-					int previousResult = -1;
-					synchronized (sj) {
-						previousItem = sj.getPreviousItem();
-						previousResult = sj.getPreviousResult();
-					}
-					synchronized (sj.failedpptests) {
-						return this.collector.explore(sj.pattern, extension, sj.sortedfreqs, 
-								sj.dataset.counters.supportCounts, sj.failedpptests, previousItem, previousResult);
-					}
-			 */
+			int localPreviousItem,localPreviousResult;
+			synchronized (this) {
+				localPreviousItem = this.previousItem;
+				localPreviousResult = this.previousResult;
+			}
 
+			int[] reverseRenaming = state.counters.getReverseRenaming();
+			int[] supports = state.counters.supportCounts;
+			int extensionSupport = supports[extension];
+			final int maxCandidate = state.counters.getMaxCandidate();
+
+			boolean shortcut = localPreviousResult >= extensionSupport;
 			
-			/*int explore = explore(final int[] currentPattern, final int extension, final int[] sortedFreqItems,
-					final TIntIntMap supportCounts, final TIntIntMap failedPPTests, final int previousItem,
-					final int resultForPreviousItem);
-			*/
+			if (getBound(reverseRenaming[extension]) < extensionSupport) {
+				return true;
+			}
+			
+			if (!shortcut) {
+				for (int i : state.pattern) {
+					if (getBound(i) < extensionSupport) {
+						return true;
+					}
+				}
+			}
+			
+			FrequentsIterator it;
+			
+			if (shortcut) {
+				it = state.counters.getLocalFrequentsIterator(localPreviousItem+1, extension);
+			} else {
+				it = state.counters.getLocalFrequentsIterator(0, extension);
+			}
+			
+			for (int i = it.next(); i >= 0; i = it.next()) {
+				final int bound = getBound(reverseRenaming[i]);
+				if (bound < Math.min(extensionSupport, supports[i])) {
+					int firstParent = state.getFailedFPTest(i);
+					
+					if (firstParent <= extension) {
+						this.updatePrevious(localPreviousItem, localPreviousResult);
+						return true;
+					} else if (firstParent < maxCandidate) {
+						localPreviousItem = i;
+						localPreviousResult = Math.min(localPreviousResult, bound);
+					}
+				} else {
+					localPreviousItem = i;
+					localPreviousResult = Math.min(localPreviousResult, bound);
+				}
+			}
+			
+			this.updatePrevious(localPreviousItem, localPreviousResult);
+			
 			return false;
 		}
 

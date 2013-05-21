@@ -12,11 +12,12 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 	protected TIntSet group;
 	protected TIntIntMap knownBounds;
 
-	public PerItemGroupTopKCollector(final PatternsCollector follower, int k, 
+	public PerItemGroupTopKCollector(final PatternsCollector follower, int k,
 			boolean mineInGroup, boolean mineOutGroup, Dataset dataset) {
-		
-		super(follower, k, dataset.counters.sortedFrequents.length, dataset.counters.getFrequentsIterator());
-		
+
+		super(follower, k, dataset.counters.sortedFrequents.length,
+				dataset.counters.getFrequentsIterator());
+
 		this.mineInGroup = mineInGroup;
 		this.mineOutGroup = mineOutGroup;
 	}
@@ -47,35 +48,16 @@ public class PerItemGroupTopKCollector extends PerItemTopKCollector {
 	}
 
 	@Override
-	protected int checkExploreOtherItem(final int item, final int itemSupport, final int extension,
-			final int extensionSupport, final TIntIntMap failedPPTests) {
-		
-		if (!this.mineInGroup && this.group.contains(item)) {
+	protected int getBound(int item) {
+		boolean inGroup = this.group.contains(item);
+		if (!this.mineInGroup && inGroup) {
 			return Integer.MAX_VALUE;
-		} else if (!this.mineOutGroup && !this.group.contains(item)) {
-			return Integer.MAX_VALUE;
-		} else if (this.knownBounds != null) {
-			int knownBound = this.knownBounds.get(item);
-			if (knownBound >= Math.min(extensionSupport, itemSupport)) {
-				return knownBound;
-			}
 		}
-		return super.checkExploreOtherItem(item, itemSupport, extension, extensionSupport, failedPPTests);
-	}
-
-	@Override
-	protected int checkExploreInCurrentPattern(int item, int itemSupport) {
-		if (!this.mineInGroup && this.group.contains(item)) {
+		if (!this.mineOutGroup && !inGroup) {
 			return Integer.MAX_VALUE;
-		} else if (!this.mineOutGroup && !this.group.contains(item)) {
-			return Integer.MAX_VALUE;
-		} else if (this.knownBounds != null) {
-			int knownBound = this.knownBounds.get(item);
-			if (knownBound >= itemSupport) {
-				return knownBound;
-			}
+		} else {
+			return super.getBound(item);
 		}
-		return super.checkExploreInCurrentPattern(item, itemSupport);
 	}
 
 	@Override

@@ -54,7 +54,7 @@ public final class Counters {
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
 	 */
-	final int[] supportCounts;
+	public final int[] supportCounts;
 	
 	/**
 	 * supportCounts, summed - FIXME is this useful ??
@@ -112,6 +112,11 @@ public final class Counters {
 	 */
 	protected boolean compactedArrays = false;
 	
+	/**
+	 * Exclusive index of the first item >= core_item in current base
+	 */
+	protected int maxCandidate = Integer.MAX_VALUE;
+	
 	
 	/**
 	 * Does item counting over a projected dataset
@@ -161,6 +166,7 @@ public final class Counters {
 		// ignored items
 		this.supportCounts[extension] = 0;
 		this.distinctTransactionsCounts[extension] = 0;
+		this.maxCandidate = extension;
 		
 		if (ignoredItems != null) {
 			for (int item : ignoredItems) {
@@ -300,7 +306,7 @@ public final class Counters {
 	/**
 	 * @return a translation from 
 	 */
-	int[] getReverseRenaming() {
+	public int[] getReverseRenaming() {
 		return this.reverseRenaming;
 	}
 	
@@ -335,7 +341,14 @@ public final class Counters {
 			}
 		}
 		
-		for (int item = this.supportCounts.length; item < olderReverseRenaming.length; item++) {
+		for (int i = this.maxCandidate + 1; i < renaming.length; i++) {
+			if (renaming[i] >= 0) {
+				this.maxCandidate = renaming[i];
+				break;
+			}
+		}
+		
+		for (int item = newItemID; item < olderReverseRenaming.length; item++) {
 			renaming[item] = -1;
 		}
 		
@@ -345,26 +358,38 @@ public final class Counters {
 		return renaming;
 	}
 	
+	public int getMaxCandidate() {
+		return maxCandidate;
+	}
+	
 	/**
 	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
-	 * @return an iterator over frequent items (in ascending order) that will stop
+	 * @return a thread-safe iterator over frequent items (in ascending order)
 	 */
-	public FrequentsIterator getFrequentsIterator(final int to) {
-		return new AllFrequentsIterator(to);
+	public FrequentsIterator getExtensionsIterator() {
+		return new ExtensionsIterator(this.maxCandidate);
+	}
+
+	/**
+	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
+	 * @return an iterator over frequent items (in ascending order) 
+	 */
+	public FrequentsIterator getLocalFrequentsIterator(final int from, final int to) {
+		return new FrequentIterator(from,to);
 	}
 	
 	
 	/**
 	 * Thread-safe iterator over frequent items (ie. those having a support count in [minSup, 100%[)
 	 */
-	protected class AllFrequentsIterator implements FrequentsIterator {
+	protected class ExtensionsIterator implements FrequentsIterator {
 		private final AtomicInteger index;
 		private final int max;
 		
 		/**
 		 * will provide an iterator on frequent items (in increasing order) in [0,to[
 		 */
-		public AllFrequentsIterator(final int to) {
+		public ExtensionsIterator(final int to) {
 			this.index = new AtomicInteger(0);
 			this.max = to;
 		}
@@ -383,6 +408,40 @@ public final class Counters {
 			} else {
 				while (true) {
 					final int nextIndex = this.index.getAndIncrement();
+					if (nextIndex < this.max) {
+						if (supportCounts[nextIndex] > 0) {
+							return nextIndex;
+						}
+					} else {
+						return -1;
+					}
+				}
+			}
+		}
+	}
+	
+	protected class FrequentIterator implements FrequentsIterator {
+		
+		private int index;
+		private final int max;
+		
+		public FrequentIterator(final int from, final int to) {
+			this.max = to;
+			this.index = from;
+		}
+		
+		@Override
+		public int next() {
+			if (compactedArrays) {
+				final int nextIndex = this.index++;
+				if (nextIndex < this.max) {
+					return nextIndex;
+				} else {
+					return -1;
+				}
+			} else {
+				while (true) {
+					final int nextIndex = this.index++;
 					if (nextIndex < this.max) {
 						if (supportCounts[nextIndex] > 0) {
 							return nextIndex;
