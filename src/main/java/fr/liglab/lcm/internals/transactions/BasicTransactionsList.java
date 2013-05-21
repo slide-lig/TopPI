@@ -18,6 +18,11 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 	
 	@Override
+	public String toString() {
+		return this.transactions.toString();
+	}
+	
+	@Override
 	public Iterator<IterableTransaction> iterator() {
 		final Iterator<TIntList> iter = this.transactions.iterator();
 		return new Iterator<IterableTransaction>() {
