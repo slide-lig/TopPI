@@ -67,8 +67,12 @@ class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 
 		protected void findNext() {
 			while (this.wrapped.hasNext()) {
-				this.next = this.wrapped.next();
-				if (itemSupport[this.next] > 0) {
+				if (rebasing == null) {
+					this.next = this.wrapped.next();
+				} else {
+					this.next = rebasing[this.wrapped.next()];
+				}
+				if (this.next != -1 && itemSupport[this.next] > 0) {
 					this.hasNext = true;
 					return;
 				}
@@ -86,11 +90,7 @@ class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 		public final int next() {
 			final int value = this.next;
 			this.findNext();
-			if (rebasing != null) {
-				return rebasing[value];
-			} else {
-				return value;
-			}
+			return value;
 		}
 
 		@Override
