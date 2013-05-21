@@ -178,7 +178,7 @@ public class PLCM {
 						this.stackedJobs.remove(this.stackedJobs.size() - 1);
 						this.lock.writeLock().unlock();
 					} else {
-						this.lcm(sj);
+						this.lcm(extended);
 					}
 					
 				} else { // our list was empty, we should steal from another thread
