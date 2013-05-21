@@ -16,9 +16,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 public final class ExplorationStep {
 
 	/**
-	 * if we construct on transactions having an average length above this value :
-	 * - fast-prefix-preserving test will be done
-	 * - it will never project to a ConcatenatedDatasetView
+	 * @see longTransactionsMode
 	 */
 	static final int LONG_TRANSACTION_MODE_THRESHOLD = 2000;
 	
@@ -27,6 +25,8 @@ public final class ExplorationStep {
 	 * projection will be a DatasetView
 	 */
 	static final double VIEW_SUPPORT_THRESHOLD = 0.15;
+	
+	
 	
 	/**
 	 * closure of parent's pattern UNION extension
@@ -56,6 +56,16 @@ public final class ExplorationStep {
 	private final TIntIntHashMap failedFPTests;
 	
 	/**
+	 * When the average transaction length is above LONG_TRANSACTION_MODE_THRESHOLD, we prepend 
+	 * a FirstParentTest to selector chain and set this flag (for self and all substeps)
+	 * FIXME could be more elegant with introspection ?
+	 */
+	private final boolean longTransactionsMode;
+	
+	
+	
+	
+	/**
 	 * Start exploration on a dataset contained in a file.
 	 * @param minimumSupport
 	 * @param path to an input file in ASCII format. Each line should be a transaction containing 
@@ -64,6 +74,7 @@ public final class ExplorationStep {
 	public ExplorationStep(int minimumSupport, String path) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
+		this.longTransactionsMode = false;
 		
 		FileReader reader = new FileReader(path);
 		this.counters = new Counters(minimumSupport, reader);
@@ -150,6 +161,18 @@ public final class ExplorationStep {
 				parent.pattern, parent.counters.reverseRenaming);
 		
 		this.dataset = instanciateDataset(parent, support);
+		
+		if (parent.longTransactionsMode) {
+			this.longTransactionsMode = true;
+		} else {
+			final int averageLen = candidateCounts.distinctTransactionLengthSum / 
+					candidateCounts.distinctTransactionsCount;
+			this.longTransactionsMode = (averageLen) > LONG_TRANSACTION_MODE_THRESHOLD;
+			
+			if (this.longTransactionsMode) {
+				this.selectChain = new FirstParentTest(this.selectChain);
+			}
+		}
 	}
 	
 	/**
