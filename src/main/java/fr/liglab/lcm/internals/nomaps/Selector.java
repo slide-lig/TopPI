@@ -21,7 +21,7 @@ public abstract class Selector {
 	 */
 	abstract protected Selector copy(Selector newNext);
 	
-	protected Selector() {
+	public Selector() {
 		this.next = null;
 	}
 	

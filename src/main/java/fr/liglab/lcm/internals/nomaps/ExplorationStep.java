@@ -178,4 +178,12 @@ public final class ExplorationStep {
 	private synchronized void addFailedFPTest(final int item, final int firstParent) {
 		this.failedFPTests.put(item, firstParent);
 	}
+	
+	public void appendSelector(Selector s){
+		if (this.selectChain == null) {
+			this.selectChain = s;
+		} else {
+			this.selectChain = this.selectChain.append(s);
+		}
+	}
 }

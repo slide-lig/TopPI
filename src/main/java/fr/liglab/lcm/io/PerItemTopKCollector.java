@@ -214,13 +214,17 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	}
 	
+	public Selector asSelector() {
+		return new ExplorationLimiter(null);
+	}
+	
 	
 	protected final class ExplorationLimiter extends Selector {
 		
 		private int previousItem = -1;
 		private int previousResult = -1;
 		
-		public ExplorationLimiter(Selector follower) {
+		ExplorationLimiter(Selector follower) {
 			super(follower);
 		}
 		
