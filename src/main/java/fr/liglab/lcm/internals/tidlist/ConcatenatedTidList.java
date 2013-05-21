@@ -48,14 +48,15 @@ public abstract class ConcatenatedTidList implements TidList {
 	private class ConcatenatedIterator implements TIntIterator {
 		private int pos;
 		private int nextPos;
-		private int length;
+		private int remaining;
 
 		public ConcatenatedIterator(final int start) {
 			this.pos = 0;
 			this.nextPos = start;
-			this.length = concatenated[start];
-			while (this.length > 0) {
+			this.remaining = concatenated[start];
+			while (this.remaining > 0) {
 				this.nextPos++;
+				this.remaining--;
 				if (concatenated[this.nextPos] != -1) {
 					return;
 				}
@@ -76,8 +77,9 @@ public abstract class ConcatenatedTidList implements TidList {
 		@Override
 		public int next() {
 			this.pos = this.nextPos;
-			while (this.length > 0) {
+			while (this.remaining > 0) {
 				this.nextPos++;
+				this.remaining--;
 				if (concatenated[this.nextPos] != -1) {
 					return concatenated[pos];
 				}
