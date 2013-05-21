@@ -99,6 +99,10 @@ public final class ExplorationStep {
 	 * Returns null when all valid extensions have been generated
 	 */
 	public ExplorationStep next() {
+		if (this.candidates == null) {
+			return null;
+		}
+		
 		while(true) {
 			int candidate = this.candidates.next();
 			
@@ -108,8 +112,10 @@ public final class ExplorationStep {
 			
 			try {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-					
 					TransactionsIterable support = this.dataset.getSupport(candidate);
+					
+					//System.out.println("extending "+Arrays.toString(this.pattern) + " with (base) "+candidate);
+					//System.out.println(" with "+this.counters.getReverseRenaming()[candidate]);
 					
 					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
 							candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
@@ -148,29 +154,38 @@ public final class ExplorationStep {
 		
 		this.core_item = extension;
 		this.counters = candidateCounts;
-		this.candidates = this.counters.getExtensionsIterator();
-		this.failedFPTests = new TIntIntHashMap();
-		
-		if (parent.selectChain == null) {
-			this.selectChain = null;
-		} else {
-			this.selectChain = parent.selectChain.copy();
-		}
-		
+
 		this.pattern = ItemsetsFactory.extendRename(candidateCounts.closure, extension, 
 				parent.pattern, parent.counters.reverseRenaming);
 		
-		this.dataset = instanciateDataset(parent, support);
-		
-		if (parent.longTransactionsMode) {
-			this.longTransactionsMode = true;
+		if (this.counters.nbFrequents == 0 || this.counters.distinctTransactionsCount == 0) {
+			this.candidates = null;
+			this.failedFPTests = null;
+			this.selectChain = null;
+			this.dataset = null;
+			this.longTransactionsMode = false;
 		} else {
-			final int averageLen = candidateCounts.distinctTransactionLengthSum / 
-					candidateCounts.distinctTransactionsCount;
-			this.longTransactionsMode = (averageLen) > LONG_TRANSACTION_MODE_THRESHOLD;
+			this.failedFPTests = new TIntIntHashMap();
 			
-			if (this.longTransactionsMode) {
-				this.selectChain = new FirstParentTest(this.selectChain);
+			if (parent.selectChain == null) {
+				this.selectChain = null;
+			} else {
+				this.selectChain = parent.selectChain.copy();
+			}
+			
+			this.dataset = instanciateDataset(parent, support);
+			this.candidates = this.counters.getExtensionsIterator();
+			
+			if (parent.longTransactionsMode) {
+				this.longTransactionsMode = true;
+			} else {
+				final int averageLen = candidateCounts.distinctTransactionLengthSum / 
+						candidateCounts.distinctTransactionsCount;
+				this.longTransactionsMode = (averageLen) > LONG_TRANSACTION_MODE_THRESHOLD;
+				
+				if (this.longTransactionsMode) {
+					this.selectChain = new FirstParentTest(this.selectChain);
+				}
 			}
 		}
 	}
@@ -187,8 +202,10 @@ public final class ExplorationStep {
 		if ((supportRate) > VIEW_SUPPORT_THRESHOLD) {
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
+			int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
+		
 			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(
-					support.iterator(), this.counters.supportCounts, null);
+					support.iterator(), this.counters.supportCounts, renaming);
 			
 			return new Dataset(this.counters, filtered);
 		}
