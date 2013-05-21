@@ -133,22 +133,6 @@ public class PLCM {
 		return null;
 	}
 	
-	/**
-	 * Don't use it on dense datasets. Just don't.
-	 */
-	@Deprecated
-	public void setUltraVerboseMode(boolean enabled) {
-		for (PLCMThread t : this.threads) {
-			t.setUltraVerboseMode(enabled);
-		}
-	}
-	
-	public void setVerboseMode(boolean enabled) {
-		for (PLCMThread t : this.threads) {
-			t.setVerboseMode(enabled);
-		}
-	}
-	
 	
 	/**
 	 * Some classes in EnumerationStep may declare counters here. see references to PLCMThread.counters
@@ -167,8 +151,6 @@ public class PLCM {
 		private final ReadWriteLock lock;
 		private final List<ExplorationStep> stackedJobs;
 		private final int id;
-		private boolean ultraVerbose = false; // FIXME do we bring them back ?
-		private boolean verbose = false;
 
 		public PLCMThread(final int id) {
 			super("PLCMThread" + id);
@@ -180,20 +162,6 @@ public class PLCM {
 			for (int i = 0; i < this.counters.length; i++) {
 				this.counters[i] = new AtomicLong();
 			}
-		}
-
-		/**
-		 * Write info to stdout about every explored pattern
-		 */
-		public void setUltraVerboseMode(boolean enabled) {
-			this.ultraVerbose = enabled;
-		}
-		
-		/**
-		 * Write starters info to stdout 
-		 */
-		public void setVerboseMode(boolean enabled) {
-			this.verbose = enabled;
 		}
 		
 		private void init(ExplorationStep initState) {

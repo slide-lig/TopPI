@@ -13,6 +13,7 @@ import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.internals.Dataset;
 import fr.liglab.lcm.internals.DatasetFactory;
 import fr.liglab.lcm.internals.FrequentsIterator;
+import fr.liglab.lcm.internals.nomaps.ExplorationStep;
 import fr.liglab.lcm.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.lcm.mapred.groupers.Grouper;
 import fr.liglab.lcm.mapred.writables.ItemAndSupportWritable;
@@ -112,7 +113,7 @@ public class MiningTwoPhasesReducer extends
 		this.collector.setGroup(new TIntHashSet(starters));
 
 		final PLCM lcm = new PLCM(this.collector, this.nbThreads);
-		lcm.setVerboseMode(logger.isDebugEnabled());
+		ExplorationStep.verbose = logger.isDebugEnabled();
 		
 		FrequentsIterator extensionsIterator;
 		

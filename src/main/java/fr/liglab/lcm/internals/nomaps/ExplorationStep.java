@@ -1,5 +1,7 @@
 package fr.liglab.lcm.internals.nomaps;
 
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Iterator;
 
 import fr.liglab.lcm.internals.FrequentsIterator;
@@ -14,6 +16,9 @@ import gnu.trove.map.hash.TIntIntHashMap;
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
  */
 public final class ExplorationStep {
+	
+	public static boolean verbose = false;
+	public static boolean ultraVerbose = false;
 
 	/**
 	 * @see longTransactionsMode
@@ -154,9 +159,19 @@ public final class ExplorationStep {
 		
 		this.core_item = extension;
 		this.counters = candidateCounts;
+		int[] reverseRenaming = parent.counters.reverseRenaming;
+		
+		if (verbose) {
+			if (parent.pattern.length == 0 || ultraVerbose) {
+				System.out
+				.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d projecting %3$s with %4$s\n",
+						Calendar.getInstance(), Thread.currentThread().getId(), Arrays.toString(parent.pattern), 
+						reverseRenaming[extension]);
+			}
+		}
 
 		this.pattern = ItemsetsFactory.extendRename(candidateCounts.closure, extension, 
-				parent.pattern, parent.counters.reverseRenaming);
+				parent.pattern, reverseRenaming);
 		
 		if (this.counters.nbFrequents == 0 || this.counters.distinctTransactionsCount == 0) {
 			this.candidates = null;
@@ -232,6 +247,5 @@ public final class ExplorationStep {
 		} else {
 			return this.failedFPTests.size();
 		}
-		
 	}
 }
