@@ -268,6 +268,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 					}
 				}
 				localPreviousResult = Integer.MAX_VALUE;
+				localValidUntil = Integer.MAX_VALUE;
 			}
 
 			FrequentsIterator it;
