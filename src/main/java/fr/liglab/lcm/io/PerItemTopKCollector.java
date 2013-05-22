@@ -16,23 +16,24 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Wraps a collector. As a (stateful) Selector it will limit exploration to top-k-per-items patterns.
+ * Wraps a collector. As a (stateful) Selector it will limit exploration to
+ * top-k-per-items patterns.
  * 
  * Thread-safe and initialized with known frequent items.
  */
 public class PerItemTopKCollector implements PatternsCollector {
-	
+
 	private final PatternsCollector decorated;
 	protected final int k;
 	protected final TIntObjectMap<PatternWithFreq[]> topK;
-	
-	public PerItemTopKCollector(final PatternsCollector follower, final int k, 
-			final int nbItems, final FrequentsIterator items) {
-		
+
+	public PerItemTopKCollector(final PatternsCollector follower, final int k, final int nbItems,
+			final FrequentsIterator items) {
+
 		this.decorated = follower;
 		this.k = k;
 		this.topK = new TIntObjectHashMap<PatternWithFreq[]>(nbItems);
-		
+
 		for (int item = items.next(); item != -1; item = items.next()) {
 			this.topK.put(item, new PatternWithFreq[k]);
 		}
@@ -43,10 +44,10 @@ public class PerItemTopKCollector implements PatternsCollector {
 			insertPatternInTop(support, pattern, item);
 		}
 	}
-	
+
 	protected void insertPatternInTop(final int support, final int[] pattern, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
-		
+
 		if (itemTopK == null) {
 			throw new RuntimeException("item not initialized " + item);
 		} else {
@@ -116,7 +117,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 				}
 			}
 		}
-		
+
 		return this.decorated.close();
 	}
 
@@ -130,7 +131,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			return itemTopK[this.k - 1].getSupportCount();
 		}
 	}
-	
+
 	public TIntIntMap getTopKBounds() {
 		final TIntIntHashMap bounds = new TIntIntHashMap(this.topK.size());
 		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
@@ -165,9 +166,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		});
 		return sb.toString();
 	}
-	
-	
-	
 
 	public static final class PatternWithFreq {
 		private final int supportCount;
@@ -214,41 +212,42 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 
 	}
-	
+
 	public Selector asSelector() {
 		return new ExplorationLimiter(null);
 	}
-	
-	
+
 	protected final class ExplorationLimiter extends Selector {
-		
+
 		private int previousItem = -1;
 		private int previousResult = -1;
-		
+		private int validUntuil = Integer.MAX_VALUE;
+
 		ExplorationLimiter(Selector follower) {
 			super(follower);
 		}
-		
+
 		@Override
 		protected PLCMCounters getCountersKey() {
 			return PLCMCounters.TopKRejections;
 		}
-		
-		private synchronized void updatePrevious(final int i, final int r) {
+
+		private synchronized void updatePrevious(final int i, final int r, int v) {
 			if (i > this.previousItem) {
 				this.previousItem = i;
 				this.previousResult = r;
+				this.validUntuil = v;
 			}
 		}
-		
+
 		@Override
-		protected boolean allowExploration(int extension, ExplorationStep state)
-				throws WrongFirstParentException {
-			
-			int localPreviousItem,localPreviousResult;
+		protected boolean allowExploration(int extension, ExplorationStep state) throws WrongFirstParentException {
+
+			int localPreviousItem, localPreviousResult, localValidUntil;
 			synchronized (this) {
 				localPreviousItem = this.previousItem;
 				localPreviousResult = this.previousResult;
+				localValidUntil = this.validUntuil;
 			}
 
 			int[] reverseRenaming = state.counters.getReverseRenaming();
@@ -256,48 +255,48 @@ public class PerItemTopKCollector implements PatternsCollector {
 			int extensionSupport = supports[extension];
 			final int maxCandidate = state.counters.getMaxCandidate();
 
-			boolean shortcut = localPreviousResult >= extensionSupport;
-			
+			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
+
 			if (getBound(reverseRenaming[extension]) < extensionSupport) {
 				return true;
 			}
-			
+
 			if (!shortcut) {
 				for (int i : state.pattern) {
 					if (getBound(i) < extensionSupport) {
 						return true;
 					}
 				}
+				localPreviousResult = Integer.MAX_VALUE;
 			}
-			
+
 			FrequentsIterator it;
-			
+
 			if (shortcut) {
-				it = state.counters.getLocalFrequentsIterator(localPreviousItem+1, extension);
+				it = state.counters.getLocalFrequentsIterator(localPreviousItem + 1, extension);
 			} else {
 				it = state.counters.getLocalFrequentsIterator(0, extension);
 			}
-			
+
 			for (int i = it.next(); i >= 0; i = it.next()) {
 				final int bound = getBound(reverseRenaming[i]);
 				if (bound < Math.min(extensionSupport, supports[i])) {
 					int firstParent = state.getFailedFPTest(i);
-					
+
 					if (firstParent <= extension) {
-						this.updatePrevious(localPreviousItem, localPreviousResult);
+						this.updatePrevious(localPreviousItem, localPreviousResult, localValidUntil);
 						return true;
 					} else if (firstParent < maxCandidate) {
-						localPreviousItem = i;
-						localPreviousResult = Math.min(localPreviousResult, bound);
+						localValidUntil = Math.min(localValidUntil, firstParent);
 					}
 				} else {
 					localPreviousItem = i;
 					localPreviousResult = Math.min(localPreviousResult, bound);
 				}
 			}
-			
-			this.updatePrevious(localPreviousItem, localPreviousResult);
-			
+
+			this.updatePrevious(localPreviousItem, localPreviousResult, localValidUntil);
+
 			return false;
 		}
 
