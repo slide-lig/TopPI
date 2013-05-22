@@ -188,8 +188,7 @@ public final class ExplorationStep {
 				this.selectChain = parent.selectChain.copy();
 			}
 			
-			this.dataset = instanciateDataset(parent, support);
-			this.candidates = this.counters.getExtensionsIterator();
+			//!\\ From here, order is important
 			
 			if (parent.longTransactionsMode) {
 				this.longTransactionsMode = true;
@@ -202,6 +201,15 @@ public final class ExplorationStep {
 					this.selectChain = new FirstParentTest(this.selectChain);
 				}
 			}
+			
+			// indeed, instantiateDataset is influenced by longTransactionsMode
+			
+			this.dataset = instanciateDataset(parent, support);
+			
+			// and intanciateDataset may choose to trigger some renaming in couters
+			
+			this.candidates = this.counters.getExtensionsIterator();
+			
 		}
 	}
 	
@@ -213,7 +221,7 @@ public final class ExplorationStep {
 		double supportRate = this.counters.distinctTransactionsCount / 
 				(double) parent.dataset.getStoredTransactionsCount();
 		
-		if ((supportRate) > VIEW_SUPPORT_THRESHOLD) {
+		if (!this.longTransactionsMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
 			int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());

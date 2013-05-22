@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.nomaps;
 
+import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
@@ -73,6 +74,7 @@ final class FirstParentTest extends Selector {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
+					((PLCM.PLCMThread) Thread.currentThread()).counters[PLCMCounters.FirstParentTestRejections.ordinal()].incrementAndGet();
 					throw new WrongFirstParentException(extension, i);
 				}
 			}
