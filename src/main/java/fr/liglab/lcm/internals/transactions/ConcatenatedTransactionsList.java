@@ -7,7 +7,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 	private int size;
 
 	public ConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
-		this.concatenated = new int[transactionsLength + 2*nbTransactions];
+		this.concatenated = new int[transactionsLength + 2 * nbTransactions];
 	}
 
 	@Override
@@ -123,67 +123,50 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 		private int support;
 		private int length;
 		private int pos;
-		private int nextPos;
 
 		public TransIter() {
 			if (concatenated.length < 2) {
-				this.nextPos = -1;
+				this.support = 0;
 				return;
 			} else {
-				this.pos = 0;
-				this.nextPos = 0;
-				this.length = concatenated[this.nextPos];
-				this.support = concatenated[this.nextPos + 1];
-				while (true) {
-					if (this.support > 0) {
-						return;
-					} else {
-						this.nextPos += this.length + 2;
-						if (this.nextPos >= concatenated.length) {
-							this.nextPos = -1;
-							return;
-						} else {
-							this.length = concatenated[this.nextPos];
-							this.support = concatenated[this.nextPos + 1];
-						}
-					}
+				this.findNext(true);
+			}
+		}
+
+		private void findNext(boolean firstTime) {
+			while (true) {
+				if (firstTime) {
+					firstTime = false;
+				} else {
+					this.pos += 2 + this.length;
+				}
+				if (this.pos >= concatenated.length) {
+					this.support = 0;
+					return;
+				}
+				this.length = concatenated[this.pos];
+				this.support = concatenated[this.pos + 1];
+				if (this.support > 0) {
+					return;
 				}
 			}
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.nextPos >= 0;
+			return this.support > 0;
 		}
 
 		@Override
 		public IterableTransaction next() {
-			this.pos = this.nextPos;
-			this.nextPos += this.length + 2;
-			if (this.nextPos >= concatenated.length) {
-				this.nextPos = -1;
-				return new IterableTrans(this.pos);
-			} else {
-				while (true) {
-					if (this.support > 0) {
-						return new IterableTrans(this.pos);
-					} else {
-						this.nextPos += this.length + 2;
-						if (this.nextPos >= concatenated.length) {
-							this.nextPos = -1;
-							return new IterableTrans(this.pos);
-						} else {
-							this.length = concatenated[this.nextPos];
-							this.support = concatenated[this.nextPos + 1];
-						}
-					}
-				}
-			}
+			IterableTransaction res = new IterableTrans(this.pos);
+			this.findNext(false);
+			return res;
 		}
 
 		@Override
 		public void remove() {
-			concatenated[this.pos + 1] = 0;
+			throw new UnsupportedOperationException();
 		}
 
 	}

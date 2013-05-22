@@ -11,30 +11,41 @@ import java.util.List;
 public class BasicTransactionsList extends TransactionsList {
 
 	private List<TIntList> transactions = new ArrayList<TIntList>();
-	
+
 	@Override
 	public int size() {
 		return this.transactions.size();
 	}
-	
-	@Override
-	public String toString() {
-		return this.transactions.toString();
-	}
-	
+
 	@Override
 	public Iterator<IterableTransaction> iterator() {
 		final Iterator<TIntList> iter = this.transactions.iterator();
 		return new Iterator<IterableTransaction>() {
+			private TIntList next = findNext();
 
 			@Override
 			public void remove() {
-				iter.remove();
+				throw new UnsupportedOperationException();
+			}
+
+			private TIntList findNext() {
+				while (true) {
+					if (!iter.hasNext()) {
+						return null;
+					} else {
+						TIntList l = iter.next();
+						if (l.get(0) > 0) {
+							return l;
+						}
+
+					}
+				}
 			}
 
 			@Override
 			public IterableTransaction next() {
-				final TIntList l = iter.next();
+				final TIntList l = this.next;
+				this.next = findNext();
 				return new IterableTransaction() {
 
 					@Override
@@ -46,7 +57,7 @@ public class BasicTransactionsList extends TransactionsList {
 
 			@Override
 			public boolean hasNext() {
-				return iter.hasNext();
+				return this.next != null;
 			}
 		};
 	}

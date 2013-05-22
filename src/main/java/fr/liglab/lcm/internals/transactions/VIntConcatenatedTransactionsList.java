@@ -24,7 +24,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 	public VIntConcatenatedTransactionsList(int size) {
 		this.concatenated = new byte[size];
 	}
-	
+
 	@Override
 	public int size() {
 		return this.size;
@@ -115,9 +115,9 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		pos.value += 4;
 	}
 
-	private void eraseLastVal(IntHolder pos) {
+	private void eraseLastVal(int pos) {
 		// there is at least 1 byte in a vint, and it is positive
-		int erase = pos.value - 1;
+		int erase = pos - 1;
 		concatenated[erase] = 0;
 		erase--;
 		// all other bytes of the vint are negative, stop when we see a positive
@@ -169,20 +169,22 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 	private final class TransComp extends TransactionIterator {
 		private IntHolder pos;
+		private int erasePos;
 		private final int startPos;
 		private final int endPos;
 		private int nextVal;
 
 		public TransComp(int startPos) {
 			this.startPos = startPos;
-			this.pos = new IntHolder(startPos);
-			this.endPos = readInt(this.pos);
+			this.endPos = readInt(startPos);
+			this.pos = new IntHolder(startPos + 8);
 			this.findNext();
 		}
 
 		@Override
 		public int next() {
 			int val = this.nextVal;
+			this.erasePos = this.pos.value;
 			this.findNext();
 			return val;
 		}
@@ -205,7 +207,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 		@Override
 		public void remove() {
-			eraseLastVal(this.pos);
+			eraseLastVal(erasePos);
 		}
 
 		@Override
@@ -237,7 +239,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 				return;
 			} else {
 				this.pos = 0;
-				this.findNext();
+				this.findNext(true);
 			}
 		}
 
@@ -246,17 +248,20 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 			return this.support > 0;
 		}
 
-		private void findNext() {
+		private void findNext(boolean firstTime) {
 			while (true) {
-				if (this.pos > concatenated.length) {
+				if (firstTime) {
+					firstTime = false;
+				} else {
+					this.pos = readInt(this.pos);
+				}
+				if (this.pos >= concatenated.length) {
 					this.support = 0;
 					return;
 				}
 				this.support = readInt(this.pos + 4);
 				if (this.support > 0) {
 					return;
-				} else {
-					this.pos = readInt(this.pos);
 				}
 			}
 		}
@@ -264,13 +269,13 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		@Override
 		public IterableTransaction next() {
 			IterableTrans res = new IterableTrans(this.pos);
-			this.findNext();
+			this.findNext(false);
 			return res;
 		}
 
 		@Override
 		public void remove() {
-			concatenated[this.pos + 1] = 0;
+			throw new UnsupportedOperationException();
 		}
 
 	}

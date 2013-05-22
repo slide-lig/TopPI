@@ -7,14 +7,15 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Stores transactions. Items in transactions are assumed to be sorted in increasing order
+ * Stores transactions. Items in transactions are assumed to be sorted in
+ * increasing order
  */
 public abstract class TransactionsList implements Iterable<IterableTransaction> {
-	
+
 	abstract public TransactionIterator get(final int transaction);
 
 	abstract public TransactionsWriter getWriter();
-	
+
 	/**
 	 * @return how many IterableTransaction are behind this object
 	 */
@@ -148,8 +149,8 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 			if (t1Item == t2Item) {
 				if (t1.hasNext()) {
 					if (t2.hasNext()) {
-						t1.next();
-						t2.next();
+						t1Item = t1.next();
+						t2Item = t2.next();
 						continue;
 					} else {
 						while (t1.hasNext()) {
@@ -191,5 +192,51 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 				}
 			}
 		}
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder("[");
+		for (IterableTransaction trans : this) {
+			TransactionIterator iter = trans.iterator();
+			sb.append(iter.getTransactionSupport() + " {");
+			while (iter.hasNext()) {
+				sb.append(iter.next() + ",");
+			}
+			sb.append("}\n");
+		}
+		sb.append("]");
+		return sb.toString();
+	}
+
+	public static void main(String[] args) {
+		TransactionsList tl = new VIntConcatenatedTransactionsList(3, new int[] { 0, 3, 3, 2, 0, 3, 1, 2, 2 });
+		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
+		TransactionsWriter w = tl.getWriter();
+		w.beginTransaction(2);
+		w.addItem(1);
+		w.addItem(2);
+		w.addItem(3);
+		w.addItem(5);
+		w.addItem(6);
+		w.addItem(8);
+		w.endTransaction();
+		w.beginTransaction(1);
+		w.addItem(1);
+		w.addItem(2);
+		w.addItem(5);
+		w.addItem(7);
+		w.endTransaction();
+		w.beginTransaction(3);
+		w.addItem(1);
+		w.addItem(2);
+		w.addItem(3);
+		w.addItem(5);
+		w.addItem(7);
+		w.addItem(8);
+		w.endTransaction();
+		System.out.println(tl);
+		tl.compress(4);
+		System.out.println(tl);
 	}
 }
