@@ -255,11 +255,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 			int extensionSupport = supports[extension];
 			final int maxCandidate = state.counters.getMaxCandidate();
 
-			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
-
 			if (getBound(reverseRenaming[extension]) < extensionSupport) {
 				return true;
 			}
+
+			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
 
 			if (!shortcut) {
 				for (int i : state.pattern) {
