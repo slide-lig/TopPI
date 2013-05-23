@@ -6,9 +6,11 @@ import org.apache.commons.lang.NotImplementedException;
 
 import fr.liglab.lcm.internals.TransactionReader;
 import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsConcatenatedTidList;
+import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsShortConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
 import fr.liglab.lcm.internals.transactions.ConcatenatedTransactionsList;
+import fr.liglab.lcm.internals.transactions.ShortConcatenatedTransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsWriter;
 import gnu.trove.iterator.TIntIterator;
@@ -36,10 +38,26 @@ public class Dataset {
 	 * @param transactions assumed to be filtered according to counters
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
-		this.transactions = new ConcatenatedTransactionsList(
-				counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
 		
-		this.tidLists = new ConsecutiveItemsConcatenatedTidList(counters.supportCounts);
+		int maxTransId;
+		
+		if (ShortConcatenatedTransactionsList.compatible(counters)) {
+			this.transactions = new ShortConcatenatedTransactionsList(
+					counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
+			
+			maxTransId = ShortConcatenatedTransactionsList.getMaxTransId(counters);
+		} else {
+			this.transactions = new ConcatenatedTransactionsList(
+					counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
+			
+			maxTransId = ConcatenatedTransactionsList.getMaxTransId(counters);
+		}
+		
+		if (ConsecutiveItemsShortConcatenatedTidList.compatible(maxTransId)) {
+			this.tidLists = new ConsecutiveItemsShortConcatenatedTidList(counters.supportCounts);
+		} else {
+			this.tidLists = new ConsecutiveItemsConcatenatedTidList(counters.supportCounts);
+		}
 		
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
