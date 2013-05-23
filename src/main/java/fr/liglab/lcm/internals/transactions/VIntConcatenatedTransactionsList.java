@@ -102,13 +102,10 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 	private void writeInt(int pos, int val) {
 		// System.out.println("encoding " + String.format("%X", val) + " " +
 		// val);
-		concatenated[pos] = (byte) (val >>> 24);
-		pos++;
-		concatenated[pos] = (byte) (val >>> 16);
-		pos++;
-		concatenated[pos] = (byte) (val >>> 8);
-		pos++;
-		concatenated[pos] = (byte) val;
+		concatenated[pos] = (byte) (val >> 24);
+		concatenated[pos + 1] = (byte) (val >> 16);
+		concatenated[pos + 2] = (byte) (val >> 8);
+		concatenated[pos + 3] = (byte) val;
 	}
 
 	private int readInt(int pos) {
@@ -271,7 +268,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 					return;
 				}
 				int support = readInt(this.pos + 4);
-				if (support > 0) {
+				if (support != 0) {
 					return;
 				}
 			}

@@ -34,7 +34,7 @@ public class BasicTransactionsList extends TransactionsList {
 						return null;
 					} else {
 						TIntList l = iter.next();
-						if (l.get(0) > 0) {
+						if (l.get(0) != 0) {
 							return l;
 						}
 

@@ -146,7 +146,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 				}
 				this.length = concatenated[this.pos];
 				this.support = concatenated[this.pos + 1];
-				if (this.support > 0) {
+				if (this.support != 0) {
 					return;
 				}
 			}

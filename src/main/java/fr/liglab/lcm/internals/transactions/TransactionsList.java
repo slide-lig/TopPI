@@ -219,8 +219,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		TransactionsList tl = new VIntConcatenatedTransactionsList(3, new int[] { 0, 3, 3, 2, 0, 3, 1, 2, 2 });
 		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
 		TransactionsWriter w = tl.getWriter();
-		System.out.println(Integer.MAX_VALUE - 3 + "");
-		w.beginTransaction(Integer.MAX_VALUE - 3);
+		w.beginTransaction(-72);
 		w.addItem(1);
 		w.addItem(2);
 		w.addItem(3);
