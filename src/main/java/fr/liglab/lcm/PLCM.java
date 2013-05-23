@@ -261,16 +261,17 @@ public class PLCM {
 		String[] args = cmd.getArgs();
 		int minsup = Integer.parseInt(args[1]);
 		
+		long time = System.currentTimeMillis();
 		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
+		time = System.currentTimeMillis() - time;
+		System.err.println("Dataset loaded in " + time + "ms");
 		
 		String outputPath = null;
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
-
+		
 		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState);
-
-		long time = System.currentTimeMillis();
 		
 		PLCM miner;
 		if (cmd.hasOption('t')) {
@@ -279,18 +280,14 @@ public class PLCM {
 		} else {
 			miner = new PLCM(collector);
 		}
-
-		miner.lcm(initState);
 		
-		if (cmd.hasOption('b')) {
-			time = System.currentTimeMillis() - time;
-		}
+		time = System.currentTimeMillis();
+		miner.lcm(initState);
+		time = System.currentTimeMillis() - time;
 		
 		long outputted = collector.close();
-
-		if (cmd.hasOption('b')) {
-			System.err.println(miner.toString() + " // mined in " + time + "ms // outputted " + outputted + " patterns");
-		}
+		
+		System.err.println(miner.toString() + " // mined in " + time + "ms // outputted " + outputted + " patterns");
 	}
 
 	/**
