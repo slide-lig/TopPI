@@ -2,10 +2,8 @@ package fr.liglab.lcm.internals.nomaps;
 
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Iterator;
 
 import fr.liglab.lcm.internals.FrequentsIterator;
-import fr.liglab.lcm.internals.TransactionReader;
 import fr.liglab.lcm.internals.nomaps.Dataset.TransactionsIterable;
 import fr.liglab.lcm.internals.nomaps.Selector.WrongFirstParentException;
 import fr.liglab.lcm.io.FileReader;
@@ -83,15 +81,11 @@ public final class ExplorationStep {
 		
 		FileReader reader = new FileReader(path);
 		this.counters = new Counters(minimumSupport, reader);
-		reader.close();
+		reader.close(this.counters.renaming);
 		
 		this.pattern = this.counters.closure;
 		
-		reader = new FileReader(path);
-		Iterator<TransactionReader> transactions = 
-				new TransactionsRenamerFilterSorter(reader, this.counters.renaming);
-		this.dataset = new Dataset(this.counters, transactions);
-		reader.close();
+		this.dataset = new Dataset(this.counters, reader);
 		
 		this.candidates = this.counters.getExtensionsIterator();
 		

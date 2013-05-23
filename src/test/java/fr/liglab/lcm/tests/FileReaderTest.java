@@ -163,6 +163,38 @@ public class FileReaderTest {
 		readLine(reader.next(), 3,2,7);
 		readLine(reader.next(), 5,3,1,6,7);
 		assertFalse(reader.hasNext());
+		
+		reader.close();
+		
+		assertTrue(reader.hasNext());
+		readLine(reader.next(), 5,3,1,6,7);
+		readLine(reader.next(), 5,3,1,2,6);
+		readLine(reader.next(), 5,7);
+		readLine(reader.next(), 3,2,7);
+		readLine(reader.next(), 5,3,1,6,7);
+		assertFalse(reader.hasNext());
+	}
+	
+	@Test
+	public void testMicroRenaming() {
+		FileReader reader = new FileReader(PATH_MICRO);
+		while (reader.hasNext()) {
+			TransactionReader transaction = reader.next();
+			while (transaction.hasNext()) {
+				transaction.next();
+			}
+		}
+		
+		//    original names :  0    1   2  3  4   5  6   7
+		reader.close(new int[] {-1, -1, -1, 0, -1, 1, -1, 2});
+		
+		assertTrue(reader.hasNext());
+		readLine(reader.next(), 0, 1, 2);
+		readLine(reader.next(), 0, 1);
+		readLine(reader.next(), 1, 2);
+		readLine(reader.next(), 0, 2);
+		readLine(reader.next(), 0, 1, 2);
+		assertFalse(reader.hasNext());
 	}
 	
 	private void readLine(TransactionReader lineReader, int... items) {
