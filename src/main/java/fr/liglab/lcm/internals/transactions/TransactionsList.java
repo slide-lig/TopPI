@@ -197,13 +197,19 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder("[");
+		boolean first = true;
 		for (IterableTransaction trans : this) {
 			TransactionIterator iter = trans.iterator();
+			if (first) {
+				first = false;
+			} else {
+				sb.append("\n");
+			}
 			sb.append(iter.getTransactionSupport() + " {");
 			while (iter.hasNext()) {
 				sb.append(iter.next() + ",");
 			}
-			sb.append("}\n");
+			sb.append("}");
 		}
 		sb.append("]");
 		return sb.toString();
@@ -213,7 +219,8 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		TransactionsList tl = new VIntConcatenatedTransactionsList(3, new int[] { 0, 3, 3, 2, 0, 3, 1, 2, 2 });
 		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
 		TransactionsWriter w = tl.getWriter();
-		w.beginTransaction(2);
+		System.out.println(Integer.MAX_VALUE - 3 + "");
+		w.beginTransaction(Integer.MAX_VALUE - 3);
 		w.addItem(1);
 		w.addItem(2);
 		w.addItem(3);

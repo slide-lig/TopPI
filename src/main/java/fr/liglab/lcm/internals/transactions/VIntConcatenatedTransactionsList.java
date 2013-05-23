@@ -1,6 +1,6 @@
 package fr.liglab.lcm.internals.transactions;
 
-import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.omg.CORBA.IntHolder;
@@ -100,16 +100,28 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 	}
 
 	private void writeInt(int pos, int val) {
-		ByteBuffer bb = ByteBuffer.wrap(this.concatenated, pos, 4);
-		bb.putInt(val);
-		// TODO check
+		// System.out.println("encoding " + String.format("%X", val) + " " +
+		// val);
+		concatenated[pos] = (byte) (val >>> 24);
+		pos++;
+		concatenated[pos] = (byte) (val >>> 16);
+		pos++;
+		concatenated[pos] = (byte) (val >>> 8);
+		pos++;
+		concatenated[pos] = (byte) val;
 	}
 
 	private int readInt(int pos) {
-		// TODO check
-		ByteBuffer bb = ByteBuffer.wrap(this.concatenated, pos, 4);
-		return bb.getInt();
+		return concatenated[pos] << 24 | (concatenated[pos + 1] & 0xFF) << 16 | (concatenated[pos + 2] & 0xFF) << 8
+				| (concatenated[pos + 3] & 0xFF);
 	}
+
+	// @Override
+	// public String toString() {
+	// return "VIntConcatenatedTransactionsList [concatenated=" +
+	// Arrays.toString(concatenated) + ", size=" + size
+	// + "]";
+	// }
 
 	private void saveIntSpace(IntHolder pos) {
 		pos.value += 4;
@@ -230,12 +242,11 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 	}
 
 	private final class TransIter implements Iterator<IterableTransaction> {
-		private int support;
 		private int pos;
 
 		public TransIter() {
 			if (concatenated.length < 8) {
-				this.support = 0;
+				this.pos = -1;
 				return;
 			} else {
 				this.pos = 0;
@@ -245,7 +256,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 		@Override
 		public boolean hasNext() {
-			return this.support > 0;
+			return this.pos >= 0;
 		}
 
 		private void findNext(boolean firstTime) {
@@ -256,11 +267,11 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 					this.pos = readInt(this.pos);
 				}
 				if (this.pos >= concatenated.length) {
-					this.support = 0;
+					this.pos = -1;
 					return;
 				}
-				this.support = readInt(this.pos + 4);
-				if (this.support > 0) {
+				int support = readInt(this.pos + 4);
+				if (support > 0) {
 					return;
 				}
 			}
