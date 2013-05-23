@@ -1,20 +1,16 @@
 package fr.liglab.lcm.internals.tidlist;
 
-import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.map.TIntIntMap;
 
 public class ConsecutiveItemsShortConcatenatedTidList extends ShortConcatenatedTidList {
 
 	private final int[] startPositions;
 
-	public ConsecutiveItemsShortConcatenatedTidList(final TIntIntMap lengths) {
+	public ConsecutiveItemsShortConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
-		this.startPositions = new int[lengths.size()];
-		TIntIntIterator iter = lengths.iterator();
-		while (iter.hasNext()) {
-			iter.advance();
-			this.startPositions[iter.key()] = startPos;
-			startPos += (1 + iter.value());
+		this.startPositions = new int[lengths.length];
+		for (int i = 0; i < lengths.length; i++) {
+			this.startPositions[i] = startPos;
+			startPos += (1 + lengths[i]);
 		}
 		this.concatenated = new short[startPos];
 	}

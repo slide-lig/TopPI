@@ -2,10 +2,15 @@ package fr.liglab.lcm.internals.tidlist;
 
 import gnu.trove.iterator.TIntIterator;
 
-public abstract class ShortConcatenatedTidList implements TidList {
+public abstract class ShortConcatenatedTidList extends TidList {
+
+	@SuppressWarnings("cast")
+	public static boolean compatible(int maxTid) {
+		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
+	}
 
 	protected short[] concatenated;
-	
+
 	@Override
 	public TIntIterator get(final int item) {
 		final int start = this.getPosition(item);
@@ -33,9 +38,12 @@ public abstract class ShortConcatenatedTidList implements TidList {
 	}
 
 	@Override
-	public void addTransaction(final int item, final int transaction) {
+	public void addTransaction(final int item, int transaction) {
 		if (transaction > Short.MAX_VALUE) {
-			throw new IllegalArgumentException(transaction + " too big for a short");
+			transaction = -transaction + Short.MAX_VALUE;
+			if (transaction < Short.MIN_VALUE) {
+				throw new IllegalArgumentException(transaction + " too big for a short");
+			}
 		}
 		final int start = this.getPosition(item);
 		if (start < 0) {
@@ -50,43 +58,36 @@ public abstract class ShortConcatenatedTidList implements TidList {
 
 	private class ConcatenatedIterator implements TIntIterator {
 		int pos;
-		int nextPos;
 		int length;
 
 		public ConcatenatedIterator(final int start) {
-			this.pos = 0;
-			this.nextPos = start;
+			this.pos = start;
 			this.length = concatenated[start];
-			while (this.length > 0) {
-				this.nextPos++;
-				if (concatenated[this.nextPos] != -1) {
-					return;
-				}
-			}
-			this.nextPos = -1;
+			this.pos++;
 		}
 
 		@Override
 		public void remove() {
-			concatenated[pos] = -1;
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.nextPos >= 0;
+			return this.length > 0;
 		}
 
+		@SuppressWarnings("cast")
 		@Override
 		public int next() {
-			this.pos = this.nextPos;
-			while (this.length > 0) {
-				this.nextPos++;
-				if (concatenated[this.nextPos] != -1) {
-					return concatenated[pos];
-				}
+			this.length--;
+			int v;
+			if (concatenated[this.pos] >= 0) {
+				v = concatenated[pos];
+			} else {
+				v = ((int) -concatenated[pos]) + ((int) Short.MAX_VALUE);
 			}
-			this.nextPos = -1;
-			return concatenated[pos];
+			pos++;
+			return v;
 		}
 	}
 }

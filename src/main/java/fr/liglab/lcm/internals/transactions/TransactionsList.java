@@ -216,30 +216,39 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	}
 
 	public static void main(String[] args) {
-		TransactionsList tl = new VIntConcatenatedTransactionsList(3, new int[] { 0, 3, 3, 2, 0, 3, 1, 2, 2 });
-		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
+		// int[] freqs = new int[Short.MAX_VALUE * 2 + 1];
+		// freqs[1] = 3;
+		// freqs[2] = 3;
+		// freqs[3] = 2;
+		// freqs[5] = 3;
+		// freqs[Short.MAX_VALUE * 2 - 2] = 1;
+		// freqs[Short.MAX_VALUE * 2 - 1] = 2;
+		// freqs[Short.MAX_VALUE * 2] = 2;
+		// TransactionsList tl = new VIntConcatenatedTransactionsList(3, freqs);
+		 TransactionsList tl = new ShortConcatenatedTransactionsList(16, 3);
+//		TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
 		TransactionsWriter w = tl.getWriter();
-		w.beginTransaction(-72);
+		w.beginTransaction(Short.MAX_VALUE + 3);
 		w.addItem(1);
 		w.addItem(2);
 		w.addItem(3);
 		w.addItem(5);
-		w.addItem(6);
-		w.addItem(8);
+		w.addItem(Short.MAX_VALUE * 2 - 2);
+		w.addItem(Short.MAX_VALUE * 2);
 		w.endTransaction();
 		w.beginTransaction(1);
 		w.addItem(1);
 		w.addItem(2);
 		w.addItem(5);
-		w.addItem(7);
+		w.addItem(Short.MAX_VALUE * 2 - 1);
 		w.endTransaction();
 		w.beginTransaction(3);
 		w.addItem(1);
 		w.addItem(2);
 		w.addItem(3);
 		w.addItem(5);
-		w.addItem(7);
-		w.addItem(8);
+		w.addItem(Short.MAX_VALUE * 2 - 1);
+		w.addItem(Short.MAX_VALUE * 2);
 		w.endTransaction();
 		System.out.println(tl);
 		tl.compress(4);
