@@ -1,23 +1,26 @@
 package fr.liglab.lcm.internals.tidlist;
 
-import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.iterator.TShortIterator;
 import gnu.trove.list.TShortList;
 import gnu.trove.list.array.TShortArrayList;
-import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
-public class ShortMapTidList implements TidList {
+public class ShortMapTidList extends TidList {
+
+	@SuppressWarnings("cast")
+	public static boolean compatible(int maxTid) {
+		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
+	}
 
 	private final TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
-	
-	public ShortMapTidList(final TIntIntMap lengths) {
-		TIntIntIterator iter = lengths.iterator();
-		while (iter.hasNext()) {
-			iter.advance();
-			this.occurrences.put(iter.key(), new TShortArrayList(iter.value()));
+
+	public ShortMapTidList(final int[] lengths) {
+		for (int i = 0; i < lengths.length; i++) {
+			if (lengths[i] > 0) {
+				this.occurrences.put(i, new TShortArrayList(lengths[i]));
+			}
 		}
 	}
 
@@ -32,7 +35,7 @@ public class ShortMapTidList implements TidList {
 
 				@Override
 				public void remove() {
-					iter.remove();
+					throw new UnsupportedOperationException();
 				}
 
 				@Override
@@ -42,7 +45,12 @@ public class ShortMapTidList implements TidList {
 
 				@Override
 				public int next() {
-					return iter.next();
+					int v = iter.next();
+					if (v >= 0) {
+						return v;
+					} else {
+						return -v + Short.MAX_VALUE;
+					}
 				}
 			};
 		}
@@ -51,43 +59,54 @@ public class ShortMapTidList implements TidList {
 	@Override
 	public TIntIterable getIterable(int item) {
 		final TShortList l = this.occurrences.get(item);
-		return new TIntIterable() {
+		if (l == null) {
+			throw new IllegalArgumentException("item " + item + " has no tidlist");
+		} else {
+			return new TIntIterable() {
 
-			@Override
-			public TIntIterator iterator() {
-				final TShortIterator iter = l.iterator();
-				return new TIntIterator() {
+				@Override
+				public TIntIterator iterator() {
+					final TShortIterator iter = l.iterator();
+					return new TIntIterator() {
 
-					@Override
-					public void remove() {
-						iter.remove();
-					}
+						@Override
+						public void remove() {
+							throw new UnsupportedOperationException();
+						}
 
-					@Override
-					public boolean hasNext() {
-						return iter.hasNext();
-					}
+						@Override
+						public boolean hasNext() {
+							return iter.hasNext();
+						}
 
-					@Override
-					public int next() {
-						return iter.next();
-					}
-				};
-			}
-		};
+						@Override
+						public int next() {
+							int v = iter.next();
+							if (v >= 0) {
+								return v;
+							} else {
+								return -v + Short.MAX_VALUE;
+							}
+						}
+					};
+				}
+			};
+		}
 	}
 
 	@Override
-	public void addTransaction(final int item, final int transaction) {
+	public void addTransaction(final int item, int transaction) {
 		if (transaction > Short.MAX_VALUE) {
-			throw new IllegalArgumentException(transaction + " too big for a short");
+			transaction = -transaction + Short.MAX_VALUE;
+			if (transaction < Short.MIN_VALUE) {
+				throw new IllegalArgumentException(transaction + " too big for a short");
+			}
 		}
 		TShortList l = this.occurrences.get(item);
 		if (l == null) {
-			l = new TShortArrayList();
-			this.occurrences.put(item, l);
+			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
-		l.add((short) item);
+		l.add((short) transaction);
 	}
 
 }

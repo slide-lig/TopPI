@@ -1,11 +1,24 @@
 package fr.liglab.lcm.internals.transactions;
 
-import java.util.Arrays;
 import java.util.Iterator;
 
 import org.omg.CORBA.IntHolder;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
+
 public class VIntConcatenatedTransactionsList extends TransactionsList {
+	public static boolean compatible(Counters c) {
+		return c.getMaxFrequent() < Integer.MAX_VALUE;
+	}
+
+	public static int getMaxTransId(Counters c) {
+		long l = c.distinctTransactionLengthSum * 5 + c.distinctTransactionsCount * 4 - 1;
+		if (l > Integer.MAX_VALUE) {
+			return Integer.MAX_VALUE;
+		} else {
+			return (int) l;
+		}
+	}
 
 	private byte[] concatenated;
 	private int size;
@@ -93,6 +106,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		pos.value += 4;
 	}
 
+	@SuppressWarnings("unused")
 	private int readInt(IntHolder pos) {
 		int res = readInt(pos.value);
 		pos.value += 4;
@@ -113,13 +127,6 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 				| (concatenated[pos + 3] & 0xFF);
 	}
 
-	// @Override
-	// public String toString() {
-	// return "VIntConcatenatedTransactionsList [concatenated=" +
-	// Arrays.toString(concatenated) + ", size=" + size
-	// + "]";
-	// }
-
 	private void saveIntSpace(IntHolder pos) {
 		pos.value += 4;
 	}
@@ -128,9 +135,8 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		// there is at least 1 byte in a vint, and it is positive
 		int erase = pos - 1;
 		concatenated[erase] = 0;
-		erase--;
 		// all other bytes of the vint are negative, stop when we see a positive
-		for (erase = erase - 1; concatenated[erase] < 0; erase--) {
+		for (erase--; concatenated[erase] < 0; erase--) {
 			concatenated[erase] = 0;
 		}
 	}

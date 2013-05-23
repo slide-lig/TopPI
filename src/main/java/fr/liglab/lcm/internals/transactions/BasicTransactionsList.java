@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.transactions;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
@@ -9,6 +10,13 @@ import java.util.Iterator;
 import java.util.List;
 
 public class BasicTransactionsList extends TransactionsList {
+	public static boolean compatible(Counters c) {
+		return true;
+	}
+
+	public static int getMaxTransId(Counters c) {
+		return c.distinctTransactionsCount - 1;
+	}
 
 	private List<TIntList> transactions = new ArrayList<TIntList>();
 
