@@ -239,8 +239,7 @@ public final class ExplorationStep implements Cloneable {
 		} else {
 			int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
 
-			TransactionsFilteringDecorator filtered = new TransactionsFilteringDecorator(support.iterator(),
-					this.counters.supportCounts, renaming);
+			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			return new Dataset(this.counters, filtered);
 		}
