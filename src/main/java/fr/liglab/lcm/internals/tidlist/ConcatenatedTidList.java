@@ -1,8 +1,10 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import java.util.Arrays;
+
 import gnu.trove.iterator.TIntIterator;
 
-public abstract class ConcatenatedTidList extends TidList {
+public abstract class ConcatenatedTidList extends TidList implements Cloneable {
 
 	protected int[] concatenated;
 
@@ -34,6 +36,13 @@ public abstract class ConcatenatedTidList extends TidList {
 				}
 			};
 		}
+	}
+
+	@Override
+	public TidList clone() {
+		ConcatenatedTidList o = (ConcatenatedTidList) super.clone();
+		o.concatenated = Arrays.copyOf(this.concatenated, this.concatenated.length);
+		return o;
 	}
 
 	@Override

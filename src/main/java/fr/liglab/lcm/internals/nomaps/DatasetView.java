@@ -7,35 +7,40 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 
 /**
- * This class references directly parent's tidList and transactions, but will always intersect 
- * occurrences lists with its own tids. 
- * In other words, it represents a projected dataset without item filtering and occurrence 
+ * This class references directly parent's tidList and transactions, but will
+ * always intersect occurrences lists with its own tids. In other words, it
+ * represents a projected dataset without item filtering and occurrence
  * delivery.
  */
 class DatasetView extends Dataset {
-	
+
 	/**
-	 *  items known to have a 100% support in this dataset
+	 * items known to have a 100% support in this dataset
 	 */
 	protected final int[] ignoreItems;
-	
+
 	protected final TIntIterable tids;
-	
+
 	/**
-	 * This constructor will re-use a transactions collection and ignore some items (ignoredItem 
-	 * and counts' closure)
-	 * @param parent the object containing actual transactions 
-	 * @param counts item counters over viewed transactions
-	 * @param viewed viewed transactions
-	 * @param ignoreItem typically the item on which we're projecting
+	 * This constructor will re-use a transactions collection and ignore some
+	 * items (ignoredItem and counts' closure)
+	 * 
+	 * @param parent
+	 *            the object containing actual transactions
+	 * @param counts
+	 *            item counters over viewed transactions
+	 * @param viewed
+	 *            viewed transactions
+	 * @param ignoreItem
+	 *            typically the item on which we're projecting
 	 */
 	DatasetView(final Dataset parent, final Counters counts, TransactionsIterable viewed, int ignoredItem) {
 		super(parent.transactions, parent.tidLists);
-		
+
 		this.tids = viewed.tids;
 		this.ignoreItems = ItemsetsFactory.extend(counts.closure, ignoredItem, parent.getIgnoredItems());
 	}
-	
+
 	/**
 	 * @return items known to have a 100% support in this dataset
 	 */
@@ -43,10 +48,10 @@ class DatasetView extends Dataset {
 	int[] getIgnoredItems() {
 		return this.ignoreItems;
 	}
-	
+
 	@Override
 	public TransactionsIterable getSupport(int item) {
-		return new TransactionsIterable( new TidlistIterable(buildExtensionTIDs(item)) );
+		return new TransactionsIterable(new TidlistIterable(buildExtensionTIDs(item)));
 	}
 
 	/**
@@ -95,7 +100,7 @@ class DatasetView extends Dataset {
 			}
 		}
 	}
-	
+
 	private class TidlistIterable implements TIntIterable {
 		private final TIntList l;
 

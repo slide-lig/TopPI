@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.transactions;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 import fr.liglab.lcm.internals.nomaps.Counters;
@@ -19,6 +20,13 @@ public class ShortConcatenatedTransactionsList extends TransactionsList {
 
 	public ShortConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
 		this.concatenated = new short[transactionsLength + 4 * nbTransactions];
+	}
+
+	@Override
+	public TransactionsList clone() {
+		ShortConcatenatedTransactionsList o = (ShortConcatenatedTransactionsList) super.clone();
+		o.concatenated = Arrays.copyOf(this.concatenated, this.concatenated.length);
+		return o;
 	}
 
 	private int readInt(int pos) {

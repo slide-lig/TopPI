@@ -1,9 +1,10 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import java.util.Arrays;
 
 public class ConsecutiveItemsShortConcatenatedTidList extends ShortConcatenatedTidList {
 
-	private final int[] startPositions;
+	private int[] startPositions;
 
 	public ConsecutiveItemsShortConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
@@ -24,4 +25,10 @@ public class ConsecutiveItemsShortConcatenatedTidList extends ShortConcatenatedT
 		}
 	}
 
+	@Override
+	public TidList clone() {
+		ConsecutiveItemsShortConcatenatedTidList o = (ConsecutiveItemsShortConcatenatedTidList) super.clone();
+		o.startPositions = Arrays.copyOf(this.startPositions, this.startPositions.length);
+		return o;
+	}
 }

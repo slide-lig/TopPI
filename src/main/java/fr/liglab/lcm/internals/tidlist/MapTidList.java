@@ -2,6 +2,7 @@ package fr.liglab.lcm.internals.tidlist;
 
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
@@ -14,7 +15,7 @@ public class MapTidList extends TidList {
 		return true;
 	}
 
-	private final TIntObjectMap<TIntList> occurrences = new TIntObjectHashMap<TIntList>();
+	private TIntObjectMap<TIntList> occurrences = new TIntObjectHashMap<TIntList>();
 
 	public MapTidList(final int[] supports) {
 		for (int i = 0; i < supports.length; i++) {
@@ -31,6 +32,18 @@ public class MapTidList extends TidList {
 			iter.advance();
 			this.occurrences.put(iter.key(), new TIntArrayList(iter.value()));
 		}
+	}
+
+	@Override
+	public TidList clone() {
+		MapTidList o = (MapTidList) super.clone();
+		o.occurrences = new TIntObjectHashMap<TIntList>(this.occurrences.size());
+		TIntObjectIterator<TIntList> iter = this.occurrences.iterator();
+		while (iter.hasNext()) {
+			iter.advance();
+			o.occurrences.put(iter.key(), new TIntArrayList(iter.value()));
+		}
+		return o;
 	}
 
 	@Override

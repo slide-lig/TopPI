@@ -6,7 +6,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 
 public class RandomItemsShortConcatenatedTidList extends ShortConcatenatedTidList {
 
-	private final TIntIntMap startPositions;
+	private TIntIntMap startPositions;
 
 	public RandomItemsShortConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
@@ -16,6 +16,13 @@ public class RandomItemsShortConcatenatedTidList extends ShortConcatenatedTidLis
 			startPos += (1 + lengths[i]);
 		}
 		this.concatenated = new short[startPos];
+	}
+
+	@Override
+	public TidList clone() {
+		RandomItemsShortConcatenatedTidList o = (RandomItemsShortConcatenatedTidList) super.clone();
+		o.startPositions = new TIntIntHashMap(this.startPositions);
+		return o;
 	}
 
 	@Override

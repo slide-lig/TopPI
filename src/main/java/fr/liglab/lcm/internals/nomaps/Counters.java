@@ -25,7 +25,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
  * if you need to rename items in a future representation. You *MUST* handle
  * renaming after instantiation. See field reverseRenaming.
  */
-public final class Counters {
+public final class Counters implements Cloneable {
 
 	/**
 	 * Items occuring less than minSup times will be considered infrequent
@@ -308,6 +308,37 @@ public final class Counters {
 		this.compactedArrays = true;
 		this.supportCountsSum = remainingSupportsSum;
 		this.distinctTransactionLengthSum = remainingSupportsSum;
+	}
+
+	private Counters(int minSupport, int transactionsCount, int distinctTransactionsCount,
+			int distinctTransactionLengthSum, int[] supportCounts, int supportCountsSum,
+			int[] distinctTransactionsCounts, int[] closure, int nbFrequents, int maxFrequent, int[] reverseRenaming,
+			int[] renaming, boolean compactedArrays, int maxCandidate) {
+		super();
+		this.minSupport = minSupport;
+		this.transactionsCount = transactionsCount;
+		this.distinctTransactionsCount = distinctTransactionsCount;
+		this.distinctTransactionLengthSum = distinctTransactionLengthSum;
+		this.supportCounts = supportCounts;
+		this.supportCountsSum = supportCountsSum;
+		this.distinctTransactionsCounts = distinctTransactionsCounts;
+		this.closure = closure;
+		this.nbFrequents = nbFrequents;
+		this.maxFrequent = maxFrequent;
+		this.reverseRenaming = reverseRenaming;
+		this.renaming = renaming;
+		this.compactedArrays = compactedArrays;
+		this.maxCandidate = maxCandidate;
+	}
+
+	@Override
+	protected Counters clone() {
+		return new Counters(minSupport, transactionsCount, distinctTransactionsCount, distinctTransactionLengthSum,
+				Arrays.copyOf(supportCounts, supportCounts.length), supportCountsSum, Arrays.copyOf(
+						distinctTransactionsCounts, distinctTransactionsCounts.length), Arrays.copyOf(closure,
+						closure.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
+						reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), compactedArrays,
+				maxCandidate);
 	}
 
 	/**

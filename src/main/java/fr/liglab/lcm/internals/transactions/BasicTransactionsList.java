@@ -21,6 +21,16 @@ public class BasicTransactionsList extends TransactionsList {
 	private List<TIntList> transactions = new ArrayList<TIntList>();
 
 	@Override
+	public TransactionsList clone() {
+		BasicTransactionsList o = (BasicTransactionsList) super.clone();
+		o.transactions = new ArrayList<TIntList>(this.transactions.size());
+		for (TIntList l : this.transactions) {
+			o.transactions.add(new TIntArrayList(l));
+		}
+		return o;
+	}
+
+	@Override
 	public int size() {
 		return this.transactions.size();
 	}

@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.transactions;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.omg.CORBA.IntHolder;
@@ -36,6 +37,13 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 
 	public VIntConcatenatedTransactionsList(int size) {
 		this.concatenated = new byte[size];
+	}
+
+	@Override
+	public TransactionsList clone() {
+		VIntConcatenatedTransactionsList o = (VIntConcatenatedTransactionsList) super.clone();
+		o.concatenated = Arrays.copyOf(this.concatenated, this.concatenated.length);
+		return o;
 	}
 
 	@Override

@@ -1,11 +1,13 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import java.util.Arrays;
+
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.map.TIntIntMap;
 
 public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
 
-	private final int[] startPositions;
+	private int[] startPositions;
 
 	public ConsecutiveItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
@@ -29,6 +31,13 @@ public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
 			startPos += (1 + iter.value());
 		}
 		this.concatenated = new int[startPos];
+	}
+
+	@Override
+	public TidList clone() {
+		ConsecutiveItemsConcatenatedTidList o = (ConsecutiveItemsConcatenatedTidList) super.clone();
+		o.startPositions = Arrays.copyOf(this.startPositions, this.startPositions.length);
+		return o;
 	}
 
 	@Override

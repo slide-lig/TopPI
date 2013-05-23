@@ -16,92 +16,99 @@ import gnu.trove.iterator.TIntIterator;
 /**
  * Stores transactions and does occurrence delivery
  */
-public class Dataset {
-	
+public class Dataset implements Cloneable {
+
 	protected final TransactionsList transactions;
-	
+
 	/**
 	 * frequent item => array of occurrences indexes in "concatenated"
 	 * Transactions are added in the same order in all occurrences-arrays.
 	 */
 	protected final TidList tidLists;
-	
+
 	protected Dataset(TransactionsList transactions, TidList occurrences) {
 		this.transactions = transactions;
 		this.tidLists = occurrences;
 	}
-	
+
 	/**
 	 * @param counters
-	 * @param transactions assumed to be filtered according to counters
+	 * @param transactions
+	 *            assumed to be filtered according to counters
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
-		this.transactions = new ConcatenatedTransactionsList(
-				counters.distinctTransactionLengthSum, counters.distinctTransactionsCount);
-		
+		this.transactions = new ConcatenatedTransactionsList(counters.distinctTransactionLengthSum,
+				counters.distinctTransactionsCount);
+
 		this.tidLists = new ConsecutiveItemsConcatenatedTidList(counters.supportCounts);
-		
+
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
-			
+
 			if (transaction.hasNext()) {
 				final int transId = writer.beginTransaction(transaction.getTransactionSupport());
-				
+
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
 					this.tidLists.addTransaction(item, transId);
 				}
-				
+
 				writer.endTransaction();
 			}
 		}
 	}
-	
+
+	@Override
+	protected Dataset clone() {
+		return new Dataset(this.transactions.clone(), this.tidLists.clone());
+	}
+
 	/**
-	 * In this implementation the inputted transactions are assumed to be filtered, therefore it 
-	 * returns null. However this is not true for subclasses.
+	 * In this implementation the inputted transactions are assumed to be
+	 * filtered, therefore it returns null. However this is not true for
+	 * subclasses.
+	 * 
 	 * @return items known to have a 100% support in this dataset
 	 */
 	int[] getIgnoredItems() {
-		return null; // we assume this class always receives 
+		return null; // we assume this class always receives
 	}
-	
+
 	/**
-	 * @return how many transactions (ignoring their weight) are stored behind this dataset
+	 * @return how many transactions (ignoring their weight) are stored behind
+	 *         this dataset
 	 */
 	int getStoredTransactionsCount() {
 		return this.transactions.size();
 	}
-	
-	
-	
+
 	public TransactionsIterable getSupport(int item) {
 		return new TransactionsIterable(this.tidLists.getIterable(item));
 	}
-	
+
 	public final class TransactionsIterable implements Iterable<TransactionReader> {
 		final TIntIterable tids;
-		
+
 		public TransactionsIterable(TIntIterable tidList) {
 			this.tids = tidList;
 		}
-		
+
 		@Override
 		public Iterator<TransactionReader> iterator() {
 			return new TransactionsIterator(this.tids.iterator());
 		}
 	}
-	
+
 	protected final class TransactionsIterator implements Iterator<TransactionReader> {
-		
+
 		protected final TIntIterator it;
-		
+
 		public TransactionsIterator(TIntIterator tids) {
 			this.it = tids;
 		}
-		
+
 		@Override
 		public void remove() {
 			throw new NotImplementedException();
@@ -111,7 +118,7 @@ public class Dataset {
 		public TransactionReader next() {
 			return transactions.get(this.it.next());
 		}
-		
+
 		@Override
 		public boolean hasNext() {
 			return this.it.hasNext();

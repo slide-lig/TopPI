@@ -12,6 +12,16 @@ import java.util.List;
  */
 public abstract class TransactionsList implements Iterable<IterableTransaction> {
 
+	@Override
+	public TransactionsList clone() {
+		try {
+			return (TransactionsList) super.clone();
+		} catch (CloneNotSupportedException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
 	abstract public TransactionIterator get(final int transaction);
 
 	abstract public TransactionsWriter getWriter();
@@ -225,8 +235,8 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		// freqs[Short.MAX_VALUE * 2 - 1] = 2;
 		// freqs[Short.MAX_VALUE * 2] = 2;
 		// TransactionsList tl = new VIntConcatenatedTransactionsList(3, freqs);
-		 TransactionsList tl = new ShortConcatenatedTransactionsList(16, 3);
-//		TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
+		TransactionsList tl = new ShortConcatenatedTransactionsList(16, 3);
+		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
 		TransactionsWriter w = tl.getWriter();
 		w.beginTransaction(Short.MAX_VALUE + 3);
 		w.addItem(1);

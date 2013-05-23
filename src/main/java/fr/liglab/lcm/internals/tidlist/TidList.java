@@ -2,7 +2,7 @@ package fr.liglab.lcm.internals.tidlist;
 
 import gnu.trove.iterator.TIntIterator;
 
-public abstract class TidList {
+public abstract class TidList implements Cloneable {
 
 	// FIXME - is it useless ?
 	abstract public TIntIterator get(final int item);
@@ -33,6 +33,16 @@ public abstract class TidList {
 		}
 		sb.append("]");
 		return sb.toString();
+	}
+
+	@Override
+	public TidList clone() {
+		try {
+			return (TidList) super.clone();
+		} catch (CloneNotSupportedException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	public static void main(String[] args) {

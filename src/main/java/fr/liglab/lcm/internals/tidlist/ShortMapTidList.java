@@ -1,6 +1,7 @@
 package fr.liglab.lcm.internals.tidlist;
 
 import gnu.trove.iterator.TIntIterator;
+import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.iterator.TShortIterator;
 import gnu.trove.list.TShortList;
 import gnu.trove.list.array.TShortArrayList;
@@ -14,7 +15,7 @@ public class ShortMapTidList extends TidList {
 		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
 	}
 
-	private final TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
+	private TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
 
 	public ShortMapTidList(final int[] lengths) {
 		for (int i = 0; i < lengths.length; i++) {
@@ -22,6 +23,18 @@ public class ShortMapTidList extends TidList {
 				this.occurrences.put(i, new TShortArrayList(lengths[i]));
 			}
 		}
+	}
+
+	@Override
+	public TidList clone() {
+		ShortMapTidList o = (ShortMapTidList) super.clone();
+		o.occurrences = new TIntObjectHashMap<TShortList>(this.occurrences.size());
+		TIntObjectIterator<TShortList> iter = this.occurrences.iterator();
+		while (iter.hasNext()) {
+			iter.advance();
+			o.occurrences.put(iter.key(), new TShortArrayList(iter.value()));
+		}
+		return o;
 	}
 
 	@Override
