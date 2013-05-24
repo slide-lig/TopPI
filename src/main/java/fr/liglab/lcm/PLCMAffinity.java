@@ -25,7 +25,6 @@ import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.StdOutCollector;
-import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 
@@ -50,13 +49,38 @@ public class PLCMAffinity {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
 		this.collector = patternsCollector;
-		this.threads = new ArrayList<PLCMThread>(nbThreads);
-		for (int i = 0; i < nbThreads; i++) {
-			TIntList l = new TIntArrayList(1);
-			l.add(i);
-			this.threads.add(new PLCMThread(l));
+		int totalSockets = AffinityLock.cpuLayout().sockets();
+		int corePerSocket = AffinityLock.cpuLayout().coresPerSocket();
+		int usedSockets = nbThreads / corePerSocket;
+		if (nbThreads % corePerSocket != 0) {
+			usedSockets++;
 		}
-
+		if (usedSockets > totalSockets) {
+			throw new IllegalArgumentException("nbThreads " + nbThreads + " seems to be too much for " + totalSockets
+					+ " sockets, requires " + usedSockets);
+		}
+		System.out.println("CPU layout\n" + AffinityLock.cpuLayout());
+		System.out.println("using " + usedSockets + " socket(s) with " + corePerSocket + " threads per socket");
+		int remainingThreads = nbThreads;
+		List<List<PLCMThread>> threadsBySocket = new ArrayList<List<PLCMThread>>(usedSockets);
+		for (int s = 0; s < usedSockets; s++) {
+			System.out.println("creating threads for socket " + s);
+			List<PLCMThread> l = new ArrayList<PLCMThread>(corePerSocket);
+			threadsBySocket.add(l);
+			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, remainingThreads--) {
+				if (c == 0) {
+					l.add(new PLCMThread(al));
+				} else {
+					l.add(new PLCMThread(al.acquireLock(AffinityStrategies.SAME_SOCKET)));
+				}
+			}
+		}
+		this.threads = new ArrayList<PLCMThread>(nbThreads);
+		for (List<PLCMThread> l : threadsBySocket) {
+			this.threads.addAll(l);
+		}
+		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
+		System.exit(-1);
 		this.globalCounters = new long[PLCMCounters.values().length];
 	}
 
@@ -159,11 +183,23 @@ public class PLCMAffinity {
 		private final ReadWriteLock lock;
 		private final List<ExplorationStep> stackedJobs;
 		private final TIntList id;
+		private final AffinityLock al;
 
-		public PLCMThread(final TIntList id) {
-			super("PLCMThread" + id);
+		public PLCMThread(PLCMThread refThread, boolean sameSocket) {
+			super();
+			if (refThread == null) {
+				al = AffinityLock.acquireCore(true);
+			} else if(sameSocket){
+				al = refThread.al.acquireLock(AffinityStrategies.SAME_SOCKET, AffinityStrategies.DIFFERENT_CORE);
+				al.
+			}
+			this.id = new TIntArrayList(3);
+			this.id.add(al.cpuId());
+			this.id.add(AffinityLock.cpuLayout().coreId(al.cpuId()));
+			this.id.add(AffinityLock.cpuLayout().socketId(al.cpuId()));
+			this.setName("PLCMThread " + id);
+			System.out.println("created thread " + this);
 			this.stackedJobs = new ArrayList<ExplorationStep>();
-			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
 
 			this.counters = new AtomicLong[PLCMCounters.values().length];
@@ -176,17 +212,6 @@ public class PLCMAffinity {
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(initState);
 			this.lock.writeLock().unlock();
-		}
-
-		@Override
-		public long getId() {
-			long id = 0;
-			TIntIterator iter = this.id.iterator();
-			while (iter.hasNext()) {
-				id *= 10;
-				id += iter.next();
-			}
-			return id;
 		}
 
 		@Override
@@ -236,26 +261,6 @@ public class PLCMAffinity {
 	}
 
 	public static void main(String[] args) throws InterruptedException {
-		AffinityLock al = AffinityLock.acquireLock();
-		try {
-			// find a cpu on a different socket, otherwise a different core.
-			AffinityLock readerLock = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET,
-					AffinityStrategies.DIFFERENT_CORE);
-			new Thread(new SleepRunnable(readerLock, false), "reader").start();
-			// find a cpu on the same core, or the same socket, or any free cpu.
-			AffinityLock writerLock = readerLock.acquireLock(SAME_CORE, SAME_SOCKET, ANY);
-			new Thread(new SleepRunnable(writerLock, false), "writer").start();
-			Thread.sleep(200);
-		} finally {
-			al.release();
-		}
-		// allocate a whole core to the engine so it doesn't have to compete for
-		// resources.
-		al = AffinityLock.acquireCore(false);
-		new Thread(new SleepRunnable(al, true), "engine").start();
-		Thread.sleep(200);
-		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
-		System.exit(-1);
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
 

@@ -30,6 +30,14 @@ public final class ExplorationStep implements Cloneable {
 	static final double VIEW_SUPPORT_THRESHOLD = 0.15;
 
 	/**
+	 * When nbTransactions/nbFrequents goes above this threshold, we add a first-parent test 
+	 * and compress
+	 * 
+	 * TODO : test also 10, and others. Test on kosarak.
+	 */
+	static final int DENSE_MODE_THRESHOLD = 100;
+	
+	/**
 	 * closure of parent's pattern UNION extension
 	 */
 	public final int[] pattern;
@@ -57,13 +65,7 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	private final TIntIntHashMap failedFPTests;
 
-	/**
-	 * When the average transaction length is above
-	 * LONG_TRANSACTION_MODE_THRESHOLD, we prepend a FirstParentTest to selector
-	 * chain and set this flag (for self and all substeps) FIXME could be more
-	 * elegant with introspection ?
-	 */
-	private final boolean longTransactionsMode;
+	private final boolean predictiveFPTestMode;
 
 	/**
 	 * Start exploration on a dataset contained in a file.
@@ -76,7 +78,7 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep(int minimumSupport, String path) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
-		this.longTransactionsMode = false;
+		this.predictiveFPTestMode = false;
 
 		FileReader reader = new FileReader(path);
 		this.counters = new Counters(minimumSupport, reader);
@@ -92,7 +94,7 @@ public final class ExplorationStep implements Cloneable {
 	}
 
 	private ExplorationStep(int[] pattern, int core_item, Dataset dataset, Counters counters, Selector selectChain,
-			FrequentsIterator candidates, TIntIntHashMap failedFPTests, boolean longTransactionsMode) {
+			FrequentsIterator candidates, TIntIntHashMap failedFPTests, boolean predictiveFPTestMode) {
 		super();
 		this.pattern = pattern;
 		this.core_item = core_item;
@@ -101,7 +103,7 @@ public final class ExplorationStep implements Cloneable {
 		this.selectChain = selectChain;
 		this.candidates = candidates;
 		this.failedFPTests = failedFPTests;
-		this.longTransactionsMode = longTransactionsMode;
+		this.predictiveFPTestMode = predictiveFPTestMode;
 	}
 
 	/**
@@ -190,7 +192,7 @@ public final class ExplorationStep implements Cloneable {
 			this.failedFPTests = null;
 			this.selectChain = null;
 			this.dataset = null;
-			this.longTransactionsMode = false;
+			this.predictiveFPTestMode = false;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
 
@@ -200,48 +202,52 @@ public final class ExplorationStep implements Cloneable {
 				this.selectChain = parent.selectChain.copy();
 			}
 
-			// !\\ From here, order is important
+			// ! \\ From here, order is important
 
-			if (parent.longTransactionsMode) {
-				this.longTransactionsMode = true;
+			final boolean isDense = (candidateCounts.distinctTransactionsCount / 
+					candidateCounts.nbFrequents) > DENSE_MODE_THRESHOLD;
+			
+			if (parent.predictiveFPTestMode) {
+				this.predictiveFPTestMode = true;
 			} else {
 				final int averageLen = candidateCounts.distinctTransactionLengthSum
 						/ candidateCounts.distinctTransactionsCount;
-				this.longTransactionsMode = (averageLen) > LONG_TRANSACTION_MODE_THRESHOLD;
-
-				if (this.longTransactionsMode) {
+				
+				this.predictiveFPTestMode = averageLen > LONG_TRANSACTION_MODE_THRESHOLD || isDense;
+				if (this.predictiveFPTestMode) {
 					this.selectChain = new FirstParentTest(this.selectChain);
 				}
 			}
 
 			// indeed, instantiateDataset is influenced by longTransactionsMode
 
-			this.dataset = instanciateDataset(parent, support);
+			this.dataset = instanciateDataset(parent, support, isDense);
 
-			// and intanciateDataset may choose to trigger some renaming in
-			// couters
+			// and intanciateDataset may choose to trigger some renaming in counters
 
 			this.candidates = this.counters.getExtensionsIterator();
 
 		}
 	}
-
-	/**
-	 * @param candidateCounts
-	 * @param extension
-	 */
-	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
+	
+	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support, boolean doCompression) {
 		double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
-		if (!this.longTransactionsMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
+		if (!this.predictiveFPTestMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
 			int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
 
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
-			return new Dataset(this.counters, filtered);
+			Dataset dataset = new Dataset(this.counters, filtered);
+			
+			if (doCompression) {
+				dataset.compress(this.core_item);
+			}
+			
+			return dataset;
 		}
 	}
 
@@ -271,6 +277,6 @@ public final class ExplorationStep implements Cloneable {
 
 	public ExplorationStep copy() {
 		return new ExplorationStep(pattern, core_item, dataset.clone(), counters.clone(), selectChain, candidates,
-				failedFPTests, longTransactionsMode);
+				failedFPTests, predictiveFPTestMode);
 	}
 }
