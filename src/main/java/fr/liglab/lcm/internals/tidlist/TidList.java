@@ -55,7 +55,7 @@ public abstract class TidList implements Cloneable {
 		freqs[Short.MAX_VALUE * 2 - 2] = 1;
 		freqs[Short.MAX_VALUE * 2 - 1] = 2;
 		freqs[Short.MAX_VALUE * 2] = 2;
-		TidList tl = new ShortMapTidList(freqs);
+		TidList tl = new IntRandomItemsConcatenatedTidList(freqs);
 		tl.addTransaction(1, 1);
 		tl.addTransaction(1, Short.MAX_VALUE * 2 - 2);
 		tl.addTransaction(1, Short.MAX_VALUE * 2);

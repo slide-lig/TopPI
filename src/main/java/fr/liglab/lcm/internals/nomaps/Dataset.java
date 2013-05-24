@@ -7,12 +7,12 @@ import org.apache.commons.lang.NotImplementedException;
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.TransactionReader;
-import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsConcatenatedTidList;
-import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsShortConcatenatedTidList;
+import fr.liglab.lcm.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
+import fr.liglab.lcm.internals.tidlist.ShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
-import fr.liglab.lcm.internals.transactions.ConcatenatedTransactionsList;
-import fr.liglab.lcm.internals.transactions.ShortConcatenatedTransactionsList;
+import fr.liglab.lcm.internals.transactions.IntIndexedTransactionsList;
+import fr.liglab.lcm.internals.transactions.ShortIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsWriter;
 import gnu.trove.iterator.TIntIterator;
@@ -44,22 +44,20 @@ public class Dataset implements Cloneable {
 
 		int maxTransId;
 
-		if (ShortConcatenatedTransactionsList.compatible(counters)) {
-			this.transactions = new ShortConcatenatedTransactionsList(counters.distinctTransactionLengthSum,
-					counters.distinctTransactionsCount);
+		if (ShortIndexedTransactionsList.compatible(counters)) {
+			this.transactions = new ShortIndexedTransactionsList(counters);
 
-			maxTransId = ShortConcatenatedTransactionsList.getMaxTransId(counters);
+			maxTransId = ShortIndexedTransactionsList.getMaxTransId(counters);
 		} else {
-			this.transactions = new ConcatenatedTransactionsList(counters.distinctTransactionLengthSum,
-					counters.distinctTransactionsCount);
+			this.transactions = new IntIndexedTransactionsList(counters);
 
-			maxTransId = ConcatenatedTransactionsList.getMaxTransId(counters);
+			maxTransId = IntIndexedTransactionsList.getMaxTransId(counters);
 		}
 
-		if (ConsecutiveItemsShortConcatenatedTidList.compatible(maxTransId)) {
-			this.tidLists = new ConsecutiveItemsShortConcatenatedTidList(counters.supportCounts);
+		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
+			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters);
 		} else {
-			this.tidLists = new ConsecutiveItemsConcatenatedTidList(counters.supportCounts);
+			this.tidLists = new IntConsecutiveItemsConcatenatedTidList(counters);
 		}
 
 		TransactionsWriter writer = this.transactions.getWriter();

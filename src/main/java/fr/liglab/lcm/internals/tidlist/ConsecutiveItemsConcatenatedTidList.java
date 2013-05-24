@@ -1,14 +1,13 @@
 package fr.liglab.lcm.internals.tidlist;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
-import gnu.trove.iterator.TIntIntIterator;
-import gnu.trove.map.TIntIntMap;
-
 import java.util.Arrays;
 
-public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
+import fr.liglab.lcm.internals.nomaps.Counters;
+import gnu.trove.iterator.TIntIterator;
 
-	private int[] startPositions;
+public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
+
+	private int[] indexAndFreqs;
 
 	public ConsecutiveItemsConcatenatedTidList(Counters c) {
 		this(c.distinctTransactionsCounts);
@@ -16,42 +15,79 @@ public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	public ConsecutiveItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
-		this.startPositions = new int[lengths.length];
+		this.indexAndFreqs = new int[lengths.length * 2];
 		for (int i = 0; i < lengths.length; i++) {
 			if (lengths[i] > 0) {
-				this.startPositions[i] = startPos;
-				startPos += (1 + lengths[i]);
+				this.indexAndFreqs[i * 2] = startPos;
+				startPos += lengths[i];
+			} else {
+				this.indexAndFreqs[i * 2] = -1;
 			}
 		}
-		this.concatenated = new int[startPos];
+		this.allocateArray(startPos);
 	}
 
-	public ConsecutiveItemsConcatenatedTidList(final TIntIntMap lengths) {
-		int startPos = 0;
-		this.startPositions = new int[lengths.size()];
-		TIntIntIterator iter = lengths.iterator();
-		while (iter.hasNext()) {
-			iter.advance();
-			this.startPositions[iter.key()] = startPos;
-			startPos += (1 + iter.value());
-		}
-		this.concatenated = new int[startPos];
-	}
+	abstract void allocateArray(int size);
 
 	@Override
 	public TidList clone() {
 		ConsecutiveItemsConcatenatedTidList o = (ConsecutiveItemsConcatenatedTidList) super.clone();
-		o.startPositions = Arrays.copyOf(this.startPositions, this.startPositions.length);
+		o.indexAndFreqs = Arrays.copyOf(this.indexAndFreqs, this.indexAndFreqs.length);
 		return o;
 	}
 
 	@Override
-	protected int getPosition(final int item) {
-		if (item >= this.startPositions.length) {
-			return -1;
-		} else {
-			return this.startPositions[item];
+	public TIntIterator get(final int item) {
+		if (item > this.indexAndFreqs.length / 2 || this.indexAndFreqs[item * 2] == -1) {
+			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
+		final int startPos = this.indexAndFreqs[item * 2];
+		final int length = this.indexAndFreqs[item * 2 + 1];
+		return new TIntIterator() {
+			int index = 0;
+
+			@Override
+			public void remove() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public boolean hasNext() {
+				return this.index < length;
+			}
+
+			@Override
+			public int next() {
+				int res = read(startPos + index);
+				this.index++;
+				return res;
+			}
+		};
 	}
 
+	@Override
+	public TIntIterable getIterable(final int item) {
+		return new TIntIterable() {
+
+			@Override
+			public TIntIterator iterator() {
+				return get(item);
+			}
+		};
+	}
+
+	@Override
+	public void addTransaction(int item, int transaction) {
+		if (item > this.indexAndFreqs.length / 2 || this.indexAndFreqs[item * 2] == -1) {
+			throw new IllegalArgumentException("item " + item + " has no tidlist");
+		}
+		int start = this.indexAndFreqs[item * 2];
+		int index = this.indexAndFreqs[item * 2 + 1];
+		this.write(start + index, transaction);
+		this.indexAndFreqs[item * 2 + 1]++;
+	}
+
+	abstract void write(int position, int transaction);
+
+	abstract int read(int position);
 }
