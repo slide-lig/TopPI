@@ -14,6 +14,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
+import com.higherfrequencytrading.affinity.AffinityLock;
+import com.higherfrequencytrading.affinity.AffinityStrategies;
+
 import fr.liglab.lcm.internals.nomaps.ExplorationStep;
 import fr.liglab.lcm.internals.nomaps.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
@@ -233,6 +236,26 @@ public class PLCMAffinity {
 	}
 
 	public static void main(String[] args) throws InterruptedException {
+		AffinityLock al = AffinityLock.acquireLock();
+		try {
+			// find a cpu on a different socket, otherwise a different core.
+			AffinityLock readerLock = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET,
+					AffinityStrategies.DIFFERENT_CORE);
+			new Thread(new SleepRunnable(readerLock, false), "reader").start();
+			// find a cpu on the same core, or the same socket, or any free cpu.
+			AffinityLock writerLock = readerLock.acquireLock(SAME_CORE, SAME_SOCKET, ANY);
+			new Thread(new SleepRunnable(writerLock, false), "writer").start();
+			Thread.sleep(200);
+		} finally {
+			al.release();
+		}
+		// allocate a whole core to the engine so it doesn't have to compete for
+		// resources.
+		al = AffinityLock.acquireCore(false);
+		new Thread(new SleepRunnable(al, true), "engine").start();
+		Thread.sleep(200);
+		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
+		System.exit(-1);
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
 
@@ -254,6 +277,26 @@ public class PLCMAffinity {
 			}
 		} catch (ParseException e) {
 			printMan(options);
+		}
+	}
+
+	static class SleepRunnable implements Runnable {
+		private final AffinityLock affinityLock;
+		private final boolean wholeCore;
+
+		SleepRunnable(AffinityLock affinityLock, boolean wholeCore) {
+			this.affinityLock = affinityLock;
+			this.wholeCore = wholeCore;
+		}
+
+		public void run() {
+			affinityLock.bind(wholeCore);
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+			} finally {
+				affinityLock.release();
+			}
 		}
 	}
 

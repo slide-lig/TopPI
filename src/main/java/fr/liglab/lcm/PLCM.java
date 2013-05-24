@@ -3,7 +3,6 @@ package fr.liglab.lcm;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -23,8 +22,6 @@ import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.StdOutCollector;
 
-
-
 /**
  * LCM implementation, based on UnoAUA04 :
  * "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
@@ -34,9 +31,9 @@ public class PLCM {
 	private final List<PLCMThread> threads;
 
 	private final PatternsCollector collector;
-	
+
 	private final long[] globalCounters;
-	
+
 	public PLCM(PatternsCollector patternsCollector) {
 		this(patternsCollector, Runtime.getRuntime().availableProcessors());
 	}
@@ -50,14 +47,14 @@ public class PLCM {
 		for (int i = 0; i < nbThreads; i++) {
 			this.threads.add(new PLCMThread(i));
 		}
-		
+
 		this.globalCounters = new long[PLCMCounters.values().length];
 	}
 
 	public final void collect(int support, int[] pattern) {
 		this.collector.collect(support, pattern);
 	}
-	
+
 	/**
 	 * Initial invocation
 	 */
@@ -65,21 +62,17 @@ public class PLCM {
 		if (initState.pattern.length > 0) {
 			collector.collect(initState.counters.transactionsCount, initState.pattern);
 		}
-		
+
 		this.threads.get(0).init(initState);
 		for (PLCMThread t : this.threads) {
 			t.start();
 		}
-		
+
 		for (PLCMThread t : this.threads) {
 			try {
 				t.join();
-				
-				synchronized (this.globalCounters) {
-					for (int i = 0; i < t.counters.length; i++) {
-						this.globalCounters[i] += t.counters[i].get();
-					}
-					
+				for (int i = 0; i < t.counters.length; i++) {
+					this.globalCounters[i] += t.counters[i];
 				}
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
@@ -89,22 +82,22 @@ public class PLCM {
 
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		
+
 		builder.append("PLCM exploration (");
 		builder.append(this.threads.size());
 		builder.append(" threads)");
-		
+
 		PLCMCounters[] counters = PLCMCounters.values();
-		
+
 		for (int i = 0; i < this.globalCounters.length; i++) {
 			PLCMCounters counter = counters[i];
-			
+
 			builder.append(", ");
 			builder.append(counter.toString());
 			builder.append(':');
 			builder.append(this.globalCounters[i]);
 		}
-		
+
 		return builder.toString();
 	}
 
@@ -118,9 +111,9 @@ public class PLCM {
 					if (!t.stackedJobs.isEmpty()) {
 						ExplorationStep sj = t.stackedJobs.get(0);
 						t.lock.readLock().unlock();
-						
+
 						ExplorationStep next = sj.next();
-						
+
 						if (next != null) {
 							return next;
 						}
@@ -132,22 +125,17 @@ public class PLCM {
 		}
 		return null;
 	}
-	
-	
+
 	/**
-	 * Some classes in EnumerationStep may declare counters here. see references to PLCMThread.counters
+	 * Some classes in EnumerationStep may declare counters here. see references
+	 * to PLCMThread.counters
 	 */
 	public enum PLCMCounters {
-		ExplorationStepInstances,
-		ExplorationStepCatchedWrongFirstParents,
-		FirstParentTestRejections,
-		TopKRejections,
+		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections,
 	}
-	
-	
 
 	public class PLCMThread extends Thread {
-		public final AtomicLong[] counters;
+		public final long[] counters;
 		private final ReadWriteLock lock;
 		private final List<ExplorationStep> stackedJobs;
 		private final int id;
@@ -157,13 +145,9 @@ public class PLCM {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
-			
-			this.counters = new AtomicLong[PLCMCounters.values().length];
-			for (int i = 0; i < this.counters.length; i++) {
-				this.counters[i] = new AtomicLong();
-			}
+			this.counters = new long[PLCMCounters.values().length];
 		}
-		
+
 		private void init(ExplorationStep initState) {
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(initState);
@@ -177,30 +161,31 @@ public class PLCM {
 
 		@Override
 		public void run() {
-			// no need to readlock, this thread is the only one that can do writes
+			// no need to readlock, this thread is the only one that can do
+			// writes
 			boolean exit = false;
 			while (!exit) {
 				ExplorationStep sj = null;
 				if (!this.stackedJobs.isEmpty()) {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
-					
+
 					ExplorationStep extended = sj.next();
 					// iterator is finished, remove it from the stack
 					if (extended == null) {
 						this.lock.writeLock().lock();
-						
+
 						this.stackedJobs.remove(this.stackedJobs.size() - 1);
-						this.counters[PLCMCounters.ExplorationStepInstances.ordinal()]
-								.incrementAndGet();
-						this.counters[PLCMCounters.ExplorationStepCatchedWrongFirstParents.ordinal()]
-								.addAndGet(sj.getCatchedWrongFirstParentCount());
-						
+						this.counters[PLCMCounters.ExplorationStepInstances.ordinal()]++;
+						this.counters[PLCMCounters.ExplorationStepCatchedWrongFirstParents.ordinal()] += sj
+								.getCatchedWrongFirstParentCount();
+
 						this.lock.writeLock().unlock();
 					} else {
 						this.lcm(extended);
 					}
-					
-				} else { // our list was empty, we should steal from another thread
+
+				} else { // our list was empty, we should steal from another
+							// thread
 					ExplorationStep stolj = stealJob(this.id);
 					if (stolj == null) {
 						exit = true;
@@ -213,25 +198,23 @@ public class PLCM {
 
 		private void lcm(ExplorationStep state) {
 			collect(state.counters.transactionsCount, state.pattern);
-			
+
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();
 		}
 	}
-	
-	
-	
 
-	
-	
 	public static void main(String[] args) {
 
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
 
 		options.addOption("h", false, "Show help");
-		options.addOption("b", false, "(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
+		options.addOption(
+				"b",
+				false,
+				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
 
@@ -260,19 +243,19 @@ public class PLCM {
 	public static void standalone(CommandLine cmd) {
 		String[] args = cmd.getArgs();
 		int minsup = Integer.parseInt(args[1]);
-		
+
 		long time = System.currentTimeMillis();
 		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
 		time = System.currentTimeMillis() - time;
 		System.err.println("Dataset loaded in " + time + "ms");
-		
+
 		String outputPath = null;
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
-		
+
 		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState);
-		
+
 		PLCM miner;
 		if (cmd.hasOption('t')) {
 			int nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
@@ -280,21 +263,20 @@ public class PLCM {
 		} else {
 			miner = new PLCM(collector);
 		}
-		
+
 		time = System.currentTimeMillis();
 		miner.lcm(initState);
 		time = System.currentTimeMillis() - time;
-		
+
 		long outputted = collector.close();
-		
+
 		System.err.println(miner.toString() + " // mined in " + time + "ms // outputted " + outputted + " patterns");
 	}
 
 	/**
 	 * Parse command-line arguments to instanciate the right collector
 	 */
-	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, 
-			ExplorationStep initState) {
+	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, ExplorationStep initState) {
 
 		PatternsCollector collector = null;
 
@@ -314,18 +296,16 @@ public class PLCM {
 			}
 			collector = new PatternSortCollector(collector);
 		}
-		
+
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
-			
+
 			FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
-					initState.counters.getExtensionsIterator(),
-					initState.counters.getReverseRenaming()
-					);
-			
-			PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, 
-					initState.counters.nbFrequents, extensions);
-			
+					initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
+
+			PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents,
+					extensions);
+
 			initState.appendSelector(topKcoll.asSelector());
 			collector = topKcoll;
 		}
