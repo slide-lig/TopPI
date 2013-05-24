@@ -224,7 +224,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 
 	@Override
 	public String toString() {
-		StringBuilder sb = new StringBuilder("[");
+		StringBuilder sb = new StringBuilder(this.size() + " transactions\n[");
 		boolean first = true;
 		for (IterableTransaction trans : this) {
 			TransactionIterator iter = trans.iterator();
@@ -306,8 +306,9 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		freqs[Short.MAX_VALUE * 2 - 1] = 2;
 		freqs[Short.MAX_VALUE * 2] = 2;
 		// TransactionsList tl = new VIntConcatenatedTransactionsList(3, freqs);
-		TransactionsList tl = new VIntIndexedTransactionsList(freqs, 3);
+		TransactionsList tl = new IntIndexedTransactionsList(16, 3);
 		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
+		// TransactionsList tl = new BasicTransactionsList();
 		TransactionsWriter w = tl.getWriter();
 		w.beginTransaction(Short.MAX_VALUE + 3);
 		w.addItem(1);

@@ -131,11 +131,11 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		private void findNext() {
 			while (true) {
 				this.nextPos++;
-				if (nextPos >= indexAndFreqs.length / 2 || indexAndFreqs[nextPos] == -1) {
+				if (nextPos >= indexAndFreqs.length / 2 || indexAndFreqs[nextPos * 2] == -1) {
 					this.nextPos = -1;
 					return;
 				}
-				if (indexAndFreqs[nextPos + 1] > 0) {
+				if (indexAndFreqs[nextPos * 2 + 1] > 0) {
 					return;
 				}
 			}

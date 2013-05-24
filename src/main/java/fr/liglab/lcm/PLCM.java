@@ -222,7 +222,8 @@ public class PLCM {
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
-		options.addOption("c", true, "How many sockets will share a copy of the data (triggers thread affinity)");
+		options.addOption("c", true,
+				"How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
 
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -265,7 +266,7 @@ public class PLCM {
 			nbSocketsShareCopy = Integer.parseInt(cmd.getOptionValue('c'));
 			PLCMAffinity.bindMainThread();
 		}
-		
+
 		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState);
 
 		PLCM miner;

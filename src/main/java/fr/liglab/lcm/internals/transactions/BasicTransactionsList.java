@@ -19,6 +19,7 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 
 	private List<TIntList> transactions = new ArrayList<TIntList>();
+	private int size = 0;
 
 	@Override
 	public TransactionsList clone() {
@@ -32,7 +33,7 @@ public class BasicTransactionsList extends TransactionsList {
 
 	@Override
 	public int size() {
-		return this.transactions.size();
+		return this.size;
 	}
 
 	@Override
@@ -103,6 +104,9 @@ public class BasicTransactionsList extends TransactionsList {
 			public int beginTransaction(int support) {
 				this.currentTransaction = new TIntArrayList();
 				this.currentTransaction.add(support);
+				if (support != 0) {
+					size++;
+				}
 				return transactions.size();
 			}
 
@@ -116,7 +120,7 @@ public class BasicTransactionsList extends TransactionsList {
 	private class TransComp implements TransactionIterator {
 		private final TIntList trans;
 		private final TIntIterator transIter;
-		private final int support;
+		private int support;
 
 		public TransComp(TIntList trans) {
 			this.trans = trans;
@@ -146,7 +150,13 @@ public class BasicTransactionsList extends TransactionsList {
 
 		@Override
 		public void setTransactionSupport(int s) {
+			if (this.support == 0 && s != 0) {
+				size++;
+			} else if (this.support != 0 && s == 0) {
+				size--;
+			}
 			trans.set(0, s);
+			this.support = s;
 		}
 
 	}
