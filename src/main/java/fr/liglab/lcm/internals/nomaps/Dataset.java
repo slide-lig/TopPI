@@ -4,6 +4,8 @@ import java.util.Iterator;
 
 import org.apache.commons.lang.NotImplementedException;
 
+import fr.liglab.lcm.PLCM;
+import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.TransactionReader;
 import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.ConsecutiveItemsShortConcatenatedTidList;
@@ -82,7 +84,12 @@ public class Dataset implements Cloneable {
 	protected Dataset clone() {
 		return new Dataset(this.transactions.clone(), this.tidLists.clone());
 	}
-
+	
+	public void compress(int coreItem) {
+		((PLCM.PLCMThread) Thread.currentThread()).counters[PLCMCounters.TransactionsCompressions.ordinal()].incrementAndGet();
+		this.transactions.compress(coreItem);
+	}
+	
 	/**
 	 * In this implementation the inputted transactions are assumed to be
 	 * filtered, therefore it returns null. However this is not true for

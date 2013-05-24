@@ -142,6 +142,7 @@ public class PLCM {
 		ExplorationStepCatchedWrongFirstParents,
 		FirstParentTestRejections,
 		TopKRejections,
+		TransactionsCompressions
 	}
 	
 	
