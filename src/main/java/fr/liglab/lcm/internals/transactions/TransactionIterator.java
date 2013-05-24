@@ -4,13 +4,10 @@ import fr.liglab.lcm.internals.TransactionReader;
 import gnu.trove.iterator.TIntIterator;
 
 /**
- * FIXME
- *  - should be an interface
- *  - should not implement two overlapping interfaces
- *  - comment
+ * FIXME - should not implement two overlapping interfaces --> why ? - comment
  */
-public abstract class TransactionIterator implements TransactionReader, TIntIterator {
-	public abstract void setTransactionSupport(int s);
+public interface TransactionIterator extends TransactionReader, TIntIterator {
+	public void setTransactionSupport(int s);
 
-	public abstract void remove();
+	public void remove();
 }

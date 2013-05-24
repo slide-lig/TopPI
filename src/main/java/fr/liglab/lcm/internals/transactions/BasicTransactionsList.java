@@ -113,7 +113,7 @@ public class BasicTransactionsList extends TransactionsList {
 		};
 	}
 
-	private class TransComp extends TransactionIterator {
+	private class TransComp implements TransactionIterator {
 		private final TIntList trans;
 		private final TIntIterator transIter;
 		private final int support;

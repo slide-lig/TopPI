@@ -84,12 +84,12 @@ public class Dataset implements Cloneable {
 	protected Dataset clone() {
 		return new Dataset(this.transactions.clone(), this.tidLists.clone());
 	}
-	
+
 	public void compress(int coreItem) {
-		((PLCM.PLCMThread) Thread.currentThread()).counters[PLCMCounters.TransactionsCompressions.ordinal()].incrementAndGet();
+		((PLCM.PLCMThread) Thread.currentThread()).counters[PLCMCounters.TransactionsCompressions.ordinal()]++;
 		this.transactions.compress(coreItem);
 	}
-	
+
 	/**
 	 * In this implementation the inputted transactions are assumed to be
 	 * filtered, therefore it returns null. However this is not true for

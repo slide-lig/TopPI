@@ -190,7 +190,7 @@ public class VIntConcatenatedTransactionsList extends TransactionsList {
 		};
 	}
 
-	private final class TransComp extends TransactionIterator {
+	private final class TransComp implements TransactionIterator {
 		private IntHolder pos;
 		private int erasePos;
 		private final int startPos;

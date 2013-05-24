@@ -78,7 +78,7 @@ public class ConcatenatedTransactionsList extends TransactionsList {
 		};
 	}
 
-	private final class TransComp extends TransactionIterator {
+	private final class TransComp implements TransactionIterator {
 		private int remaining;
 		private int pos;
 		private int nextPos;

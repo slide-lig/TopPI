@@ -226,16 +226,16 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	}
 
 	public static void main(String[] args) {
-		// int[] freqs = new int[Short.MAX_VALUE * 2 + 1];
-		// freqs[1] = 3;
-		// freqs[2] = 3;
-		// freqs[3] = 2;
-		// freqs[5] = 3;
-		// freqs[Short.MAX_VALUE * 2 - 2] = 1;
-		// freqs[Short.MAX_VALUE * 2 - 1] = 2;
-		// freqs[Short.MAX_VALUE * 2] = 2;
+		int[] freqs = new int[Short.MAX_VALUE * 2 + 1];
+		freqs[1] = 3;
+		freqs[2] = 3;
+		freqs[3] = 2;
+		freqs[5] = 3;
+		freqs[Short.MAX_VALUE * 2 - 2] = 1;
+		freqs[Short.MAX_VALUE * 2 - 1] = 2;
+		freqs[Short.MAX_VALUE * 2] = 2;
 		// TransactionsList tl = new VIntConcatenatedTransactionsList(3, freqs);
-		TransactionsList tl = new ShortConcatenatedTransactionsList(16, 3);
+		TransactionsList tl = new VIntIndexedTransactionsList(freqs, 3);
 		// TransactionsList tl = new ConcatenatedTransactionsList(16, 3);
 		TransactionsWriter w = tl.getWriter();
 		w.beginTransaction(Short.MAX_VALUE + 3);
