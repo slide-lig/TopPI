@@ -376,7 +376,7 @@ public final class Counters implements Cloneable {
 
 		// we will always have newItemID <= item
 		int newItemID = 0;
-		int greatestBelowMaxCandidate = 0;
+		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
 
 		for (int item = 0; item < this.supportCounts.length; item++) {
 			if (this.supportCounts[item] > 0) {
