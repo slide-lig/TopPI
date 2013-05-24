@@ -20,8 +20,6 @@ public class ShortConcatenatedTransactionsList extends TransactionsList {
 
 	public ShortConcatenatedTransactionsList(int transactionsLength, int nbTransactions) {
 		this.concatenated = new short[transactionsLength + 4 * nbTransactions];
-		System.out.println(transactionsLength + " " + nbTransactions + " size " + this.concatenated.length);
-		System.out.println();
 	}
 
 	@Override

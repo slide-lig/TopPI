@@ -70,7 +70,7 @@ public final class Counters implements Cloneable {
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
 	 */
-	final int[] distinctTransactionsCounts;
+	public final int[] distinctTransactionsCounts;
 
 	/**
 	 * Items found to have a support count equal to transactionsCount (using IDs

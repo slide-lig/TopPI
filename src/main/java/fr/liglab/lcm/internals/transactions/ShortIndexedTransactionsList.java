@@ -16,6 +16,10 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 		return c.distinctTransactionsCount - 1;
 	}
 
+	public ShortIndexedTransactionsList(Counters c) {
+		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
+	}
+
 	public ShortIndexedTransactionsList(int transactionsLength, int nbTransactions) {
 		super(nbTransactions);
 		this.concatenated = new short[transactionsLength];

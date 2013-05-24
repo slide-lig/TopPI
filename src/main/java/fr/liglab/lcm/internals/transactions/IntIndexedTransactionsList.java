@@ -16,6 +16,10 @@ public class IntIndexedTransactionsList extends IndexedTransactionsList {
 
 	private int[] concatenated;
 
+	public IntIndexedTransactionsList(Counters c){
+		this(c.distinctTransactionLengthSum,c.distinctTransactionsCount);
+	}
+
 	public IntIndexedTransactionsList(int transactionsLength, int nbTransactions) {
 		super(nbTransactions);
 		this.concatenated = new int[transactionsLength];

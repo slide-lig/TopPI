@@ -3,11 +3,17 @@ package fr.liglab.lcm.internals.transactions;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
+
 public abstract class IndexedTransactionsList extends TransactionsList {
 
 	private int[] indexAndFreqs;
 	int writeIndex = 0;
 	private int size = 0;
+
+	public IndexedTransactionsList(Counters c) {
+		this(c.distinctTransactionsCount);
+	}
 
 	public IndexedTransactionsList(int nbTransactions) {
 		this.indexAndFreqs = new int[2 * nbTransactions];

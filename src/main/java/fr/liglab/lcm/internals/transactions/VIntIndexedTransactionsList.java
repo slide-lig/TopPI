@@ -33,6 +33,10 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		}
 	}
 
+	public VIntIndexedTransactionsList(Counters c) {
+		this(c.distinctTransactionsCounts, c.distinctTransactionsCount);
+	}
+
 	public VIntIndexedTransactionsList(int[] distinctItemFreq, int nbTransactions) {
 		super(nbTransactions);
 		int size = 0;
