@@ -131,15 +131,7 @@ public class PLCM {
 	 * to PLCMThread.counters
 	 */
 	public enum PLCMCounters {
-<<<<<<< HEAD
-		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections,
-=======
-		ExplorationStepInstances,
-		ExplorationStepCatchedWrongFirstParents,
-		FirstParentTestRejections,
-		TopKRejections,
-		TransactionsCompressions
->>>>>>> d21f03636c2b29eddeb2d39021474314d58218e2
+		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections, TransactionsCompressions
 	}
 
 	public class PLCMThread extends Thread {
