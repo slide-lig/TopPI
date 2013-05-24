@@ -22,16 +22,14 @@ public class PLCMAffinity extends PLCM {
 	private final int copySocketModulo;
 
 	public PLCMAffinity(PatternsCollector patternsCollector) {
-		super(patternsCollector);
-		this.copySocketModulo = 1;
+		this(patternsCollector, Runtime.getRuntime().availableProcessors());
 	}
 
-	private PLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
-		super(patternsCollector, nbThreads);
-		this.copySocketModulo = 1;
+	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
+		this(patternsCollector, nbThreads, 1);
 	}
 
-	private PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
+	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
 		super(patternsCollector, nbThreads);
 		this.copySocketModulo = copySocketModulo;
 	}
@@ -66,10 +64,10 @@ public class PLCMAffinity extends PLCM {
 			}
 			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, remainingThreads--) {
 				if (c == 0) {
-					l.add(new PLCMAffinityThread(id, socketLock));
+					l.add(new PLCMAffinityThread(id, s, socketLock));
 					id++;
 				} else {
-					l.add(new PLCMAffinityThread(id, socketLock.acquireLock(AffinityStrategies.SAME_SOCKET)));
+					l.add(new PLCMAffinityThread(id, s, socketLock.acquireLock(AffinityStrategies.SAME_SOCKET)));
 					id++;
 				}
 			}
@@ -146,24 +144,32 @@ public class PLCMAffinity extends PLCM {
 				if (victim == thief) {
 					break;
 				}
-				for (int higherLevel = level + 1; higherLevel < thief.position.size(); higherLevel++) {
-					if (thief.position.get(higherLevel) != victim.position.get(higherLevel)) {
-						break;
+				boolean steal = true;
+				if (victim.position.size() < thief.position.size()) {
+					System.err.println("trying to stealing from a thread with no initialized location");
+				} else {
+					for (int higherLevel = level + 1; higherLevel < thief.position.size(); higherLevel++) {
+						if (thief.position.get(higherLevel) != victim.position.get(higherLevel)) {
+							steal = false;
+							break;
+						}
 					}
 				}
-				for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
-					victim.lock.readLock().lock();
-					if (!victim.stackedJobs.isEmpty()) {
-						ExplorationStep sj = victim.stackedJobs.get(0);
-						victim.lock.readLock().unlock();
+				if (steal) {
+					for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
+						victim.lock.readLock().lock();
+						if (!victim.stackedJobs.isEmpty()) {
+							ExplorationStep sj = victim.stackedJobs.get(0);
+							victim.lock.readLock().unlock();
 
-						ExplorationStep next = sj.next();
+							ExplorationStep next = sj.next();
 
-						if (next != null) {
-							return next;
+							if (next != null) {
+								return next;
+							}
+						} else {
+							victim.lock.readLock().unlock();
 						}
-					} else {
-						victim.lock.readLock().unlock();
 					}
 				}
 			}
@@ -179,17 +185,19 @@ public class PLCMAffinity extends PLCM {
 		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections,
 	}
 
-	public class PLCMAffinityThread extends PLCMThread {
+	private class PLCMAffinityThread extends PLCMThread {
 		private final TIntList position;
 		private final AffinityLock al;
+		private final int group;
 		private Semaphore datasetCopySem;
 		private Semaphore initializedSem;
 		private ExplorationStep datasetToCopy;
 
-		private PLCMAffinityThread(int id, AffinityLock al) {
+		private PLCMAffinityThread(int id, int group, AffinityLock al) {
 			super(id);
 			this.al = al;
 			this.position = new TIntArrayList(3);
+			this.group = group;
 		}
 
 		private void prepareForCopy(ExplorationStep datasetToCopy, Semaphore datasetCopySem, Semaphore initializedSem) {
@@ -218,8 +226,7 @@ public class PLCMAffinity extends PLCM {
 			this.position.add(al.cpuId());
 			this.position.add(AffinityLock.cpuLayout().coreId(al.cpuId()));
 			this.position.add(AffinityLock.cpuLayout().socketId(al.cpuId()));
-			this.setName("PLCMThread " + position);
-			this.setName(this.getName() + " at " + this.position);
+			this.setName(this.getName() + " group " + this.group + " placed on " + this.position);
 			super.run();
 			al.release();
 		}
