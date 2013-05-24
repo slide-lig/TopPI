@@ -35,7 +35,7 @@ public final class ExplorationStep implements Cloneable {
 	 * 
 	 * TODO : test also 10, and others. Test on kosarak.
 	 */
-	static final int DENSE_MODE_THRESHOLD = 100;
+	static final int DENSE_MODE_THRESHOLD = 1000000000;
 	
 	/**
 	 * closure of parent's pattern UNION extension
@@ -128,9 +128,8 @@ public final class ExplorationStep implements Cloneable {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
 					TransactionsIterable support = this.dataset.getSupport(candidate);
 
-					// System.out.println("extending "+Arrays.toString(this.pattern)
-					// + " with (base) "+candidate);
-					// System.out.println(" with "+this.counters.getReverseRenaming()[candidate]);
+//					System.out.println("extending "+Arrays.toString(this.pattern)+ " with "+
+//							candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
 
 					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), candidate,
 							this.dataset.getIgnoredItems(), this.counters.maxFrequent);
