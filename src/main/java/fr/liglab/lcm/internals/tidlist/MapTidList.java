@@ -67,28 +67,11 @@ public class MapTidList extends TidList {
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
-		final TIntIterator iter = l.iterator();
 		return new TIntIterable() {
 
 			@Override
 			public TIntIterator iterator() {
-				return new TIntIterator() {
-
-					@Override
-					public void remove() {
-						throw new UnsupportedOperationException();
-					}
-
-					@Override
-					public boolean hasNext() {
-						return iter.hasNext();
-					}
-
-					@Override
-					public int next() {
-						return iter.next();
-					}
-				};
+				return l.iterator();
 			}
 		};
 	}
