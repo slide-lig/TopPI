@@ -19,13 +19,21 @@ import gnu.trove.list.array.TIntArrayList;
  */
 public class PLCMAffinity extends PLCM {
 	private List<List<PLCMAffinityThread>> threadsBySocket;
+	private final int copySocketModulo;
 
 	public PLCMAffinity(PatternsCollector patternsCollector) {
 		super(patternsCollector);
+		this.copySocketModulo = 1;
 	}
 
 	private PLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
 		super(patternsCollector, nbThreads);
+		this.copySocketModulo = 1;
+	}
+
+	private PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
+		super(patternsCollector, nbThreads);
+		this.copySocketModulo = copySocketModulo;
 	}
 
 	@Override
@@ -78,19 +86,21 @@ public class PLCMAffinity extends PLCM {
 	void initializeAndStartThreads(ExplorationStep initState) {
 		Semaphore copySem = new Semaphore(0);
 		Semaphore initializedSem = new Semaphore(0);
+		int nbCopies = 0;
 		for (int i = 0; i < this.threadsBySocket.size(); i++) {
 			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i != 0) {
+			if (i != 0 && i % this.copySocketModulo == 0) {
 				// first socket gets the initial dataset because it should be on
 				// the same socket as the main thread which created it
+				nbCopies++;
 				PLCMAffinityThread t = l.get(0);
 				t.prepareForCopy(initState, copySem, initializedSem);
 				t.start();
 			}
 		}
-		if (this.threadsBySocket.size() > 1) {
+		if (nbCopies > 0) {
 			try {
-				copySem.acquire(this.threadsBySocket.size() - 1);
+				copySem.acquire(nbCopies);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 				System.exit(-1);
@@ -98,20 +108,20 @@ public class PLCMAffinity extends PLCM {
 		}
 		for (int i = 0; i < this.threadsBySocket.size(); i++) {
 			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i == 0) {
+			if (i == 0 || i % this.copySocketModulo != 0) {
 				for (PLCMAffinityThread t : l) {
 					t.init(initState);
 				}
 			} else {
-				ExplorationStep socketES = l.get(0).datasetToCopy;
+				initState = l.get(0).datasetToCopy;
 				for (PLCMAffinityThread t : l) {
-					t.init(socketES);
+					t.init(initState);
 				}
 			}
 		}
 		for (int i = 0; i < this.threadsBySocket.size(); i++) {
 			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i == 0) {
+			if (i == 0 || i % this.copySocketModulo != 0) {
 				for (PLCMAffinityThread t : l) {
 					t.start();
 				}
@@ -121,8 +131,8 @@ public class PLCMAffinity extends PLCM {
 				}
 			}
 		}
-		if (this.threadsBySocket.size() > 1) {
-			initializedSem.release(this.threadsBySocket.size() - 1);
+		if (nbCopies > 0) {
+			initializedSem.release(nbCopies);
 		}
 	}
 
