@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
 import gnu.trove.impl.Constants;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -7,6 +8,10 @@ import gnu.trove.map.hash.TIntIntHashMap;
 public class RandomItemsShortConcatenatedTidList extends ShortConcatenatedTidList {
 
 	private TIntIntMap startPositions;
+
+	public RandomItemsShortConcatenatedTidList(Counters c) {
+		this(c.distinctTransactionsCounts);
+	}
 
 	public RandomItemsShortConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;

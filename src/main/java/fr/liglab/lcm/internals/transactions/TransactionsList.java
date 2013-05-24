@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
+
 /**
  * Stores transactions. Items in transactions are assumed to be sorted in
  * increasing order
@@ -32,69 +34,26 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	abstract public int size();
 
 	public void compress(final int prefixEnd) {
+		compress(prefixEnd, null);
+	}
+
+	public void compress(final int prefixEnd, Counters c) {
 		List<IterableTransaction> sortList = new ArrayList<IterableTransaction>();
 		for (IterableTransaction trans : this) {
 			sortList.add(trans);
 		}
-		Collections.sort(sortList, new Comparator<IterableTransaction>() {
-
-			@Override
-			public int compare(IterableTransaction trans1, IterableTransaction trans2) {
-				TransactionIterator t1 = trans1.iterator();
-				TransactionIterator t2 = trans2.iterator();
-				if (!t1.hasNext()) {
-					if (t2.hasNext()) {
-						return -1;
-					} else {
-						return 0;
-					}
-				}
-				if (!t2.hasNext()) {
-					return 1;
-				}
-				int t1Item = t1.next();
-				int t2Item = t2.next();
-				while (true) {
-					if (t1Item > prefixEnd && t2Item > prefixEnd) {
-						return 0;
-					} else {
-						if (t1Item < t2Item) {
-							return -1;
-						} else if (t1Item > t2Item) {
-							return 1;
-						} else {
-							if (t1.hasNext()) {
-								if (t2.hasNext()) {
-									t1Item = t1.next();
-									t2Item = t2.next();
-									continue;
-								} else {
-									return 1;
-								}
-							} else {
-								if (t2.hasNext()) {
-									return -1;
-								} else {
-									return 0;
-								}
-							}
-						}
-					}
-				}
-			}
-
-		});
+		Collections.sort(sortList, new TransactionsComparator(prefixEnd));
 		Iterator<IterableTransaction> transIter = sortList.iterator();
 		IterableTransaction trans1 = transIter.next();
 		while (transIter.hasNext()) {
 			IterableTransaction trans2 = transIter.next();
-			if (!this.merge(trans1, trans2, prefixEnd)) {
+			if (!this.merge(trans1, trans2, prefixEnd, c)) {
 				trans1 = trans2;
 			}
 		}
 	}
 
-	private boolean merge(IterableTransaction trans1, IterableTransaction trans2, final int prefixEnd) {
+	private boolean merge(IterableTransaction trans1, IterableTransaction trans2, final int prefixEnd, Counters c) {
 		TransactionIterator t1 = trans1.iterator();
 		TransactionIterator t2 = trans2.iterator();
 		if (!t1.hasNext() || !t2.hasNext()) {
@@ -118,12 +77,27 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 									return false;
 								} else {
 									t1.remove();
+									if (c != null) {
+										c.distinctTransactionsCounts[t1Item]--;
+										c.supportCounts[t1Item] -= t1.getTransactionSupport();
+										c.distinctTransactionLengthSum--;
+										c.supportCountsSum -= t1.getTransactionSupport();
+									}
 									while (t1.hasNext()) {
-										t1.next();
+										t1Item = t1.next();
 										t1.remove();
+										if (c != null) {
+											c.distinctTransactionsCounts[t1Item]--;
+											c.supportCounts[t1Item] -= t1.getTransactionSupport();
+											c.distinctTransactionLengthSum--;
+											c.supportCountsSum -= t1.getTransactionSupport();
+										}
 									}
 									t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 									t2.setTransactionSupport(0);
+									if (c != null) {
+										c.distinctTransactionsCount--;
+									}
 									return true;
 								}
 							}
@@ -133,13 +107,32 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 								if (t2Item < prefixEnd) {
 									return false;
 								} else {
+									if (c != null) {
+										c.distinctTransactionsCounts[t2Item]--;
+										c.supportCounts[t2Item] -= t2.getTransactionSupport();
+										c.distinctTransactionLengthSum--;
+										c.supportCountsSum -= t2.getTransactionSupport();
+										while (t2.hasNext()) {
+											t2Item = t2.next();
+											c.distinctTransactionsCounts[t2Item]--;
+											c.supportCounts[t2Item] -= t2.getTransactionSupport();
+											c.distinctTransactionLengthSum--;
+											c.supportCountsSum -= t2.getTransactionSupport();
+										}
+									}
 									t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 									t2.setTransactionSupport(0);
+									if (c != null) {
+										c.distinctTransactionsCount--;
+									}
 									return true;
 								}
 							} else {
 								t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 								t2.setTransactionSupport(0);
+								if (c != null) {
+									c.distinctTransactionsCount--;
+								}
 								return true;
 							}
 						}
@@ -164,26 +157,69 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 						continue;
 					} else {
 						while (t1.hasNext()) {
-							t1.next();
+							t1Item = t1.next();
 							t1.remove();
+							if (c != null) {
+								c.distinctTransactionsCounts[t1Item]--;
+								c.supportCounts[t1Item] -= t1.getTransactionSupport();
+								c.distinctTransactionLengthSum--;
+								c.supportCountsSum -= t1.getTransactionSupport();
+							}
 						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 						t2.setTransactionSupport(0);
+						if (c != null) {
+							c.distinctTransactionsCount--;
+						}
 						return true;
 					}
 				} else {
+					if (c != null) {
+						while (t2.hasNext()) {
+							t2Item = t2.next();
+							c.distinctTransactionsCounts[t2Item]--;
+							c.supportCounts[t2Item] -= t2.getTransactionSupport();
+							c.distinctTransactionLengthSum--;
+							c.supportCountsSum -= t2.getTransactionSupport();
+						}
+					}
 					t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 					t2.setTransactionSupport(0);
+					if (c != null) {
+						c.distinctTransactionsCount--;
+					}
 					return true;
 				}
 			} else {
 				if (t1Item < t2Item) {
 					t1.remove();
+					if (c != null) {
+						c.distinctTransactionsCounts[t1Item]--;
+						c.supportCounts[t1Item] -= t1.getTransactionSupport();
+						c.distinctTransactionLengthSum--;
+						c.supportCountsSum -= t1.getTransactionSupport();
+					}
 					if (t1.hasNext()) {
 						t1Item = t1.next();
 					} else {
+						if (c != null) {
+							c.distinctTransactionsCounts[t2Item]--;
+							c.supportCounts[t2Item] -= t2.getTransactionSupport();
+							c.distinctTransactionLengthSum--;
+							c.supportCountsSum -= t2.getTransactionSupport();
+							while (t2.hasNext()) {
+								t2Item = t2.next();
+								c.distinctTransactionsCounts[t2Item]--;
+								c.supportCounts[t2Item] -= t2.getTransactionSupport();
+								c.distinctTransactionLengthSum--;
+								c.supportCountsSum -= t2.getTransactionSupport();
+							}
+						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 						t2.setTransactionSupport(0);
+						if (c != null) {
+							c.distinctTransactionsCount--;
+						}
 						return true;
 					}
 				} else {
@@ -191,12 +227,27 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 						t2Item = t2.next();
 					} else {
 						t1.remove();
+						if (c != null) {
+							c.distinctTransactionsCounts[t1Item]--;
+							c.supportCounts[t1Item] -= t1.getTransactionSupport();
+							c.distinctTransactionLengthSum--;
+							c.supportCountsSum -= t1.getTransactionSupport();
+						}
 						while (t1.hasNext()) {
-							t1.next();
+							t1Item = t1.next();
 							t1.remove();
+							if (c != null) {
+								c.distinctTransactionsCounts[t1Item]--;
+								c.supportCounts[t1Item] -= t1.getTransactionSupport();
+								c.distinctTransactionLengthSum--;
+								c.supportCountsSum -= t1.getTransactionSupport();
+							}
 						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
 						t2.setTransactionSupport(0);
+						if (c != null) {
+							c.distinctTransactionsCount--;
+						}
 						return true;
 					}
 				}
@@ -223,6 +274,59 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		}
 		sb.append("]");
 		return sb.toString();
+	}
+
+	private static class TransactionsComparator implements Comparator<IterableTransaction> {
+		private int prefixEnd;
+
+		private TransactionsComparator(int prefixEnd) {
+			this.prefixEnd = prefixEnd;
+		}
+
+		@Override
+		public int compare(IterableTransaction trans1, IterableTransaction trans2) {
+			TransactionIterator t1 = trans1.iterator();
+			TransactionIterator t2 = trans2.iterator();
+			if (!t1.hasNext()) {
+				if (t2.hasNext()) {
+					return -1;
+				} else {
+					return 0;
+				}
+			}
+			if (!t2.hasNext()) {
+				return 1;
+			}
+			int t1Item = t1.next();
+			int t2Item = t2.next();
+			while (true) {
+				if (t1Item > prefixEnd && t2Item > prefixEnd) {
+					return 0;
+				} else {
+					if (t1Item < t2Item) {
+						return -1;
+					} else if (t1Item > t2Item) {
+						return 1;
+					} else {
+						if (t1.hasNext()) {
+							if (t2.hasNext()) {
+								t1Item = t1.next();
+								t2Item = t2.next();
+								continue;
+							} else {
+								return 1;
+							}
+						} else {
+							if (t2.hasNext()) {
+								return -1;
+							} else {
+								return 0;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public static void main(String[] args) {

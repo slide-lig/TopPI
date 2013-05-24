@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
 import gnu.trove.impl.Constants;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.map.TIntIntMap;
@@ -9,6 +10,10 @@ public class RandomItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	private TIntIntMap startPositions;
 
+	public RandomItemsConcatenatedTidList(Counters c) {
+		this(c.distinctTransactionsCounts);
+	}
+	
 	public RandomItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
 		this.startPositions = new TIntIntHashMap(lengths.length, Constants.DEFAULT_LOAD_FACTOR, -1, -1);

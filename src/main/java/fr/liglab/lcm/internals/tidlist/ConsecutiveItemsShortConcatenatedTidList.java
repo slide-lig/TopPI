@@ -2,9 +2,15 @@ package fr.liglab.lcm.internals.tidlist;
 
 import java.util.Arrays;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
+
 public class ConsecutiveItemsShortConcatenatedTidList extends ShortConcatenatedTidList {
 
 	private int[] startPositions;
+
+	public ConsecutiveItemsShortConcatenatedTidList(Counters c) {
+		this(c.distinctTransactionsCounts);
+	}
 
 	public ConsecutiveItemsShortConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;

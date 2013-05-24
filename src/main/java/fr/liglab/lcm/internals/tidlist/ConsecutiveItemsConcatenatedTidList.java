@@ -1,13 +1,18 @@
 package fr.liglab.lcm.internals.tidlist;
 
-import java.util.Arrays;
-
+import fr.liglab.lcm.internals.nomaps.Counters;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.map.TIntIntMap;
+
+import java.util.Arrays;
 
 public class ConsecutiveItemsConcatenatedTidList extends ConcatenatedTidList {
 
 	private int[] startPositions;
+
+	public ConsecutiveItemsConcatenatedTidList(Counters c) {
+		this(c.distinctTransactionsCounts);
+	}
 
 	public ConsecutiveItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;

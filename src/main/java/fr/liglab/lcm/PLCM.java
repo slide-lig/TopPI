@@ -28,7 +28,7 @@ import fr.liglab.lcm.io.StdOutCollector;
  * by Takeaki Uno el. al.
  */
 public class PLCM {
-	private final List<PLCMThread> threads;
+	final List<PLCMThread> threads;
 
 	private final PatternsCollector collector;
 
@@ -44,15 +44,22 @@ public class PLCM {
 		}
 		this.collector = patternsCollector;
 		this.threads = new ArrayList<PLCMThread>(nbThreads);
+		this.createThreads(nbThreads);
+		this.globalCounters = new long[PLCMCounters.values().length];
+	}
+
+	void createThreads(int nbThreads) {
 		for (int i = 0; i < nbThreads; i++) {
 			this.threads.add(new PLCMThread(i));
 		}
-
-		this.globalCounters = new long[PLCMCounters.values().length];
 	}
 
 	public final void collect(int support, int[] pattern) {
 		this.collector.collect(support, pattern);
+	}
+
+	void initializedThreads(final ExplorationStep initState) {
+		this.threads.get(0).init(initState);
 	}
 
 	/**
@@ -63,7 +70,7 @@ public class PLCM {
 			collector.collect(initState.counters.transactionsCount, initState.pattern);
 		}
 
-		this.threads.get(0).init(initState);
+		this.initializedThreads(initState);
 		for (PLCMThread t : this.threads) {
 			t.start();
 		}
@@ -101,16 +108,15 @@ public class PLCM {
 		return builder.toString();
 	}
 
-	public ExplorationStep stealJob(final int id) {
+	public ExplorationStep stealJob(PLCMThread thief) {
 		// here we need to readlock because the owner thread can write
-		for (int stealFrom = 0; stealFrom < this.threads.size(); stealFrom++) {
-			if (stealFrom != id) {
-				PLCMThread t = this.threads.get(stealFrom);
-				for (int stealPos = 0; stealPos < t.stackedJobs.size(); stealPos++) {
-					t.lock.readLock().lock();
-					if (!t.stackedJobs.isEmpty()) {
-						ExplorationStep sj = t.stackedJobs.get(0);
-						t.lock.readLock().unlock();
+		for (PLCMThread victim : this.threads) {
+			if (victim != thief) {
+				for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
+					victim.lock.readLock().lock();
+					if (!victim.stackedJobs.isEmpty()) {
+						ExplorationStep sj = victim.stackedJobs.get(0);
+						victim.lock.readLock().unlock();
 
 						ExplorationStep next = sj.next();
 
@@ -118,7 +124,7 @@ public class PLCM {
 							return next;
 						}
 					} else {
-						t.lock.readLock().unlock();
+						victim.lock.readLock().unlock();
 					}
 				}
 			}
@@ -136,8 +142,8 @@ public class PLCM {
 
 	public class PLCMThread extends Thread {
 		public final long[] counters;
-		private final ReadWriteLock lock;
-		private final List<ExplorationStep> stackedJobs;
+		final ReadWriteLock lock;
+		final List<ExplorationStep> stackedJobs;
 		private final int id;
 
 		public PLCMThread(final int id) {
@@ -186,7 +192,7 @@ public class PLCM {
 
 				} else { // our list was empty, we should steal from another
 							// thread
-					ExplorationStep stolj = stealJob(this.id);
+					ExplorationStep stolj = stealJob(this);
 					if (stolj == null) {
 						exit = true;
 					} else {

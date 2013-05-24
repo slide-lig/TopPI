@@ -1,5 +1,6 @@
 package fr.liglab.lcm.internals.tidlist;
 
+import fr.liglab.lcm.internals.nomaps.Counters;
 import gnu.trove.iterator.TIntIntIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.iterator.TIntObjectIterator;
@@ -16,6 +17,10 @@ public class MapTidList extends TidList {
 	}
 
 	private TIntObjectMap<TIntList> occurrences = new TIntObjectHashMap<TIntList>();
+
+	public MapTidList(Counters c) {
+		this(c.distinctTransactionsCounts);
+	}
 
 	public MapTidList(final int[] supports) {
 		for (int i = 0; i < supports.length; i++) {
