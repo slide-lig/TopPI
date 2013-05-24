@@ -58,8 +58,11 @@ public class PLCM {
 		this.collector.collect(support, pattern);
 	}
 
-	void initializedThreads(final ExplorationStep initState) {
+	void initializeAndStartThreads(final ExplorationStep initState) {
 		this.threads.get(0).init(initState);
+		for (PLCMThread t : this.threads) {
+			t.start();
+		}
 	}
 
 	/**
@@ -70,10 +73,7 @@ public class PLCM {
 			collector.collect(initState.counters.transactionsCount, initState.pattern);
 		}
 
-		this.initializedThreads(initState);
-		for (PLCMThread t : this.threads) {
-			t.start();
-		}
+		this.initializeAndStartThreads(initState);
 
 		for (PLCMThread t : this.threads) {
 			try {
@@ -154,10 +154,9 @@ public class PLCM {
 			this.counters = new long[PLCMCounters.values().length];
 		}
 
-		private void init(ExplorationStep initState) {
-			this.lock.writeLock().lock();
+		void init(ExplorationStep initState) {
+			// no need to lock, called from the main thread
 			this.stackedJobs.add(initState);
-			this.lock.writeLock().unlock();
 		}
 
 		@Override

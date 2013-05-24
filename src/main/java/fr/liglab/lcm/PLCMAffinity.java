@@ -2,6 +2,7 @@ package fr.liglab.lcm;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 import com.higherfrequencytrading.affinity.AffinityLock;
 import com.higherfrequencytrading.affinity.AffinityStrategies;
@@ -74,15 +75,54 @@ public class PLCMAffinity extends PLCM {
 	}
 
 	@Override
-	void initializedThreads(ExplorationStep initState) {
+	void initializeAndStartThreads(ExplorationStep initState) {
+		Semaphore copySem = new Semaphore(0);
+		Semaphore initializedSem = new Semaphore(0);
 		for (int i = 0; i < this.threadsBySocket.size(); i++) {
 			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
 			if (i != 0) {
-				initState = initState.copy();
+				// first socket gets the initial dataset because it should be on
+				// the same socket as the main thread which created it
+				PLCMAffinityThread t = l.get(0);
+				t.prepareForCopy(initState, copySem, initializedSem);
+				t.start();
 			}
-			for (PLCMAffinityThread t : l) {
-				t.init(initState);
+		}
+		if (this.threadsBySocket.size() > 1) {
+			try {
+				copySem.acquire(this.threadsBySocket.size() - 1);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				System.exit(-1);
 			}
+		}
+		for (int i = 0; i < this.threadsBySocket.size(); i++) {
+			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
+			if (i == 0) {
+				for (PLCMAffinityThread t : l) {
+					t.init(initState);
+				}
+			} else {
+				ExplorationStep socketES = l.get(0).datasetToCopy;
+				for (PLCMAffinityThread t : l) {
+					t.init(socketES);
+				}
+			}
+		}
+		for (int i = 0; i < this.threadsBySocket.size(); i++) {
+			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
+			if (i == 0) {
+				for (PLCMAffinityThread t : l) {
+					t.start();
+				}
+			} else {
+				for (int j = 1; j < l.size(); j++) {
+					l.get(j).start();
+				}
+			}
+		}
+		if (this.threadsBySocket.size() > 1) {
+			initializedSem.release(this.threadsBySocket.size() - 1);
 		}
 	}
 
@@ -132,6 +172,9 @@ public class PLCMAffinity extends PLCM {
 	public class PLCMAffinityThread extends PLCMThread {
 		private final TIntList position;
 		private final AffinityLock al;
+		private Semaphore datasetCopySem;
+		private Semaphore initializedSem;
+		private ExplorationStep datasetToCopy;
 
 		private PLCMAffinityThread(int id, AffinityLock al) {
 			super(id);
@@ -139,15 +182,29 @@ public class PLCMAffinity extends PLCM {
 			this.position = new TIntArrayList(3);
 		}
 
-		private void init(ExplorationStep initState) {
-			this.lock.writeLock().lock();
-			this.stackedJobs.add(initState);
-			this.lock.writeLock().unlock();
+		private void prepareForCopy(ExplorationStep datasetToCopy, Semaphore datasetCopySem, Semaphore initializedSem) {
+			this.datasetToCopy = datasetToCopy;
+			this.datasetCopySem = datasetCopySem;
+			this.initializedSem = initializedSem;
 		}
 
 		@Override
 		public void run() {
 			al.bind(true);
+			if (this.datasetCopySem != null) {
+				datasetToCopy = datasetToCopy.copy();
+				datasetCopySem.release();
+				try {
+					initializedSem.acquire();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					System.exit(-1);
+				}
+				datasetCopySem = null;
+				initializedSem = null;
+				datasetToCopy = null;
+
+			}
 			this.position.add(al.cpuId());
 			this.position.add(AffinityLock.cpuLayout().coreId(al.cpuId()));
 			this.position.add(AffinityLock.cpuLayout().socketId(al.cpuId()));
