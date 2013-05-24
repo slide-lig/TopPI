@@ -18,6 +18,13 @@ import gnu.trove.list.array.TIntArrayList;
  * by Takeaki Uno el. al.
  */
 public class PLCMAffinity extends PLCM {
+	private static AffinityLock al;
+
+	static void bindMainThread() {
+		al = AffinityLock.acquireLock();
+		al.bind(false);
+	}
+
 	private List<List<PLCMAffinityThread>> threadsBySocket;
 	private final int copySocketModulo;
 
@@ -29,9 +36,18 @@ public class PLCMAffinity extends PLCM {
 		this(patternsCollector, nbThreads, 1);
 	}
 
+	public PLCMAffinity(PatternsCollector patternsCollector, int nbSocketsShareCopy, boolean b) {
+		this(patternsCollector, Runtime.getRuntime().availableProcessors(), nbSocketsShareCopy);
+	}
+
 	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
 		super(patternsCollector, nbThreads);
 		this.copySocketModulo = copySocketModulo;
+		if (copySocketModulo < 1 || copySocketModulo > AffinityLock.cpuLayout().sockets()) {
+			al.release();
+			throw new IllegalArgumentException("copySocketModulo has to be > 0 and <= number of sockets, given "
+					+ nbThreads);
+		}
 	}
 
 	@Override
@@ -50,7 +66,6 @@ public class PLCMAffinity extends PLCM {
 		System.out.println("using " + usedSockets + " socket(s) with " + corePerSocket + " threads per socket");
 		int remainingThreads = nbThreads;
 		this.threadsBySocket = new ArrayList<List<PLCMAffinityThread>>(usedSockets);
-		AffinityLock al = AffinityLock.acquireLock();
 		int id = 0;
 		for (int s = 0; s < usedSockets; s++) {
 			System.out.println("creating threads for socket " + s);
@@ -60,7 +75,7 @@ public class PLCMAffinity extends PLCM {
 			if (s == 0) {
 				socketLock = al.acquireLock(AffinityStrategies.SAME_CORE);
 			} else {
-				socketLock = al.acquireLock(AffinityStrategies.DIFFERENT_CORE);
+				socketLock = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET);
 			}
 			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, remainingThreads--) {
 				if (c == 0) {
