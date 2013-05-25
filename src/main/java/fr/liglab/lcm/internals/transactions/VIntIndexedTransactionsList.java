@@ -100,8 +100,8 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 	}
 
 	@Override
-	TransactionIterator get(int begin, int end, int transNum) {
-		return new TransIter(begin, end, transNum);
+	public IndexedReusableIterator getIterator() {
+		return new TransIter();
 	}
 
 	@Override
@@ -118,7 +118,7 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		return o;
 	}
 
-	private class TransIter implements TransactionIterator {
+	private class TransIter extends IndexedReusableIterator {
 
 		private int transNum;
 		private int val;
@@ -126,7 +126,11 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		private int end;
 		private int deleteIndex;
 
-		public TransIter(int begin, int end, int transNum) {
+		public TransIter() {
+		}
+
+		@Override
+		public void set(int begin, int end, int transNum) {
 			this.transNum = transNum;
 			this.pos = new IntHolder(begin);
 			this.end = end;

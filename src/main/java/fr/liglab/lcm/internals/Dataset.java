@@ -10,6 +10,7 @@ import fr.liglab.lcm.internals.tidlist.ShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
 import fr.liglab.lcm.internals.transactions.IntIndexedTransactionsList;
+import fr.liglab.lcm.internals.transactions.ReusableTransactionIterator;
 import fr.liglab.lcm.internals.transactions.ShortIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsWriter;
@@ -131,9 +132,11 @@ public class Dataset implements Cloneable {
 	protected final class TransactionsIterator implements Iterator<TransactionReader> {
 
 		protected final TIntIterator it;
+		private final ReusableTransactionIterator transIter;
 
 		public TransactionsIterator(TIntIterator tids) {
 			this.it = tids;
+			this.transIter = transactions.getIterator();
 		}
 
 		@Override
@@ -143,7 +146,8 @@ public class Dataset implements Cloneable {
 
 		@Override
 		public TransactionReader next() {
-			return transactions.get(this.it.next());
+			this.transIter.setTransaction(this.it.next());
+			return this.transIter;
 		}
 
 		@Override

@@ -25,8 +25,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		return new Iter();
 	}
 
-	@Override
-	public TransactionIterator get(int transaction) {
+	void positionIterator(int transaction, IndexedReusableIterator iter) {
 		int startPos = 2 * transaction;
 		if (transaction * 2 >= this.indexAndFreqs.length || this.indexAndFreqs[startPos] == -1) {
 			throw new IllegalArgumentException("transaction " + transaction + " does not exist");
@@ -41,11 +40,20 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 			} else {
 				end = this.writeIndex;
 			}
-			return this.get(this.indexAndFreqs[2 * transaction], end, transaction);
+			iter.set(this.indexAndFreqs[2 * transaction], end, transaction);
 		}
 	}
 
-	abstract TransactionIterator get(int begin, int end, int transNum);
+	abstract class IndexedReusableIterator implements ReusableTransactionIterator {
+		abstract void set(int begin, int end, int transNum);
+
+		@Override
+		public void setTransaction(int transaction) {
+			positionIterator(transaction, this);
+		}
+	}
+
+	// abstract TransactionIterator get(int begin, int end, int transNum);
 
 	int getTransSupport(int trans) {
 		return this.indexAndFreqs[trans * 2 + 1];
@@ -59,6 +67,9 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		}
 		this.indexAndFreqs[trans * 2 + 1] = s;
 	}
+
+	@Override
+	abstract public IndexedReusableIterator getIterator();
 
 	@Override
 	public TransactionsWriter getWriter() {
@@ -123,10 +134,12 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 			this.findNext();
 			final int p = this.pos;
 			return new IterableTransaction() {
+				private IndexedReusableIterator iter = getIterator();
 
 				@Override
 				public TransactionIterator iterator() {
-					return get(p);
+					positionIterator(p, iter);
+					return iter;
 				}
 			};
 		}

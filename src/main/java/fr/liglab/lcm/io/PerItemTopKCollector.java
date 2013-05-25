@@ -105,15 +105,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public long close() {
-		final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
+		// we do not want deduplication anymore
+		// final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
-					if (dedup.add(itemTopK[i])) {
-						this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
-					}
+					// if (dedup.add(itemTopK[i])) {
+					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
+					// }
 				}
 			}
 		}

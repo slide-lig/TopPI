@@ -26,11 +26,6 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 	}
 
 	@Override
-	TransactionIterator get(int begin, int end, int transNum) {
-		return new TransIter(begin, end, transNum);
-	}
-
-	@Override
 	void writeItem(int item) {
 		// O is for empty
 		item++;
@@ -51,14 +46,23 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 		return o;
 	}
 
-	private class TransIter implements TransactionIterator {
+	@Override
+	public IndexedReusableIterator getIterator() {
+		return new TransIter();
+	}
+
+	private class TransIter extends IndexedReusableIterator {
 
 		private int transNum;
 		private int pos;
 		private int nextPos;
 		private int end;
 
-		public TransIter(int begin, int end, int transNum) {
+		public TransIter() {
+		}
+
+		@Override
+		void set(int begin, int end, int transNum) {
 			this.transNum = transNum;
 			this.nextPos = begin - 1;
 			this.end = end;

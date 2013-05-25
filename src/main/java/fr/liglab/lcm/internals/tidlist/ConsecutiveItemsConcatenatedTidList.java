@@ -43,26 +43,7 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 		}
 		final int startPos = this.indexAndFreqs[item * 2];
 		final int length = this.indexAndFreqs[item * 2 + 1];
-		return new TIntIterator() {
-			int index = 0;
-
-			@Override
-			public void remove() {
-				throw new UnsupportedOperationException();
-			}
-
-			@Override
-			public boolean hasNext() {
-				return this.index < length;
-			}
-
-			@Override
-			public int next() {
-				int res = read(startPos + index);
-				this.index++;
-				return res;
-			}
-		};
+		return new TidIterator(length, startPos);
 	}
 
 	@Override
@@ -90,4 +71,33 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 	abstract void write(int position, int transaction);
 
 	abstract int read(int position);
+
+	private class TidIterator implements TIntIterator {
+		private int index = 0;
+		private int length;
+		private int startPos;
+
+		private TidIterator(int length, int startPos) {
+			super();
+			this.length = length;
+			this.startPos = startPos;
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.index < length;
+		}
+
+		@Override
+		public int next() {
+			int res = read(startPos + index);
+			this.index++;
+			return res;
+		}
+	}
 }

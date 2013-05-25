@@ -26,8 +26,8 @@ public class ByteIndexedTransactionsList extends IndexedTransactionsList {
 	}
 
 	@Override
-	TransactionIterator get(int begin, int end, int transNum) {
-		return new TransIter(begin, end, transNum);
+	public IndexedReusableIterator getIterator() {
+		return new TransIter();
 	}
 
 	@Override
@@ -51,14 +51,18 @@ public class ByteIndexedTransactionsList extends IndexedTransactionsList {
 		return o;
 	}
 
-	private class TransIter implements TransactionIterator {
+	private class TransIter extends IndexedReusableIterator {
 
 		private int transNum;
 		private int pos;
 		private int nextPos;
 		private int end;
 
-		public TransIter(int begin, int end, int transNum) {
+		public TransIter() {
+		}
+
+		@Override
+		void set(int begin, int end, int transNum) {
 			this.transNum = transNum;
 			this.nextPos = begin - 1;
 			this.end = end;

@@ -1,13 +1,13 @@
 package fr.liglab.lcm.internals.transactions;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import fr.liglab.lcm.internals.Counters;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 
 public class BasicTransactionsList extends TransactionsList {
 	public static boolean compatible(Counters c) {
@@ -66,10 +66,12 @@ public class BasicTransactionsList extends TransactionsList {
 				final TIntList l = this.next;
 				this.next = findNext();
 				return new IterableTransaction() {
+					private TransComp iter = getIterator();
 
 					@Override
 					public TransactionIterator iterator() {
-						return new TransComp(l);
+						iter.set(l);
+						return iter;
 					}
 				};
 			}
@@ -82,11 +84,15 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 
 	@Override
-	public TransactionIterator get(int transaction) {
+	public TransComp getIterator() {
+		return new TransComp();
+	}
+
+	public void positionIterator(int transaction, TransComp iter) {
 		if (transaction >= this.transactions.size()) {
 			throw new IllegalArgumentException("transaction " + transaction + " does not exist");
 		}
-		return new TransComp(this.transactions.get(transaction));
+		iter.set(this.transactions.get(transaction));
 	}
 
 	@Override
@@ -117,12 +123,21 @@ public class BasicTransactionsList extends TransactionsList {
 		};
 	}
 
-	private class TransComp implements TransactionIterator {
-		private final TIntList trans;
-		private final TIntIterator transIter;
+	private class TransComp implements ReusableTransactionIterator {
+		private TIntList trans;
+		private TIntIterator transIter;
 		private int support;
 
-		public TransComp(TIntList trans) {
+		public TransComp() {
+
+		}
+
+		@Override
+		public void setTransaction(int transaction) {
+			positionIterator(transaction, this);
+		}
+
+		public void set(TIntList trans) {
 			this.trans = trans;
 			this.transIter = trans.iterator();
 			this.support = transIter.next();
