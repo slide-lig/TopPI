@@ -2,8 +2,8 @@ package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.FrequentsIterator;
-import fr.liglab.lcm.internals.nomaps.ExplorationStep;
-import fr.liglab.lcm.internals.nomaps.Selector;
+import fr.liglab.lcm.internals.ExplorationStep;
+import fr.liglab.lcm.internals.Selector;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;

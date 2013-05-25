@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals.nomaps;
+package fr.liglab.lcm.internals;
 
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.PLCM.PLCMCounters;

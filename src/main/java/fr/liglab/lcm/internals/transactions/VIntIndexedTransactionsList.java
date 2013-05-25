@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import org.omg.CORBA.IntHolder;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 
 public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 	private byte[] concatenated;

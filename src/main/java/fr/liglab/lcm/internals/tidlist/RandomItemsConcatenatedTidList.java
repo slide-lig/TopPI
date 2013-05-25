@@ -1,6 +1,6 @@
 package fr.liglab.lcm.internals.tidlist;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 import gnu.trove.impl.Constants;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.map.TIntIntMap;

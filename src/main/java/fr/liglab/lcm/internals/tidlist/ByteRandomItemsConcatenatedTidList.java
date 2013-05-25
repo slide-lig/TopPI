@@ -2,7 +2,7 @@ package fr.liglab.lcm.internals.tidlist;
 
 import java.util.Arrays;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 
 public class ByteRandomItemsConcatenatedTidList extends RandomItemsConcatenatedTidList {
 

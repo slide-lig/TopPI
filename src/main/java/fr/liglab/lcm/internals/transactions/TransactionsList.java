@@ -6,7 +6,7 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 
 /**
  * Stores transactions. Items in transactions are assumed to be sorted in

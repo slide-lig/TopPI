@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.apache.commons.lang.NotImplementedException;
-
 import fr.liglab.lcm.internals.TransactionReader;
 
 /**
@@ -169,7 +167,7 @@ public final class FileReader implements Iterator<TransactionReader> {
 	}
 
 	public void remove() {
-		throw new NotImplementedException();
+		throw new UnsupportedOperationException();
 	}
 	
 	private void skipNewLines() {

@@ -2,7 +2,7 @@ package fr.liglab.lcm.internals.tidlist;
 
 import java.util.Arrays;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 import gnu.trove.iterator.TIntIterator;
 
 public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {

@@ -3,7 +3,7 @@ package fr.liglab.lcm.internals.transactions;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 
 public abstract class IndexedTransactionsList extends TransactionsList {
 

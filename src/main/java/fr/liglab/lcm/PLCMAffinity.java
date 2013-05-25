@@ -7,7 +7,7 @@ import java.util.concurrent.Semaphore;
 import com.higherfrequencytrading.affinity.AffinityLock;
 import com.higherfrequencytrading.affinity.AffinityStrategies;
 
-import fr.liglab.lcm.internals.nomaps.ExplorationStep;
+import fr.liglab.lcm.internals.ExplorationStep;
 import fr.liglab.lcm.io.PatternsCollector;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;

@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals.nomaps;
+package fr.liglab.lcm.internals;
 
 import java.util.Iterator;
 
@@ -8,21 +8,18 @@ import fr.liglab.lcm.internals.TransactionReader;
  * Decorates a transactions iterator : transactions are filtered (and, maybe, rebased) 
  * as they're read.
  */
-class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
+class TransactionsRenamingDecorator implements Iterator<TransactionReader> {
 
 	protected final Iterator<TransactionReader> wrapped;
-	protected final int[] itemSupport;
 	protected final int[] rebasing;
 	protected FilteredTransaction instance;
 
 	/**
 	 * @param filtered
-	 * @param itemSupport - only items having a positive value will be kept from "filtered"
-	 * @param rebasing may be null, in which case no rebasing happens
+	 * @param rebasing items having -1 as a value will be filtered
 	 */
-	public TransactionsFilteringDecorator(Iterator<TransactionReader> filtered, int[] itemSupport, int[] rebasing) {
+	public TransactionsRenamingDecorator(Iterator<TransactionReader> filtered, int[] rebasing) {
 		this.wrapped = filtered;
-		this.itemSupport = itemSupport;
 		this.instance = null;
 		this.rebasing = rebasing;
 	}
@@ -67,12 +64,8 @@ class TransactionsFilteringDecorator implements Iterator<TransactionReader> {
 
 		protected void findNext() {
 			while (this.wrapped.hasNext()) {
-				if (rebasing == null) {
-					this.next = this.wrapped.next();
-				} else {
-					this.next = rebasing[this.wrapped.next()];
-				}
-				if (this.next != -1 && itemSupport[this.next] > 0) {
+				this.next = rebasing[this.wrapped.next()];
+				if (this.next != -1 ) {
 					this.hasNext = true;
 					return;
 				}

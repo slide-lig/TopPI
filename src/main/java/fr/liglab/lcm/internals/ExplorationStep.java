@@ -1,11 +1,11 @@
-package fr.liglab.lcm.internals.nomaps;
+package fr.liglab.lcm.internals;
 
 import java.util.Arrays;
 import java.util.Calendar;
 
 import fr.liglab.lcm.internals.FrequentsIterator;
-import fr.liglab.lcm.internals.nomaps.Dataset.TransactionsIterable;
-import fr.liglab.lcm.internals.nomaps.Selector.WrongFirstParentException;
+import fr.liglab.lcm.internals.Dataset.TransactionsIterable;
+import fr.liglab.lcm.internals.Selector.WrongFirstParentException;
 import fr.liglab.lcm.io.FileReader;
 import fr.liglab.lcm.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;

@@ -2,7 +2,7 @@ package fr.liglab.lcm.internals.transactions;
 
 import java.util.Arrays;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
+import fr.liglab.lcm.internals.Counters;
 
 public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 	private short[] concatenated;

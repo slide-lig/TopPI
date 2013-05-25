@@ -6,9 +6,9 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import fr.liglab.lcm.internals.nomaps.Counters;
-import fr.liglab.lcm.internals.nomaps.Dataset.TransactionsIterable;
-import fr.liglab.lcm.internals.nomaps.ExplorationStep;
+import fr.liglab.lcm.internals.Counters;
+import fr.liglab.lcm.internals.Dataset.TransactionsIterable;
+import fr.liglab.lcm.internals.ExplorationStep;
 
 public class CompactionTest {
 

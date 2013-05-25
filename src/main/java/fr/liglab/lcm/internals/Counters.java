@@ -1,4 +1,4 @@
-package fr.liglab.lcm.internals.nomaps;
+package fr.liglab.lcm.internals;
 
 import java.util.Arrays;
 import java.util.Iterator;

@@ -13,8 +13,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
-import fr.liglab.lcm.internals.nomaps.ExplorationStep;
-import fr.liglab.lcm.internals.nomaps.FrequentsIteratorRenamer;
+import fr.liglab.lcm.internals.ExplorationStep;
+import fr.liglab.lcm.internals.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
 import fr.liglab.lcm.io.PatternSortCollector;
