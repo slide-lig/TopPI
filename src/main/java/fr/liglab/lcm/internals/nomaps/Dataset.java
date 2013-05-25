@@ -44,16 +44,22 @@ public class Dataset implements Cloneable {
 
 		int maxTransId;
 
+		// if (ByteIndexedTransactionsList.compatible(counters)) {
+		// this.transactions = new ByteIndexedTransactionsList(counters);
+		// maxTransId = ByteIndexedTransactionsList.getMaxTransId(counters);
+		// } else
 		if (ShortIndexedTransactionsList.compatible(counters)) {
 			this.transactions = new ShortIndexedTransactionsList(counters);
-
 			maxTransId = ShortIndexedTransactionsList.getMaxTransId(counters);
 		} else {
 			this.transactions = new IntIndexedTransactionsList(counters);
-
 			maxTransId = IntIndexedTransactionsList.getMaxTransId(counters);
 		}
 
+		// if (ByteConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
+		// this.tidLists = new
+		// ByteConsecutiveItemsConcatenatedTidList(counters);
+		// } else
 		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
 			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters);
 		} else {
