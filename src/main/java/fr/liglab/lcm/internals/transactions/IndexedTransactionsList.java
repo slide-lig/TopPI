@@ -35,6 +35,9 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 			int end;
 			if (endPos < this.indexAndFreqs.length) {
 				end = this.indexAndFreqs[endPos];
+				if (end == -1) {
+					end = this.writeIndex;
+				}
 			} else {
 				end = this.writeIndex;
 			}
