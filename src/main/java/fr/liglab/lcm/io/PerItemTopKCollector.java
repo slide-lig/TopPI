@@ -260,19 +260,19 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 
 			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
-
 			if (!shortcut) {
-				for (int i : state.pattern) {
-					if (getBound(i) < extensionSupport) {
-						return true;
-					}
-				}
 				localPreviousResult = Integer.MAX_VALUE;
 				localValidUntil = Integer.MAX_VALUE;
+				for (int i : state.pattern) {
+					int bound = getBound(i);
+					if (bound < extensionSupport) {
+						return true;
+					}
+					localPreviousResult = Math.min(localPreviousResult, bound);
+				}
 			}
 
 			FrequentsIterator it;
-
 			if (shortcut) {
 				it = state.counters.getLocalFrequentsIterator(localPreviousItem + 1, extension);
 			} else {
