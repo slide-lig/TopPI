@@ -1,8 +1,8 @@
 package fr.liglab.lcm.io;
 
 import fr.liglab.lcm.PLCM.PLCMCounters;
-import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.ExplorationStep;
+import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.Selector;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.map.TIntIntMap;
@@ -12,8 +12,6 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
@@ -256,14 +254,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 			int extensionSupport = supports[extension];
 			final int maxCandidate = state.counters.getMaxCandidate();
 
-			if (getBound(reverseRenaming[extension]) < extensionSupport) {
-				return true;
-			}
-
 			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
 			if (!shortcut) {
 				localPreviousResult = Integer.MAX_VALUE;
 				localValidUntil = Integer.MAX_VALUE;
+			}
+			if (getBound(reverseRenaming[extension]) < extensionSupport) {
+				return true;
+			}
+
+			if (!shortcut) {
 				for (int i : state.pattern) {
 					int bound = getBound(i);
 					if (bound < extensionSupport) {

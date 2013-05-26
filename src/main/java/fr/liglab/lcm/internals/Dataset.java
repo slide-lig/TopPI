@@ -68,8 +68,7 @@ public class Dataset implements Cloneable {
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
-
-			if (transaction.hasNext()) {
+			if (transaction.getTransactionSupport() != 0 && transaction.hasNext()) {
 				final int transId = writer.beginTransaction(transaction.getTransactionSupport());
 
 				while (transaction.hasNext()) {

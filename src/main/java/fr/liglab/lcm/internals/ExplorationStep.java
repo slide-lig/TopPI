@@ -30,13 +30,13 @@ public final class ExplorationStep implements Cloneable {
 	static final double VIEW_SUPPORT_THRESHOLD = 0.15;
 
 	/**
-	 * When nbTransactions/nbFrequents goes above this threshold, we add a first-parent test 
-	 * and compress
+	 * When nbTransactions/nbFrequents goes above this threshold, we add a
+	 * first-parent test and compress
 	 * 
 	 * TODO : test also 10, and others. Test on kosarak.
 	 */
 	static final int DENSE_MODE_THRESHOLD = 1000000000;
-	
+
 	/**
 	 * closure of parent's pattern UNION extension
 	 */
@@ -128,8 +128,9 @@ public final class ExplorationStep implements Cloneable {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
 					TransactionsIterable support = this.dataset.getSupport(candidate);
 
-//					System.out.println("extending "+Arrays.toString(this.pattern)+ " with "+
-//							candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
+					// System.out.println("extending "+Arrays.toString(this.pattern)+
+					// " with "+
+					// candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
 
 					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), candidate,
 							this.dataset.getIgnoredItems(), this.counters.maxFrequent);
@@ -203,15 +204,14 @@ public final class ExplorationStep implements Cloneable {
 
 			// ! \\ From here, order is important
 
-			final boolean isDense = (candidateCounts.distinctTransactionsCount / 
-					candidateCounts.nbFrequents) > DENSE_MODE_THRESHOLD;
-			
+			final boolean isDense = (candidateCounts.distinctTransactionsCount / candidateCounts.nbFrequents) > DENSE_MODE_THRESHOLD;
+
 			if (parent.predictiveFPTestMode) {
 				this.predictiveFPTestMode = true;
 			} else {
 				final int averageLen = candidateCounts.distinctTransactionLengthSum
 						/ candidateCounts.distinctTransactionsCount;
-				
+
 				this.predictiveFPTestMode = averageLen > LONG_TRANSACTION_MODE_THRESHOLD || isDense;
 				if (this.predictiveFPTestMode) {
 					this.selectChain = new FirstParentTest(this.selectChain);
@@ -222,13 +222,14 @@ public final class ExplorationStep implements Cloneable {
 
 			this.dataset = instanciateDataset(parent, support, isDense);
 
-			// and intanciateDataset may choose to trigger some renaming in counters
+			// and intanciateDataset may choose to trigger some renaming in
+			// counters
 
 			this.candidates = this.counters.getExtensionsIterator();
 
 		}
 	}
-	
+
 	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support, boolean doCompression) {
 		double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
@@ -241,11 +242,11 @@ public final class ExplorationStep implements Cloneable {
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			Dataset dataset = new Dataset(this.counters, filtered);
-			
+
 			if (doCompression) {
 				dataset.compress(this.core_item);
 			}
-			
+
 			return dataset;
 		}
 	}
