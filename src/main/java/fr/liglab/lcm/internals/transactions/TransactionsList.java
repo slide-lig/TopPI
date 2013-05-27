@@ -56,6 +56,10 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		if (start >= end - 1) {
 			// size 0 or 1
 			return;
+		} else if (end - start == 2) {
+			it1.setTransaction(array[start]);
+			it2.setTransaction(array[start + 1]);
+			merge(it1, it2, prefixEnd);
 		} else {
 			// pick pivot at the middle and put it at the end
 			int pivotPos = start + ((end - start) / 2);
