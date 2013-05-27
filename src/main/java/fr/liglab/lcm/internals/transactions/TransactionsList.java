@@ -82,6 +82,8 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 					array[i] = array[insertSup];
 					array[insertSup] = valI;
 					insertSup--;
+				}else{
+					i++;
 				}
 			}
 			array[end - 1] = array[insertSup + 1];
