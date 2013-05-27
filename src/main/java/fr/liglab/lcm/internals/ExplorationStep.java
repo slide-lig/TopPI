@@ -17,25 +17,30 @@ public final class ExplorationStep implements Cloneable {
 
 	public static boolean verbose = false;
 	public static boolean ultraVerbose = false;
-
+	
+	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "lcm.threshold.view";
+	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "lcm.threshold.long";
+	public final static String KEY_DENSITY_THRESHOLD = "lcm.threshold.density";
+	
 	/**
 	 * @see longTransactionsMode
 	 */
-	static final int LONG_TRANSACTION_MODE_THRESHOLD = 2000;
+	static int LONG_TRANSACTION_MODE_THRESHOLD = Integer.parseInt(
+			System.getProperty(KEY_LONG_TRANSACTIONS_THRESHOLD, "2000"));
 
 	/**
 	 * When projecting on a item having a support count above
 	 * VIEW_SUPPORT_THRESHOLD%, projection will be a DatasetView
 	 */
-	static final double VIEW_SUPPORT_THRESHOLD = 0.15;
+	static double VIEW_SUPPORT_THRESHOLD = Double.parseDouble(
+			System.getProperty(KEY_VIEW_SUPPORT_THRESHOLD, "0.15"));
 
 	/**
 	 * When nbTransactions/nbFrequents goes above this threshold, we add a
 	 * first-parent test and compress
-	 * 
-	 * TODO : test also 10, and others. Test on kosarak.
 	 */
-	static final int DENSE_MODE_THRESHOLD = 1000000000;
+	static int DENSE_MODE_THRESHOLD = Integer.parseInt(
+			System.getProperty(KEY_DENSITY_THRESHOLD, "100"));
 
 	/**
 	 * closure of parent's pattern UNION extension
