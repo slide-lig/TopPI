@@ -1,12 +1,6 @@
 package fr.liglab.lcm.internals.transactions;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-
-import fr.liglab.lcm.internals.Counters;
+import gnu.trove.iterator.TIntIterator;
 
 /**
  * Stores transactions. Items in transactions are assumed to be sorted in
@@ -26,6 +20,8 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 
 	abstract public ReusableTransactionIterator getIterator();
 
+	abstract public TIntIterator getIdIterator();
+
 	abstract public TransactionsWriter getWriter();
 
 	/**
@@ -34,30 +30,85 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 	abstract public int size();
 
 	public void compress(final int prefixEnd) {
-		compress(prefixEnd, null);
+		int[] sortList = new int[this.size()];
+		TIntIterator idIter = this.getIdIterator();
+		for (int i = 0; i < sortList.length; i++) {
+			sortList[i] = idIter.next();
+		}
+		sort(sortList, 0, sortList.length, this.getIterator(), this.getIterator(), prefixEnd);
 	}
 
-	public void compress(final int prefixEnd, Counters c) {
-		List<IterableTransaction> sortList = new ArrayList<IterableTransaction>();
-		for (IterableTransaction trans : this) {
-			sortList.add(trans);
-		}
-		Collections.sort(sortList, new TransactionsComparator(prefixEnd));
-		Iterator<IterableTransaction> transIter = sortList.iterator();
-		IterableTransaction trans1 = transIter.next();
-		while (transIter.hasNext()) {
-			IterableTransaction trans2 = transIter.next();
-			if (!this.merge(trans1, trans2, prefixEnd, c)) {
-				trans1 = trans2;
+	/**
+	 * This is NOT a standard quicksort. Transactions with same prefix as the
+	 * pivot are left out the rest of the sort because they have been merged in
+	 * the pivot. Consequence: in the recursion, there is some space between
+	 * left sublist and right sublist (besides the pivot itself).
+	 * 
+	 * @param array
+	 * @param start
+	 * @param end
+	 * @param it1
+	 * @param it2
+	 * @param prefixEnd
+	 */
+	private static void sort(final int[] array, final int start, final int end, final ReusableTransactionIterator it1,
+			final ReusableTransactionIterator it2, int prefixEnd) {
+		if (start >= end - 1) {
+			// size 0 or 1
+			return;
+		} else {
+			// pick pivot at the middle and put it at the end
+			int pivotPos = start + ((end - start) / 2);
+			int pivotVal = array[pivotPos];
+			array[pivotPos] = array[end - 1];
+			array[end - 1] = pivotVal;
+			int insertInf = start;
+			int insertSup = end - 2;
+			for (int i = start; i <= insertSup; i++) {
+				it1.setTransaction(pivotVal);
+				it2.setTransaction(array[i]);
+				int comp = merge(it1, it2, prefixEnd);
+				if (comp < 0) {
+					int valI = array[i];
+					array[insertInf] = valI;
+					insertInf++;
+				} else if (comp > 0) {
+					int valI = array[i];
+					array[i] = array[insertSup];
+					array[insertSup] = valI;
+					insertSup--;
+					i--;
+				}
 			}
+			array[end - 1] = array[insertSup + 1];
+			// Arrays.fill(array, insertInf, insertSup + 2, -1);
+			array[insertSup + 1] = pivotVal;
+			sort(array, start, insertInf, it1, it2, prefixEnd);
+			sort(array, insertSup + 2, end, it1, it2, prefixEnd);
 		}
 	}
 
-	private boolean merge(IterableTransaction trans1, IterableTransaction trans2, final int prefixEnd, Counters c) {
-		TransactionIterator t1 = trans1.iterator();
-		TransactionIterator t2 = trans2.iterator();
-		if (!t1.hasNext() || !t2.hasNext()) {
-			return false;
+	static private int merge(TransactionIterator t1, TransactionIterator t2, final int prefixEnd) {
+		if (!t1.hasNext()) {
+			if (!t2.hasNext() || t2.next() > prefixEnd) {
+				t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
+				t2.setTransactionSupport(0);
+				return 0;
+			} else {
+				return -1;
+			}
+		} else if (!t2.hasNext()) {
+			if (t1.next() > prefixEnd) {
+				t1.remove();
+				while (t1.hasNext()) {
+					t1.remove();
+				}
+				t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
+				t2.setTransactionSupport(0);
+				return 0;
+			} else {
+				return 1;
+			}
 		}
 		int t1Item = t1.next();
 		int t2Item = t2.next();
@@ -65,7 +116,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 			if (t1Item < prefixEnd) {
 				if (t2Item < prefixEnd) {
 					if (t1Item != t2Item) {
-						return false;
+						return t1Item - t2Item;
 					} else {
 						if (t1.hasNext()) {
 							t1Item = t1.next();
@@ -74,63 +125,41 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 								continue;
 							} else {
 								if (t1Item < prefixEnd) {
-									return false;
+									return 1;
 								} else {
 									t1.remove();
-									if (c != null) {
-										c.decrementCounts(t1Item, t1.getTransactionSupport());
-									}
 									while (t1.hasNext()) {
 										t1Item = t1.next();
 										t1.remove();
-										if (c != null) {
-											c.decrementCounts(t1Item, t1.getTransactionSupport());
-										}
 									}
 									t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-									if (c != null) {
-										c.decrementTrans(t2.getTransactionSupport());
-									}
 									t2.setTransactionSupport(0);
-									return true;
+									return 0;
 								}
 							}
 						} else {
 							if (t2.hasNext()) {
 								t2Item = t2.next();
 								if (t2Item < prefixEnd) {
-									return false;
+									return -1;
 								} else {
-									if (c != null) {
-										c.decrementCounts(t2Item, t2.getTransactionSupport());
-										while (t2.hasNext()) {
-											t2Item = t2.next();
-											c.decrementCounts(t2Item, t2.getTransactionSupport());
-										}
-									}
 									t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-									if (c != null) {
-										c.decrementTrans(t2.getTransactionSupport());
-									}
 									t2.setTransactionSupport(0);
-									return true;
+									return 0;
 								}
 							} else {
 								t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-								if (c != null) {
-									c.decrementTrans(t2.getTransactionSupport());
-								}
 								t2.setTransactionSupport(0);
-								return true;
+								return 0;
 							}
 						}
 					}
 				} else {
-					return false;
+					return -1;
 				}
 			} else {
 				if (t2Item < prefixEnd) {
-					return false;
+					return 1;
 				} else {
 					break;
 				}
@@ -147,75 +176,38 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 						while (t1.hasNext()) {
 							t1Item = t1.next();
 							t1.remove();
-							if (c != null) {
-								c.decrementCounts(t1Item, t1.getTransactionSupport());
-							}
 						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-						if (c != null) {
-							c.decrementTrans(t2.getTransactionSupport());
-						}
 						t2.setTransactionSupport(0);
-						return true;
+						return 0;
 					}
 				} else {
-					if (c != null) {
-						while (t2.hasNext()) {
-							t2Item = t2.next();
-							c.decrementCounts(t2Item, t2.getTransactionSupport());
-						}
-					}
 					t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-					if (c != null) {
-						c.decrementTrans(t2.getTransactionSupport());
-					}
 					t2.setTransactionSupport(0);
-					return true;
+					return 0;
 				}
 			} else {
 				if (t1Item < t2Item) {
 					t1.remove();
-					if (c != null) {
-						c.decrementCounts(t1Item, t1.getTransactionSupport());
-					}
 					if (t1.hasNext()) {
 						t1Item = t1.next();
 					} else {
-						if (c != null) {
-							c.decrementCounts(t2Item, t2.getTransactionSupport());
-							while (t2.hasNext()) {
-								t2Item = t2.next();
-								c.decrementCounts(t2Item, t2.getTransactionSupport());
-							}
-						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-						if (c != null) {
-							c.decrementTrans(t2.getTransactionSupport());
-						}
 						t2.setTransactionSupport(0);
-						return true;
+						return 0;
 					}
 				} else {
 					if (t2.hasNext()) {
 						t2Item = t2.next();
 					} else {
 						t1.remove();
-						if (c != null) {
-							c.decrementCounts(t1Item, t1.getTransactionSupport());
-						}
 						while (t1.hasNext()) {
 							t1Item = t1.next();
 							t1.remove();
-							if (c != null) {
-								c.decrementCounts(t1Item, t1.getTransactionSupport());
-							}
 						}
 						t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
-						if (c != null) {
-							c.decrementTrans(t2.getTransactionSupport());
-						}
 						t2.setTransactionSupport(0);
-						return true;
+						return 0;
 					}
 				}
 			}
@@ -241,59 +233,6 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 		}
 		sb.append("]");
 		return sb.toString();
-	}
-
-	private static class TransactionsComparator implements Comparator<IterableTransaction> {
-		private int prefixEnd;
-
-		private TransactionsComparator(int prefixEnd) {
-			this.prefixEnd = prefixEnd;
-		}
-
-		@Override
-		public int compare(IterableTransaction trans1, IterableTransaction trans2) {
-			TransactionIterator t1 = trans1.iterator();
-			TransactionIterator t2 = trans2.iterator();
-			if (!t1.hasNext()) {
-				if (t2.hasNext()) {
-					return -1;
-				} else {
-					return 0;
-				}
-			}
-			if (!t2.hasNext()) {
-				return 1;
-			}
-			int t1Item = t1.next();
-			int t2Item = t2.next();
-			while (true) {
-				if (t1Item > prefixEnd && t2Item > prefixEnd) {
-					return 0;
-				} else {
-					if (t1Item < t2Item) {
-						return -1;
-					} else if (t1Item > t2Item) {
-						return 1;
-					} else {
-						if (t1.hasNext()) {
-							if (t2.hasNext()) {
-								t1Item = t1.next();
-								t2Item = t2.next();
-								continue;
-							} else {
-								return 1;
-							}
-						} else {
-							if (t2.hasNext()) {
-								return -1;
-							} else {
-								return 0;
-							}
-						}
-					}
-				}
-			}
-		}
 	}
 
 	public static void main(String[] args) {

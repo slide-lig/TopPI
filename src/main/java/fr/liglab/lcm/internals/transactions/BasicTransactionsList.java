@@ -84,6 +84,11 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 
 	@Override
+	public TIntIterator getIdIterator() {
+		return new IdIter();
+	}
+
+	@Override
 	public TransComp getIterator() {
 		return new TransComp();
 	}
@@ -175,4 +180,44 @@ public class BasicTransactionsList extends TransactionsList {
 		}
 
 	}
+
+	private class IdIter implements TIntIterator {
+		private int pos;
+		private int nextPos = -1;
+
+		public IdIter() {
+			this.findNext();
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public int next() {
+			this.pos = this.nextPos;
+			this.findNext();
+			return this.pos;
+		}
+
+		private void findNext() {
+			while (true) {
+				this.nextPos++;
+				if (nextPos >= transactions.size()) {
+					this.nextPos = -1;
+					return;
+				}
+				if (transactions.get(this.nextPos).get(0) != 0) {
+					return;
+				}
+			}
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.nextPos != -1;
+		}
+	}
+
 }

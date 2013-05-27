@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 
 import fr.liglab.lcm.internals.Counters;
+import gnu.trove.iterator.TIntIterator;
 
 public abstract class IndexedTransactionsList extends TransactionsList {
 
@@ -70,6 +71,11 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 
 	@Override
 	abstract public IndexedReusableIterator getIterator();
+
+	@Override
+	public TIntIterator getIdIterator() {
+		return new IdIter();
+	}
 
 	@Override
 	public TransactionsWriter getWriter() {
@@ -142,6 +148,45 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 					return iter;
 				}
 			};
+		}
+
+		private void findNext() {
+			while (true) {
+				this.nextPos++;
+				if (nextPos >= indexAndFreqs.length / 2 || indexAndFreqs[nextPos * 2] == -1) {
+					this.nextPos = -1;
+					return;
+				}
+				if (indexAndFreqs[nextPos * 2 + 1] > 0) {
+					return;
+				}
+			}
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.nextPos != -1;
+		}
+	}
+
+	private class IdIter implements TIntIterator {
+		private int pos;
+		private int nextPos = -1;
+
+		public IdIter() {
+			this.findNext();
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public int next() {
+			this.pos = this.nextPos;
+			this.findNext();
+			return this.pos;
 		}
 
 		private void findNext() {

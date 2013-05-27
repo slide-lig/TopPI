@@ -35,18 +35,18 @@ public final class Counters implements Cloneable {
 	/**
 	 * How many transactions are represented by the given dataset ?
 	 */
-	public int transactionsCount;
+	public final int transactionsCount;
 
 	/**
 	 * How many transactions have been counted (equals transactionsCount when
 	 * all transactions have a weight of 1)
 	 */
-	public int distinctTransactionsCount;
+	public final int distinctTransactionsCount;
 
 	/**
 	 * Sum of given *filtered* transactions' lengths, ignoring their weight
 	 */
-	public int distinctTransactionLengthSum;
+	public final int distinctTransactionLengthSum;
 
 	/**
 	 * Support count, per item having a support count in [minSupport; 100% [
@@ -62,7 +62,7 @@ public final class Counters implements Cloneable {
 	 * supportCounts, summed - FIXME is this useful ?? don't think it is
 	 * anymore, distinct is more important
 	 */
-	public int supportCountsSum;
+	public final int supportCountsSum;
 
 	/**
 	 * For each item having a support count in [minSupport; 100% [ , gives how
@@ -84,7 +84,7 @@ public final class Counters implements Cloneable {
 	/**
 	 * Counts how many items have a support count in [minSupport; 100% [
 	 */
-	public int nbFrequents;
+	public final int nbFrequents;
 
 	/**
 	 * Biggest item ID having a support count in [minSupport; 100% [
@@ -407,28 +407,6 @@ public final class Counters implements Cloneable {
 
 	public int getMaxCandidate() {
 		return maxCandidate;
-	}
-
-	public void decrementCounts(int item, int support) {
-		if (this.supportCounts[item] > 0) {
-			this.supportCounts[item] -= support;
-			if (this.supportCounts[item] < this.minSupport) {
-				this.nbFrequents--;
-				this.distinctTransactionLengthSum -= (this.distinctTransactionsCounts[item] + 1);
-				this.supportCountsSum -= (this.supportCounts[item] + support);
-				this.supportCounts[item] = 0;
-				this.distinctTransactionsCounts[item] = 0;
-			} else {
-				this.distinctTransactionsCounts[item]--;
-				this.distinctTransactionLengthSum--;
-				this.supportCountsSum -= support;
-			}
-		}
-	}
-
-	public void decrementTrans(int support) {
-		this.transactionsCount -= support;
-		this.distinctTransactionsCount--;
 	}
 
 	/**
