@@ -64,7 +64,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 			array[end - 1] = pivotVal;
 			int insertInf = start;
 			int insertSup = end - 2;
-			for (int i = start; i <= insertSup; i++) {
+			for (int i = start; i <= insertSup;) {
 				it1.setTransaction(pivotVal);
 				it2.setTransaction(array[i]);
 				int comp = merge(it1, it2, prefixEnd);
@@ -72,12 +72,12 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 					int valI = array[i];
 					array[insertInf] = valI;
 					insertInf++;
+					i++;
 				} else if (comp > 0) {
 					int valI = array[i];
 					array[i] = array[insertSup];
 					array[insertSup] = valI;
 					insertSup--;
-					i--;
 				}
 			}
 			array[end - 1] = array[insertSup + 1];
