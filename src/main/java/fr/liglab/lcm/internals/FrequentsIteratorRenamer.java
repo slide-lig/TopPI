@@ -28,4 +28,18 @@ public class FrequentsIteratorRenamer implements FrequentsIterator {
 		}
 	}
 
+	@Override
+	public int peek() {
+		final int next = this.wrapped.peek();
+		if (next >= 0) {
+			return this.renaming[next];
+		} else {
+			return -1;
+		}
+	}
+
+	@Override
+	public int last() {
+		return this.renaming[this.wrapped.last()];
+	}
 }

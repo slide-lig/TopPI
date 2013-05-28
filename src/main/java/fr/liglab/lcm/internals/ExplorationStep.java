@@ -284,4 +284,18 @@ public final class ExplorationStep implements Cloneable {
 		return new ExplorationStep(pattern, core_item, dataset.clone(), counters.clone(), selectChain, candidates,
 				failedFPTests, predictiveFPTestMode);
 	}
+	
+	public Progress getProgression() {
+		return new Progress();
+	}
+	
+	public final class Progress {
+		public final int current;
+		public final int last;
+		
+		protected Progress() {
+			this.current = candidates.peek();
+			this.last = candidates.last();
+		}
+	}
 }
