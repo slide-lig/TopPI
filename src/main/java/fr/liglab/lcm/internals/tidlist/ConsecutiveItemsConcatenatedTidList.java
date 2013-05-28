@@ -17,11 +17,12 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 		int startPos = 0;
 		this.indexAndFreqs = new int[lengths.length * 2];
 		for (int i = 0; i < lengths.length; i++) {
+			int itemIndex = i << 1;
 			if (lengths[i] > 0) {
-				this.indexAndFreqs[i * 2] = startPos;
+				this.indexAndFreqs[itemIndex] = startPos;
 				startPos += lengths[i];
 			} else {
-				this.indexAndFreqs[i * 2] = -1;
+				this.indexAndFreqs[itemIndex] = -1;
 			}
 		}
 		this.allocateArray(startPos);
@@ -38,11 +39,12 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 
 	@Override
 	public TIntIterator get(final int item) {
-		if (item > this.indexAndFreqs.length / 2 || this.indexAndFreqs[item * 2] == -1) {
+		int itemIndex = item << 1;
+		if (itemIndex > this.indexAndFreqs.length || this.indexAndFreqs[itemIndex] == -1) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
-		final int startPos = this.indexAndFreqs[item * 2];
-		final int length = this.indexAndFreqs[item * 2 + 1];
+		final int startPos = this.indexAndFreqs[itemIndex];
+		final int length = this.indexAndFreqs[itemIndex + 1];
 		return new TidIterator(length, startPos);
 	}
 
@@ -59,13 +61,14 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 
 	@Override
 	public void addTransaction(int item, int transaction) {
-		if (item > this.indexAndFreqs.length / 2 || this.indexAndFreqs[item * 2] == -1) {
+		int itemIndex = item << 1;
+		if (itemIndex > this.indexAndFreqs.length || this.indexAndFreqs[itemIndex] == -1) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
-		int start = this.indexAndFreqs[item * 2];
-		int index = this.indexAndFreqs[item * 2 + 1];
+		int start = this.indexAndFreqs[itemIndex];
+		int index = this.indexAndFreqs[itemIndex + 1];
 		this.write(start + index, transaction);
-		this.indexAndFreqs[item * 2 + 1]++;
+		this.indexAndFreqs[itemIndex + 1]++;
 	}
 
 	abstract void write(int position, int transaction);

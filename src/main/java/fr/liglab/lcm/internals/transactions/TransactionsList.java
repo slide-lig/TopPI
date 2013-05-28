@@ -6,7 +6,7 @@ import gnu.trove.iterator.TIntIterator;
  * Stores transactions. Items in transactions are assumed to be sorted in
  * increasing order
  */
-public abstract class TransactionsList implements Iterable<IterableTransaction> {
+public abstract class TransactionsList implements Iterable<IterableTransaction>, Cloneable {
 
 	@Override
 	public TransactionsList clone() {
@@ -82,7 +82,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction> 
 					array[i] = array[insertSup];
 					array[insertSup] = valI;
 					insertSup--;
-				}else{
+				} else {
 					i++;
 				}
 			}

@@ -1,6 +1,7 @@
 package fr.liglab.lcm;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
@@ -9,8 +10,6 @@ import com.higherfrequencytrading.affinity.AffinityStrategies;
 
 import fr.liglab.lcm.internals.ExplorationStep;
 import fr.liglab.lcm.io.PatternsCollector;
-import gnu.trove.list.TIntList;
-import gnu.trove.list.array.TIntArrayList;
 
 /**
  * LCM implementation, based on UnoAUA04 :
@@ -21,7 +20,7 @@ public class PLCMAffinity extends PLCM {
 	private static AffinityLock al;
 
 	static void bindMainThread() {
-		al = AffinityLock.acquireLock();
+		al = AffinityLock.acquireLock(false);
 		al.bind(false);
 	}
 
@@ -67,32 +66,36 @@ public class PLCMAffinity extends PLCM {
 		int remainingThreads = nbThreads;
 		this.threadsBySocket = new ArrayList<List<PLCMAffinityThread>>(usedSockets);
 		int id = 0;
+		AffinityLock[] socketLocks = new AffinityLock[usedSockets];
 		for (int s = 0; s < usedSockets; s++) {
-			System.out.println("creating threads for socket " + s);
+			if (s == 0) {
+				System.out.println("getting lock same socket as " + al.cpuId());
+				socketLocks[s] = al.acquireLock(AffinityStrategies.SAME_SOCKET);
+			} else {
+				System.out.println("getting lock different socket as " + al.cpuId());
+				socketLocks[s] = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET);
+			}
+		}
+		al.release();
+		for (int s = 0; s < usedSockets; s++) {
+			System.out.println("positioning threads for group " + s);
 			List<PLCMAffinityThread> l = new ArrayList<PLCMAffinityThread>(corePerSocket);
 			this.threadsBySocket.add(l);
-			AffinityLock socketLock;
-			if (s == 0) {
-				socketLock = al.acquireLock(AffinityStrategies.SAME_CORE);
-			} else {
-				socketLock = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET);
-			}
 			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, remainingThreads--) {
 				if (c == 0) {
-					l.add(new PLCMAffinityThread(id, s, socketLock));
+					l.add(new PLCMAffinityThread(id, s, socketLocks[s]));
 					id++;
 				} else {
-					l.add(new PLCMAffinityThread(id, s, socketLock.acquireLock(AffinityStrategies.SAME_SOCKET)));
+					System.out.println("getting lock same socket as " + socketLocks[s].cpuId());
+					l.add(new PLCMAffinityThread(id, s, socketLocks[s].acquireLock(AffinityStrategies.SAME_SOCKET)));
 					id++;
 				}
 			}
 		}
-		al.release();
+
 		for (List<PLCMAffinityThread> l : threadsBySocket) {
 			this.threads.addAll(l);
 		}
-		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
-		System.exit(-1);
 	}
 
 	@Override
@@ -147,27 +150,30 @@ public class PLCMAffinity extends PLCM {
 		if (nbCopies > 0) {
 			initializedSem.release(nbCopies);
 		}
+		try {
+			Thread.sleep(2000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
+		System.exit(-1);
 	}
 
 	@Override
 	public ExplorationStep stealJob(final PLCMThread t) {
 		PLCMAffinityThread thief = (PLCMAffinityThread) t;
 		// here we need to readlock because the owner thread can write
-		for (int level = 0; level < thief.position.size(); level++) {
+		for (int level = 0; level < thief.position.length; level++) {
 			for (PLCMThread v : this.threads) {
 				PLCMAffinityThread victim = (PLCMAffinityThread) v;
 				if (victim == thief) {
 					break;
 				}
 				boolean steal = true;
-				if (victim.position.size() < thief.position.size()) {
-					System.err.println("trying to stealing from a thread with no initialized location");
-				} else {
-					for (int higherLevel = level + 1; higherLevel < thief.position.size(); higherLevel++) {
-						if (thief.position.get(higherLevel) != victim.position.get(higherLevel)) {
-							steal = false;
-							break;
-						}
+				for (int higherLevel = level + 1; higherLevel < thief.position.length; higherLevel++) {
+					if (thief.position[higherLevel] != victim.position[higherLevel]) {
+						steal = false;
+						break;
 					}
 				}
 				if (steal) {
@@ -201,7 +207,7 @@ public class PLCMAffinity extends PLCM {
 	}
 
 	private class PLCMAffinityThread extends PLCMThread {
-		private final TIntList position;
+		private final int[] position;
 		private final AffinityLock al;
 		private final int group;
 		private Semaphore datasetCopySem;
@@ -211,7 +217,7 @@ public class PLCMAffinity extends PLCM {
 		private PLCMAffinityThread(int id, int group, AffinityLock al) {
 			super(id);
 			this.al = al;
-			this.position = new TIntArrayList(3);
+			this.position = new int[3];
 			this.group = group;
 		}
 
@@ -238,10 +244,11 @@ public class PLCMAffinity extends PLCM {
 				datasetToCopy = null;
 
 			}
-			this.position.add(al.cpuId());
-			this.position.add(AffinityLock.cpuLayout().coreId(al.cpuId()));
-			this.position.add(AffinityLock.cpuLayout().socketId(al.cpuId()));
-			this.setName(this.getName() + " group " + this.group + " placed on " + this.position);
+			this.position[0] = al.cpuId();
+			this.position[1] = AffinityLock.cpuLayout().coreId(al.cpuId());
+			this.position[2] = AffinityLock.cpuLayout().socketId(al.cpuId());
+			this.setName(this.getName() + " group " + this.group + " placed on " + Arrays.toString(this.position));
+			System.out.println(this.getName());
 			super.run();
 			al.release();
 		}
