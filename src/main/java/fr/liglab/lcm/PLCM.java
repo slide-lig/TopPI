@@ -112,23 +112,31 @@ public class PLCM {
 		// here we need to readlock because the owner thread can write
 		for (PLCMThread victim : this.threads) {
 			if (victim != thief) {
-				for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
-					victim.lock.readLock().lock();
-					if (!victim.stackedJobs.isEmpty()) {
-						ExplorationStep sj = victim.stackedJobs.get(0);
-						victim.lock.readLock().unlock();
-
-						ExplorationStep next = sj.next();
-
-						if (next != null) {
-							return next;
-						}
-					} else {
-						victim.lock.readLock().unlock();
-					}
+				ExplorationStep e = stealJob(thief, victim);
+				if (e != null) {
+					return e;
 				}
 			}
 		}
+		return null;
+	}
+
+	ExplorationStep stealJob(PLCMThread thief, PLCMThread victim) {
+		victim.lock.readLock().lock();
+		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
+			if (!victim.stackedJobs.isEmpty()) {
+				ExplorationStep sj = victim.stackedJobs.get(stealPos);
+				ExplorationStep next = sj.next();
+
+				if (next != null) {
+					// System.out.println(thief.getName() +
+					// " stealing from " + victim.getName());
+					victim.lock.readLock().unlock();
+					return next;
+				}
+			}
+		}
+		victim.lock.readLock().unlock();
 		return null;
 	}
 
@@ -241,10 +249,9 @@ public class PLCM {
 	public static void printMan(Options options) {
 		String syntax = "java fr.liglab.LCM [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
 		String header = "\nIf OUTPUT_PATH is missing, patterns are printed to standard output.\nOptions are :";
-		String footer = "\nFor advanced tuning you may also set properties : "+
-				ExplorationStep.KEY_DENSITY_THRESHOLD+", "+
-				ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD+", "+
-				ExplorationStep.KEY_VIEW_SUPPORT_THRESHOLD;
+		String footer = "\nFor advanced tuning you may also set properties : " + ExplorationStep.KEY_DENSITY_THRESHOLD
+				+ ", " + ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD + ", "
+				+ ExplorationStep.KEY_VIEW_SUPPORT_THRESHOLD;
 
 		HelpFormatter formatter = new HelpFormatter();
 		formatter.printHelp(80, syntax, header, options, footer);

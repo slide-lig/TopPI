@@ -156,45 +156,47 @@ public class PLCMAffinity extends PLCM {
 			e.printStackTrace();
 		}
 		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
-		System.exit(-1);
 	}
 
 	@Override
 	public ExplorationStep stealJob(final PLCMThread t) {
 		PLCMAffinityThread thief = (PLCMAffinityThread) t;
+		// System.out.println(t.getName() + " trying to steal");
 		// here we need to readlock because the owner thread can write
 		for (int level = 0; level < thief.position.length; level++) {
+			// System.out.println("level " + level + " candidates " +
+			// this.threads.size());
 			for (PLCMThread v : this.threads) {
 				PLCMAffinityThread victim = (PLCMAffinityThread) v;
 				if (victim == thief) {
-					break;
+					continue;
 				}
 				boolean steal = true;
 				for (int higherLevel = level + 1; higherLevel < thief.position.length; higherLevel++) {
 					if (thief.position[higherLevel] != victim.position[higherLevel]) {
+						// System.out.println(thief.getName() +
+						// " cannot steal from " + victim.getName() +
+						// " at level "
+						// + level + " because of higher level " + higherLevel);
 						steal = false;
 						break;
 					}
 				}
 				if (steal) {
-					for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
-						victim.lock.readLock().lock();
-						if (!victim.stackedJobs.isEmpty()) {
-							ExplorationStep sj = victim.stackedJobs.get(0);
-							victim.lock.readLock().unlock();
-
-							ExplorationStep next = sj.next();
-
-							if (next != null) {
-								return next;
-							}
-						} else {
-							victim.lock.readLock().unlock();
-						}
+					// System.out.println(thief.getName() +
+					// " tries to steal from " + victim.getName() + " at level "
+					// + level);
+					ExplorationStep e = stealJob(thief, victim);
+					if (e != null) {
+						// System.out.println(thief.getName() +
+						// " great success stealing from " + victim.getName()
+						// + " at level " + level);
+						return e;
 					}
 				}
 			}
 		}
+		System.out.println(thief.getName() + " didn't manage to steal anything, bad thief");
 		return null;
 	}
 
