@@ -59,8 +59,8 @@ public class PLCM {
 	}
 
 	void initializeAndStartThreads(final ExplorationStep initState) {
-		this.threads.get(0).init(initState);
 		for (PLCMThread t : this.threads) {
+			t.init(initState);
 			t.start();
 		}
 	}
