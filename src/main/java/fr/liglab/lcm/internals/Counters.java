@@ -468,6 +468,16 @@ public final class Counters implements Cloneable {
 				}
 			}
 		}
+
+		@Override
+		public int peek() {
+			return this.index.get();
+		}
+
+		@Override
+		public int last() {
+			return this.max;
+		}
 	}
 
 	protected class FrequentIterator implements FrequentsIterator {
@@ -501,6 +511,16 @@ public final class Counters implements Cloneable {
 					}
 				}
 			}
+		}
+
+		@Override
+		public int peek() {
+			return this.index;
+		}
+
+		@Override
+		public int last() {
+			return this.max;
 		}
 	}
 }

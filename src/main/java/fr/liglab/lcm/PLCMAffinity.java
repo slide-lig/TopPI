@@ -20,8 +20,8 @@ public class PLCMAffinity extends PLCM {
 	private static AffinityLock al;
 
 	static void bindMainThread() {
-		al = AffinityLock.acquireLock(false);
-		al.bind(false);
+		al = AffinityLock.acquireLock(false); // lock a core for main thread
+		al.bind(false); // bind main thread to current (locked) core - false=> allow another thread if HT
 	}
 
 	private List<List<PLCMAffinityThread>> threadsBySocket;

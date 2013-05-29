@@ -2,6 +2,7 @@ package fr.liglab.lcm;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -14,6 +15,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import fr.liglab.lcm.internals.ExplorationStep;
+import fr.liglab.lcm.internals.ExplorationStep.Progress;
 import fr.liglab.lcm.internals.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
@@ -29,6 +31,7 @@ import fr.liglab.lcm.io.StdOutCollector;
  */
 public class PLCM {
 	final List<PLCMThread> threads;
+	private WatcherThread progressWatch;
 
 	private final PatternsCollector collector;
 
@@ -68,12 +71,15 @@ public class PLCM {
 	/**
 	 * Initial invocation
 	 */
-	public void lcm(final ExplorationStep initState) {
+	public final void lcm(final ExplorationStep initState) {
 		if (initState.pattern.length > 0) {
 			collector.collect(initState.counters.transactionsCount, initState.pattern);
 		}
 
 		this.initializeAndStartThreads(initState);
+		
+		this.progressWatch = new WatcherThread(initState);
+		this.progressWatch.start();
 
 		for (PLCMThread t : this.threads) {
 			try {
@@ -85,6 +91,8 @@ public class PLCM {
 				throw new RuntimeException(e);
 			}
 		}
+		
+		this.progressWatch.interrupt();
 	}
 
 	public String toString() {
@@ -215,6 +223,33 @@ public class PLCM {
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();
+		}
+	}
+	
+	private class WatcherThread extends Thread {
+		/**
+		 * ping delay, in milliseconds
+		 */
+		private static final long PRINT_STATUS_EVERY = 5*60*1000;
+				
+		private final ExplorationStep step;
+		
+		public WatcherThread(ExplorationStep initState) {
+			this.step = initState;
+		}
+		
+		@Override
+		public void run() {
+			while (true) {
+				try {
+					Thread.sleep(PRINT_STATUS_EVERY);
+					Progress progress = this.step.getProgression();
+					System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - root iterator state : %2$d/%3$d\n",
+							Calendar.getInstance(), progress.current, progress.last);
+				} catch (InterruptedException e) {
+					return;
+				}
+			}
 		}
 	}
 
