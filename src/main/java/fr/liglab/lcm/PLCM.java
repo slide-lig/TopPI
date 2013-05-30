@@ -302,10 +302,14 @@ public class PLCM {
 		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
 		time = System.currentTimeMillis() - time;
 		System.err.println("Dataset loaded in " + time + "ms");
-
+		
 		String outputPath = null;
 		if (args.length >= 3) {
 			outputPath = args[2];
+		}
+		
+		if (cmd.hasOption('k')) {
+			ExplorationStep.LCM_STYLE = false;
 		}
 
 		int nbSocketsShareCopy = 0;

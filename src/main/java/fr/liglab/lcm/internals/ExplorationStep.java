@@ -36,11 +36,11 @@ public final class ExplorationStep implements Cloneable {
 			System.getProperty(KEY_VIEW_SUPPORT_THRESHOLD, "0.15"));
 
 	/**
-	 * When nbTransactions/nbFrequents goes above this threshold, we add a
-	 * first-parent test and compress
+	 * When set to true we stick to a complete LCMv2 implementation, with predictive 
+	 * prefix-preservation tests and compressions at all steps.
+	 * Setting this to false is better when mining top-k-per-item patterns.
 	 */
-	static int DENSE_MODE_THRESHOLD = Integer.parseInt(
-			System.getProperty(KEY_DENSITY_THRESHOLD, "100"));
+	public static boolean LCM_STYLE = true;
 
 	/**
 	 * closure of parent's pattern UNION extension
@@ -208,16 +208,14 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			// ! \\ From here, order is important
-
-			final boolean isDense = (candidateCounts.distinctTransactionsCount / candidateCounts.nbFrequents) > DENSE_MODE_THRESHOLD;
-
+			
 			if (parent.predictiveFPTestMode) {
 				this.predictiveFPTestMode = true;
 			} else {
 				final int averageLen = candidateCounts.distinctTransactionLengthSum
 						/ candidateCounts.distinctTransactionsCount;
 
-				this.predictiveFPTestMode = averageLen > LONG_TRANSACTION_MODE_THRESHOLD || isDense;
+				this.predictiveFPTestMode = LCM_STYLE || averageLen > LONG_TRANSACTION_MODE_THRESHOLD;
 				if (this.predictiveFPTestMode) {
 					this.selectChain = new FirstParentTest(this.selectChain);
 				}
@@ -225,7 +223,7 @@ public final class ExplorationStep implements Cloneable {
 
 			// indeed, instantiateDataset is influenced by longTransactionsMode
 
-			this.dataset = instanciateDataset(parent, support, isDense);
+			this.dataset = instanciateDataset(parent, support);
 
 			// and intanciateDataset may choose to trigger some renaming in
 			// counters
@@ -235,7 +233,7 @@ public final class ExplorationStep implements Cloneable {
 		}
 	}
 
-	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support, boolean doCompression) {
+	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
 		double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
@@ -248,7 +246,7 @@ public final class ExplorationStep implements Cloneable {
 
 			Dataset dataset = new Dataset(this.counters, filtered);
 
-			if (doCompression) {
+			if (LCM_STYLE) {
 				dataset.compress(this.core_item);
 			}
 
