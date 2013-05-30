@@ -77,7 +77,7 @@ public class PLCM {
 		}
 
 		this.initializeAndStartThreads(initState);
-		
+
 		this.progressWatch = new WatcherThread(initState);
 		this.progressWatch.start();
 
@@ -91,7 +91,7 @@ public class PLCM {
 				throw new RuntimeException(e);
 			}
 		}
-		
+
 		this.progressWatch.interrupt();
 	}
 
@@ -116,7 +116,7 @@ public class PLCM {
 		return builder.toString();
 	}
 
-	public ExplorationStep stealJob(PLCMThread thief) {
+	ExplorationStep stealJob(PLCMThread thief) {
 		// here we need to readlock because the owner thread can write
 		for (PLCMThread victim : this.threads) {
 			if (victim != thief) {
@@ -132,16 +132,15 @@ public class PLCM {
 	ExplorationStep stealJob(PLCMThread thief, PLCMThread victim) {
 		victim.lock.readLock().lock();
 		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
-			if (!victim.stackedJobs.isEmpty()) {
-				ExplorationStep sj = victim.stackedJobs.get(stealPos);
-				ExplorationStep next = sj.next();
+			ExplorationStep sj = victim.stackedJobs.get(stealPos);
+			ExplorationStep next = sj.next();
 
-				if (next != null) {
-					// System.out.println(thief.getName() +
-					// " stealing from " + victim.getName());
-					victim.lock.readLock().unlock();
-					return next;
-				}
+			if (next != null) {
+				// System.out.println(thief.getName() +
+				// " stealing from " + victim.getName());
+				thief.init(sj);
+				victim.lock.readLock().unlock();
+				return next;
 			}
 		}
 		victim.lock.readLock().unlock();
@@ -171,8 +170,9 @@ public class PLCM {
 		}
 
 		void init(ExplorationStep initState) {
-			// no need to lock, called from the main thread
+			this.lock.writeLock().lock();
 			this.stackedJobs.add(initState);
+			this.lock.writeLock().unlock();
 		}
 
 		@Override
@@ -225,19 +225,19 @@ public class PLCM {
 			this.lock.writeLock().unlock();
 		}
 	}
-	
+
 	private class WatcherThread extends Thread {
 		/**
 		 * ping delay, in milliseconds
 		 */
-		private static final long PRINT_STATUS_EVERY = 5*60*1000;
-				
+		private static final long PRINT_STATUS_EVERY = 5 * 60 * 1000;
+
 		private final ExplorationStep step;
-		
+
 		public WatcherThread(ExplorationStep initState) {
 			this.step = initState;
 		}
-		
+
 		@Override
 		public void run() {
 			while (true) {
