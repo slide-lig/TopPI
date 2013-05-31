@@ -254,12 +254,16 @@ public final class ExplorationStep implements Cloneable {
 		}
 	}
 
-	public synchronized int getFailedFPTest(final int item) {
-		return this.failedFPTests.get(item);
+	public int getFailedFPTest(final int item) {
+		synchronized (this.failedFPTests) {
+			return this.failedFPTests.get(item);
+		}
 	}
 
-	private synchronized void addFailedFPTest(final int item, final int firstParent) {
-		this.failedFPTests.put(item, firstParent);
+	private void addFailedFPTest(final int item, final int firstParent) {
+		synchronized (this.failedFPTests) {
+			this.failedFPTests.put(item, firstParent);
+		}
 	}
 
 	public void appendSelector(Selector s) {
