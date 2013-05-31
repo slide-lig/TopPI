@@ -159,7 +159,7 @@ public class PLCM {
 		public final long[] counters;
 		final ReadWriteLock lock;
 		final List<ExplorationStep> stackedJobs;
-		private final int id;
+		protected final int id;
 
 		public PLCMThread(final int id) {
 			super("PLCMThread" + id);
@@ -298,11 +298,6 @@ public class PLCM {
 		String[] args = cmd.getArgs();
 		int minsup = Integer.parseInt(args[1]);
 
-		long time = System.currentTimeMillis();
-		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
-		time = System.currentTimeMillis() - time;
-		System.err.println("Dataset loaded in " + time + "ms");
-		
 		String outputPath = null;
 		if (args.length >= 3) {
 			outputPath = args[2];
@@ -317,6 +312,11 @@ public class PLCM {
 			nbSocketsShareCopy = Integer.parseInt(cmd.getOptionValue('c'));
 			PLCMAffinity.bindMainThread();
 		}
+
+		long time = System.currentTimeMillis();
+		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
+		time = System.currentTimeMillis() - time;
+		System.err.println("Dataset loaded in " + time + "ms");
 		
 		if (cmd.hasOption('V')) {
 			ExplorationStep.verbose = true;
