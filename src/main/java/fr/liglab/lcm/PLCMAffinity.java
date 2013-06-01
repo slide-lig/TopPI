@@ -61,8 +61,8 @@ public class PLCMAffinity extends PLCM {
 			throw new IllegalArgumentException("nbThreads " + nbThreads + " seems to be too much for " + totalSockets
 					+ " sockets, requires " + usedSockets);
 		}
-		System.out.println("CPU layout\n" + AffinityLock.cpuLayout());
-		System.out.println("using " + usedSockets + " socket(s) with " + corePerSocket + " threads per socket");
+		//System.out.println("CPU layout\n" + AffinityLock.cpuLayout());
+		System.err.println("using " + usedSockets + " socket(s) with " + corePerSocket + " threads per socket");
 		int remainingThreads = nbThreads;
 		this.threadsBySocket = new ArrayList<List<PLCMAffinityThread>>(usedSockets);
 		int id = 0;
@@ -74,7 +74,7 @@ public class PLCMAffinity extends PLCM {
 		}
 		al.release();
 		for (int s = 0; s < usedSockets; s++) {
-			System.out.println("positioning threads for group " + s);
+			//System.out.println("positioning threads for socket " + s);
 			
 			List<PLCMAffinityThread> l = new ArrayList<PLCMAffinityThread>(corePerSocket);
 			this.threadsBySocket.add(l);
@@ -96,7 +96,7 @@ public class PLCMAffinity extends PLCM {
 	}
 
 	@Override
-	void initializeAndStartThreads(ExplorationStep initState) {
+	void initializeAndStartThreads(final ExplorationStep initState) {
 		Semaphore copySem = new Semaphore(0);
 		Semaphore initializedSem = new Semaphore(0);
 		int nbCopies = 0;
@@ -126,9 +126,9 @@ public class PLCMAffinity extends PLCM {
 					t.init(initState);
 				}
 			} else {
-				initState = l.get(0).datasetToCopy;
+				ExplorationStep copiedState = l.get(0).datasetToCopy;
 				for (PLCMAffinityThread t : l) {
-					t.init(initState);
+					t.init(copiedState);
 				}
 			}
 		}
@@ -152,7 +152,7 @@ public class PLCMAffinity extends PLCM {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		System.out.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
+		System.err.println("\nThe assignment of CPUs is\n" + AffinityLock.dumpLocks());
 	}
 
 	@Override
@@ -204,7 +204,7 @@ public class PLCMAffinity extends PLCM {
 				}
 			}
 		}
-		System.out.println(thief.getName() + " didn't manage to steal anything, bad thief");
+		//System.out.println(thief.getName() + " didn't manage to steal anything, bad thief");
 		return null;
 	}
 
@@ -264,9 +264,6 @@ public class PLCMAffinity extends PLCM {
 			this.position[1] = AffinityLock.cpuLayout().coreId(al.cpuId());
 			this.position[2] = AffinityLock.cpuLayout().socketId(al.cpuId());
 			this.setName("Thread #" + this.id + " group " + this.group + " placed on " + Arrays.toString(this.position));
-			
-			
-			System.out.println(this.getName());
 			
 			/// maybe copy the initial dataset
 			
