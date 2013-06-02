@@ -32,6 +32,7 @@ import fr.liglab.lcm.io.StdOutCollector;
 public class PLCM {
 	final List<PLCMThread> threads;
 	private WatcherThread progressWatch;
+	protected static long chrono;
 
 	private final PatternsCollector collector;
 
@@ -313,10 +314,10 @@ public class PLCM {
 			PLCMAffinity.bindMainThread();
 		}
 
-		long time = System.currentTimeMillis();
+		chrono = System.currentTimeMillis();
 		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
-		time = System.currentTimeMillis() - time;
-		System.err.println("Dataset loaded in " + time + "ms");
+		chrono = System.currentTimeMillis() - chrono;
+		System.err.println("Dataset loaded in " + chrono + "ms");
 		
 		if (cmd.hasOption('V')) {
 			ExplorationStep.verbose = true;
@@ -343,13 +344,13 @@ public class PLCM {
 			}
 		}
 
-		time = System.currentTimeMillis();
+		chrono = System.currentTimeMillis();
 		miner.lcm(initState);
-		time = System.currentTimeMillis() - time;
+		chrono = System.currentTimeMillis() - chrono;
 
 		long outputted = collector.close();
 
-		System.err.println(miner.toString() + " // mined in " + time + "ms // outputted " + outputted + " patterns");
+		System.err.println(miner.toString() + " // mined in " + chrono + "ms // outputted " + outputted + " patterns");
 	}
 
 	/**
@@ -375,7 +376,7 @@ public class PLCM {
 			}
 			collector = new PatternSortCollector(collector);
 		}
-
+		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
 

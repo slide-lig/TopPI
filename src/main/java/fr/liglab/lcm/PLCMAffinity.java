@@ -147,6 +147,8 @@ public class PLCMAffinity extends PLCM {
 		if (nbCopies > 0) {
 			initializedSem.release(nbCopies);
 		}
+		
+		PLCM.chrono = System.currentTimeMillis();
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
