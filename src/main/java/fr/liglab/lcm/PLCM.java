@@ -287,8 +287,8 @@ public class PLCM {
 	public static void printMan(Options options) {
 		String syntax = "java fr.liglab.LCM [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
 		String header = "\nIf OUTPUT_PATH is missing, patterns are printed to standard output.\nOptions are :";
-		String footer = "\nFor advanced tuning you may also set properties : " + ExplorationStep.KEY_DENSITY_THRESHOLD
-				+ ", " + ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD + ", "
+		String footer = "\nFor advanced tuning you may also set properties : " + 
+				ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD + ", "
 				+ ExplorationStep.KEY_VIEW_SUPPORT_THRESHOLD;
 
 		HelpFormatter formatter = new HelpFormatter();
