@@ -4,46 +4,51 @@ import java.util.Arrays;
 
 import fr.liglab.lcm.internals.Counters;
 
-public class ByteIndexedTransactionsList extends IndexedTransactionsList {
+public class UShortIndexedTransactionsList extends IndexedTransactionsList {
+	private short[] concatenated;
 
+	@SuppressWarnings("cast")
 	public static boolean compatible(Counters c) {
-		return c.getMaxFrequent() <= Byte.MAX_VALUE;
+		return c.getMaxFrequent() <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE) - 1;
 	}
 
 	public static int getMaxTransId(Counters c) {
 		return c.distinctTransactionsCount - 1;
 	}
 
-	private byte[] concatenated;
-
-	public ByteIndexedTransactionsList(Counters c) {
+	public UShortIndexedTransactionsList(Counters c) {
 		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
 	}
 
-	public ByteIndexedTransactionsList(int transactionsLength, int nbTransactions) {
+	public UShortIndexedTransactionsList(int transactionsLength, int nbTransactions) {
 		super(nbTransactions);
-		this.concatenated = new byte[transactionsLength];
-	}
-
-	@Override
-	public IndexedReusableIterator getIterator() {
-		return new TransIter();
+		this.concatenated = new short[transactionsLength];
 	}
 
 	@Override
 	void writeItem(int item) {
-		if (item > Byte.MAX_VALUE) {
-			throw new IllegalArgumentException(item + " too big for a short");
+		// O is for empty
+		item++;
+		if (item > Short.MAX_VALUE) {
+			item = -item + Short.MAX_VALUE;
+			if (item < Short.MIN_VALUE) {
+				throw new IllegalArgumentException(item + " too big for a short");
+			}
 		}
-		this.concatenated[this.writeIndex] = (byte) item;
+		this.concatenated[this.writeIndex] = (short) item;
 		this.writeIndex++;
 	}
 
 	@Override
 	public TransactionsList clone() {
-		ByteIndexedTransactionsList o = (ByteIndexedTransactionsList) super.clone();
+		UShortIndexedTransactionsList o = (UShortIndexedTransactionsList) super.clone();
 		o.concatenated = Arrays.copyOf(this.concatenated, this.concatenated.length);
 		return o;
+	}
+
+	@Override
+	public IndexedReusableIterator getIterator() {
+		return new TransIter();
 	}
 
 	private class TransIter extends IndexedReusableIterator {
@@ -71,7 +76,7 @@ public class ByteIndexedTransactionsList extends IndexedTransactionsList {
 					this.nextPos = -1;
 					return;
 				}
-				if (concatenated[nextPos] != -1) {
+				if (concatenated[nextPos] != 0) {
 					return;
 				}
 			}
@@ -82,11 +87,16 @@ public class ByteIndexedTransactionsList extends IndexedTransactionsList {
 			return getTransSupport(transNum);
 		}
 
+		@SuppressWarnings("cast")
 		@Override
 		public int next() {
 			this.pos = this.nextPos;
 			this.findNext();
-			return concatenated[this.pos];
+			if (concatenated[this.pos] > 0) {
+				return concatenated[this.pos] - 1;
+			} else {
+				return ((int) -concatenated[this.pos]) + ((int) Short.MAX_VALUE) - 1;
+			}
 		}
 
 		@Override
@@ -101,7 +111,7 @@ public class ByteIndexedTransactionsList extends IndexedTransactionsList {
 
 		@Override
 		public void remove() {
-			concatenated[this.pos] = -1;
+			concatenated[this.pos] = 0;
 		}
 
 	}
