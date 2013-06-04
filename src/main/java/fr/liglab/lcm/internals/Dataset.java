@@ -4,11 +4,12 @@ import java.util.Iterator;
 
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.PLCM.PLCMCounters;
-import fr.liglab.lcm.internals.TransactionReader;
+import fr.liglab.lcm.internals.tidlist.ByteConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.ShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
+import fr.liglab.lcm.internals.transactions.ByteIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.IntIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.ReusableTransactionIterator;
 import fr.liglab.lcm.internals.transactions.ShortIndexedTransactionsList;
@@ -52,7 +53,10 @@ public class Dataset implements Cloneable {
 
 		int maxTransId;
 		
-		if (ShortIndexedTransactionsList.compatible(counters)) {
+		if (ByteIndexedTransactionsList.compatible(counters)) {
+			this.transactions = new ByteIndexedTransactionsList(counters);
+			maxTransId = ByteIndexedTransactionsList.getMaxTransId(counters);
+		} else if (ShortIndexedTransactionsList.compatible(counters)) {
 			this.transactions = new ShortIndexedTransactionsList(counters);
 			maxTransId = ShortIndexedTransactionsList.getMaxTransId(counters);
 		} else {
@@ -60,7 +64,9 @@ public class Dataset implements Cloneable {
 			maxTransId = IntIndexedTransactionsList.getMaxTransId(counters);
 		}
 		
-		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
+		if (ByteConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
+			this.tidLists = new ByteConsecutiveItemsConcatenatedTidList(counters, tidListBound);
+		} else if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
 			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters, tidListBound);
 		} else {
 			this.tidLists = new IntConsecutiveItemsConcatenatedTidList(counters, tidListBound);
