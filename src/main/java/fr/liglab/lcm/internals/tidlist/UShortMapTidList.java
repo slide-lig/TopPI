@@ -9,19 +9,20 @@ import gnu.trove.list.array.TShortArrayList;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
-public class ShortMapTidList extends TidList {
+public class UShortMapTidList extends TidList {
 
+	@SuppressWarnings("cast")
 	public static boolean compatible(int maxTid) {
-		return maxTid <= Short.MAX_VALUE;
+		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
 	}
 
 	private TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
 
-	public ShortMapTidList(Counters c) {
+	public UShortMapTidList(Counters c) {
 		this(c.distinctTransactionsCounts);
 	}
 
-	public ShortMapTidList(final int[] lengths) {
+	public UShortMapTidList(final int[] lengths) {
 		for (int i = 0; i < lengths.length; i++) {
 			if (lengths[i] > 0) {
 				this.occurrences.put(i, new TShortArrayList(lengths[i]));
@@ -31,7 +32,7 @@ public class ShortMapTidList extends TidList {
 
 	@Override
 	public TidList clone() {
-		ShortMapTidList o = (ShortMapTidList) super.clone();
+		UShortMapTidList o = (UShortMapTidList) super.clone();
 		o.occurrences = new TIntObjectHashMap<TShortList>(this.occurrences.size());
 		TIntObjectIterator<TShortList> iter = this.occurrences.iterator();
 		while (iter.hasNext()) {
@@ -62,7 +63,12 @@ public class ShortMapTidList extends TidList {
 
 				@Override
 				public int next() {
-					return iter.next();
+					int v = iter.next();
+					if (v >= 0) {
+						return v;
+					} else {
+						return -v + Short.MAX_VALUE;
+					}
 				}
 			};
 		}
@@ -93,7 +99,12 @@ public class ShortMapTidList extends TidList {
 
 						@Override
 						public int next() {
-							return iter.next();
+							int v = iter.next();
+							if (v >= 0) {
+								return v;
+							} else {
+								return -v + Short.MAX_VALUE;
+							}
 						}
 					};
 				}
@@ -104,7 +115,10 @@ public class ShortMapTidList extends TidList {
 	@Override
 	public void addTransaction(final int item, int transaction) {
 		if (transaction > Short.MAX_VALUE) {
-			throw new IllegalArgumentException(transaction + " too big for a short");
+			transaction = -transaction + Short.MAX_VALUE;
+			if (transaction < Short.MIN_VALUE) {
+				throw new IllegalArgumentException(transaction + " too big for a short");
+			}
 		}
 		TShortList l = this.occurrences.get(item);
 		if (l == null) {

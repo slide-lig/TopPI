@@ -6,9 +6,8 @@ import fr.liglab.lcm.internals.Counters;
 
 public class ByteConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsConcatenatedTidList {
 
-	@SuppressWarnings("cast")
 	public static boolean compatible(int maxTid) {
-		return maxTid <= ((int) Byte.MAX_VALUE) - ((int) Byte.MIN_VALUE);
+		return maxTid <= Byte.MAX_VALUE;
 	}
 
 	private byte[] array;
@@ -28,22 +27,14 @@ public class ByteConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsCon
 	@Override
 	void write(int position, int transaction) {
 		if (transaction > Byte.MAX_VALUE) {
-			transaction = -transaction + Byte.MAX_VALUE;
-			if (transaction < Byte.MIN_VALUE) {
-				throw new IllegalArgumentException(transaction + " too big for a byte");
-			}
+			throw new IllegalArgumentException(transaction + " too big for a byte");
 		}
 		this.array[position] = (byte) transaction;
 	}
 
-	@SuppressWarnings("cast")
 	@Override
 	int read(int position) {
-		if (this.array[position] >= 0) {
-			return this.array[position];
-		} else {
-			return ((int) -this.array[position]) + ((int) Byte.MAX_VALUE);
-		}
+		return this.array[position];
 	}
 
 	public ByteConsecutiveItemsConcatenatedTidList(Counters c) {
