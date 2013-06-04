@@ -240,14 +240,21 @@ public final class ExplorationStep implements Cloneable {
 
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
-			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate();
-			Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
-			
-			if (LCM_STYLE) {
-				dataset.compress(this.core_item);
-			}
+			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate()+1;
+			try {
+				Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
+				if (LCM_STYLE) {
+					dataset.compress(this.core_item);
+				}
 
-			return dataset;
+				return dataset;
+			} catch (ArrayIndexOutOfBoundsException e) {
+				System.out.println("WAT core_item = "+this.core_item);
+				e.printStackTrace();
+				System.exit(1);
+			}
+			
+			return null;
 		}
 	}
 

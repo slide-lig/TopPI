@@ -46,12 +46,12 @@ public class ShortConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsCo
 		}
 	}
 
-	public ShortConsecutiveItemsConcatenatedTidList(Counters c) {
-		super(c);
+	public ShortConsecutiveItemsConcatenatedTidList(Counters c, int highestTidList) {
+		super(c, highestTidList);
 	}
 
-	public ShortConsecutiveItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
+	public ShortConsecutiveItemsConcatenatedTidList(int[] lengths, int highestTidList) {
+		super(lengths, highestTidList);
 	}
 
 }

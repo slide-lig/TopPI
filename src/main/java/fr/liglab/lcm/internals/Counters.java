@@ -59,12 +59,6 @@ public final class Counters implements Cloneable {
 	public final int[] supportCounts;
 
 	/**
-	 * supportCounts, summed - FIXME is this useful ?? don't think it is
-	 * anymore, distinct is more important
-	 */
-	public final int supportCountsSum;
-
-	/**
 	 * For each item having a support count in [minSupport; 100% [ , gives how
 	 * many distinct transactions contained this item. It's like supportCounts
 	 * if all transactions have a weight equal to 1
@@ -191,8 +185,7 @@ public final class Counters implements Cloneable {
 		// belong to closure
 
 		ItemsetsFactory closureBuilder = new ItemsetsFactory();
-		int remainingSupportsSum = 0;
-		int remainingDistinctTransLength = 0;
+		int remainingDistinctTransLengths = 0;
 		int remainingFrequents = 0;
 		int biggestItemID = 0;
 
@@ -207,14 +200,12 @@ public final class Counters implements Cloneable {
 			} else {
 				biggestItemID = Math.max(biggestItemID, i);
 				remainingFrequents++;
-				remainingSupportsSum += this.supportCounts[i];
-				remainingDistinctTransLength += this.distinctTransactionsCounts[i];
+				remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
 			}
 		}
-
+		
 		this.closure = closureBuilder.get();
-		this.supportCountsSum = remainingSupportsSum;
-		this.distinctTransactionLengthSum = remainingDistinctTransLength;
+		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
 		this.maxFrequent = biggestItemID;
 	}
@@ -307,12 +298,11 @@ public final class Counters implements Cloneable {
 		}
 
 		this.compactedArrays = true;
-		this.supportCountsSum = remainingSupportsSum;
 		this.distinctTransactionLengthSum = remainingSupportsSum;
 	}
 
 	private Counters(int minSupport, int transactionsCount, int distinctTransactionsCount,
-			int distinctTransactionLengthSum, int[] supportCounts, int supportCountsSum,
+			int distinctTransactionLengthSum, int[] supportCounts,
 			int[] distinctTransactionsCounts, int[] closure, int nbFrequents, int maxFrequent, int[] reverseRenaming,
 			int[] renaming, boolean compactedArrays, int maxCandidate) {
 		super();
@@ -321,7 +311,6 @@ public final class Counters implements Cloneable {
 		this.distinctTransactionsCount = distinctTransactionsCount;
 		this.distinctTransactionLengthSum = distinctTransactionLengthSum;
 		this.supportCounts = supportCounts;
-		this.supportCountsSum = supportCountsSum;
 		this.distinctTransactionsCounts = distinctTransactionsCounts;
 		this.closure = closure;
 		this.nbFrequents = nbFrequents;
@@ -335,7 +324,7 @@ public final class Counters implements Cloneable {
 	@Override
 	protected Counters clone() {
 		return new Counters(minSupport, transactionsCount, distinctTransactionsCount, distinctTransactionLengthSum,
-				Arrays.copyOf(supportCounts, supportCounts.length), supportCountsSum, Arrays.copyOf(
+				Arrays.copyOf(supportCounts, supportCounts.length), Arrays.copyOf(
 						distinctTransactionsCounts, distinctTransactionsCounts.length), Arrays.copyOf(closure,
 						closure.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
 						reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), compactedArrays,

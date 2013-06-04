@@ -46,9 +46,9 @@ public class Dataset implements Cloneable {
 	/**
 	 * @param counters
 	 * @param transactions assumed to be filtered according to counters
-	 * @param highestTidList - highest item (inclusive) which will have a tidList. set to MAX_VALUE when using predictive pptest.
+	 * @param tidListBound - highest item (exclusive) which will have a tidList. set to MAX_VALUE when using predictive pptest.
 	 */
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int highestTidList) {
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
 
 		int maxTransId;
 		
@@ -61,11 +61,11 @@ public class Dataset implements Cloneable {
 		}
 		
 		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
-			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters);
+			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters, tidListBound);
 		} else {
-			this.tidLists = new IntConsecutiveItemsConcatenatedTidList(counters);
+			this.tidLists = new IntConsecutiveItemsConcatenatedTidList(counters, tidListBound);
 		}
-
+		
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
@@ -76,7 +76,7 @@ public class Dataset implements Cloneable {
 					final int item = transaction.next();
 					writer.addItem(item);
 					
-					if (item <= highestTidList) {
+					if (item < tidListBound) {
 						this.tidLists.addTransaction(item, transId);
 					}
 				}

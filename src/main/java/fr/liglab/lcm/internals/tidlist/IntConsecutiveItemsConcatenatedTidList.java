@@ -34,12 +34,11 @@ public class IntConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsConc
 		return this.array[position];
 	}
 
-	public IntConsecutiveItemsConcatenatedTidList(Counters c) {
-		super(c);
+	public IntConsecutiveItemsConcatenatedTidList(Counters c, int highestItem) {
+		super(c, highestItem);
 	}
 
-	public IntConsecutiveItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
+	public IntConsecutiveItemsConcatenatedTidList(int[] lengths, int highestItem) {
+		super(lengths, highestItem);
 	}
-
 }
