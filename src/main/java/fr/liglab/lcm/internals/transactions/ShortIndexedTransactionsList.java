@@ -5,16 +5,16 @@ import java.util.Arrays;
 import fr.liglab.lcm.internals.Counters;
 
 public class ShortIndexedTransactionsList extends IndexedTransactionsList {
-	private short[] concatenated;
 
-	@SuppressWarnings("cast")
 	public static boolean compatible(Counters c) {
-		return c.getMaxFrequent() <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE) - 1;
+		return c.getMaxFrequent() <= Short.MAX_VALUE;
 	}
 
 	public static int getMaxTransId(Counters c) {
 		return c.distinctTransactionsCount - 1;
 	}
+
+	private short[] concatenated;
 
 	public ShortIndexedTransactionsList(Counters c) {
 		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
@@ -26,14 +26,14 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 	}
 
 	@Override
+	public IndexedReusableIterator getIterator() {
+		return new TransIter();
+	}
+
+	@Override
 	void writeItem(int item) {
-		// O is for empty
-		item++;
 		if (item > Short.MAX_VALUE) {
-			item = -item + Short.MAX_VALUE;
-			if (item < Short.MIN_VALUE) {
-				throw new IllegalArgumentException(item + " too big for a short");
-			}
+			throw new IllegalArgumentException(item + " too big for a short");
 		}
 		this.concatenated[this.writeIndex] = (short) item;
 		this.writeIndex++;
@@ -44,11 +44,6 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 		ShortIndexedTransactionsList o = (ShortIndexedTransactionsList) super.clone();
 		o.concatenated = Arrays.copyOf(this.concatenated, this.concatenated.length);
 		return o;
-	}
-
-	@Override
-	public IndexedReusableIterator getIterator() {
-		return new TransIter();
 	}
 
 	private class TransIter extends IndexedReusableIterator {
@@ -76,7 +71,7 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 					this.nextPos = -1;
 					return;
 				}
-				if (concatenated[nextPos] != 0) {
+				if (concatenated[nextPos] != -1) {
 					return;
 				}
 			}
@@ -87,16 +82,11 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 			return getTransSupport(transNum);
 		}
 
-		@SuppressWarnings("cast")
 		@Override
 		public int next() {
 			this.pos = this.nextPos;
 			this.findNext();
-			if (concatenated[this.pos] > 0) {
-				return concatenated[this.pos] - 1;
-			} else {
-				return ((int) -concatenated[this.pos]) + ((int) Short.MAX_VALUE) - 1;
-			}
+			return concatenated[this.pos];
 		}
 
 		@Override
@@ -111,7 +101,7 @@ public class ShortIndexedTransactionsList extends IndexedTransactionsList {
 
 		@Override
 		public void remove() {
-			concatenated[this.pos] = 0;
+			concatenated[this.pos] = -1;
 		}
 
 	}
