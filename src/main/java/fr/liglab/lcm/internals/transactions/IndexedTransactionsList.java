@@ -2,6 +2,7 @@ package fr.liglab.lcm.internals.transactions;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.lcm.internals.Counters;
 import gnu.trove.iterator.TIntIterator;
@@ -26,7 +27,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		return new Iter();
 	}
 
-	void positionIterator(int transaction, IndexedReusableIterator iter) {
+	final void positionIterator(int transaction, IndexedReusableIterator iter) {
 		int startPos = transaction << 1;
 		if (startPos >= this.indexAndFreqs.length || this.indexAndFreqs[startPos] == -1) {
 			throw new IllegalArgumentException("transaction " + transaction + " does not exist");
@@ -49,19 +50,79 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		abstract void set(int begin, int end, int transNum);
 
 		@Override
-		public void setTransaction(int transaction) {
+		final public void setTransaction(int transaction) {
 			positionIterator(transaction, this);
 		}
 	}
 
-	// abstract TransactionIterator get(int begin, int end, int transNum);
+	abstract class BasicTransIter extends IndexedReusableIterator {
+		int transNum;
+		int pos;
+		int nextPos;
+		int end;
 
-	int getTransSupport(int trans) {
+		@Override
+		final void set(int begin, int end, int transNum) {
+			this.transNum = transNum;
+			this.nextPos = begin - 1;
+			this.end = end;
+			this.findNext();
+		}
+
+		private void findNext() {
+			while (true) {
+				this.nextPos++;
+				if (nextPos == this.end) {
+					this.nextPos = -1;
+					return;
+				}
+				if (isNextPosValid()) {
+					return;
+				}
+			}
+		}
+
+		abstract boolean isNextPosValid();
+
+		abstract void removePosVal();
+
+		abstract int getPosVal();
+
+		@Override
+		public int getTransactionSupport() {
+			return getTransSupport(transNum);
+		}
+
+		@Override
+		public int next() {
+			this.pos = this.nextPos;
+			this.findNext();
+			return getPosVal();
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.nextPos != -1;
+		}
+
+		@Override
+		public void setTransactionSupport(int s) {
+			setTransSupport(this.transNum, s);
+		}
+
+		@Override
+		public void remove() {
+			this.removePosVal();
+		}
+
+	}
+
+	final int getTransSupport(int trans) {
 		int startPos = trans << 1;
 		return this.indexAndFreqs[startPos + 1];
 	}
 
-	void setTransSupport(int trans, int s) {
+	final void setTransSupport(int trans, int s) {
 		int startPos = trans << 1;
 		if (s != 0 && this.indexAndFreqs[startPos + 1] == 0) {
 			this.size++;
@@ -75,17 +136,17 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 	abstract public IndexedReusableIterator getIterator();
 
 	@Override
-	public TIntIterator getIdIterator() {
+	final public TIntIterator getIdIterator() {
 		return new IdIter();
 	}
 
 	@Override
-	public TransactionsWriter getWriter() {
+	final public TransactionsWriter getWriter() {
 		return new Writer();
 	}
 
 	@Override
-	public int size() {
+	final public int size() {
 		return this.size;
 	}
 
@@ -98,7 +159,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 
 	abstract void writeItem(int item);
 
-	private class Writer implements TransactionsWriter {
+	final private class Writer implements TransactionsWriter {
 		private int transId = -1;
 
 		@Override
@@ -124,7 +185,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 
 	}
 
-	private class Iter implements Iterator<IterableTransaction> {
+	final private class Iter implements Iterator<IterableTransaction> {
 		private int pos;
 		private int nextPos = -1;
 
@@ -173,7 +234,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		}
 	}
 
-	private class IdIter implements TIntIterator {
+	final private class IdIter implements TIntIterator {
 		private int pos;
 		private int nextPos = -1;
 
