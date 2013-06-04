@@ -20,7 +20,6 @@ public final class ExplorationStep implements Cloneable {
 	
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "lcm.threshold.view";
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "lcm.threshold.long";
-	public final static String KEY_DENSITY_THRESHOLD = "lcm.threshold.density";
 	
 	/**
 	 * @see longTransactionsMode
@@ -222,30 +221,28 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			// indeed, instantiateDataset is influenced by longTransactionsMode
-
 			this.dataset = instanciateDataset(parent, support);
 
-			// and intanciateDataset may choose to trigger some renaming in
-			// counters
-
+			// and intanciateDataset may choose to trigger some renaming in counters
 			this.candidates = this.counters.getExtensionsIterator();
 
 		}
 	}
 
 	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
-		double supportRate = this.counters.distinctTransactionsCount
+		final double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
 		if (!this.predictiveFPTestMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
-			int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
+			final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
 
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
-			Dataset dataset = new Dataset(this.counters, filtered);
-
+			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate();
+			Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
+			
 			if (LCM_STYLE) {
 				dataset.compress(this.core_item);
 			}

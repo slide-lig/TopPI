@@ -33,20 +33,25 @@ public class Dataset implements Cloneable {
 		this.transactions = transactions;
 		this.tidLists = occurrences;
 	}
+	
+	@Override
+	protected Dataset clone() {
+		return new Dataset(this.transactions.clone(), this.tidLists.clone());
+	}
 
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
+		this(counters, transactions, Integer.MAX_VALUE);
+	}
+	
 	/**
 	 * @param counters
-	 * @param transactions
-	 *            assumed to be filtered according to counters
+	 * @param transactions assumed to be filtered according to counters
+	 * @param highestTidList - highest item (inclusive) which will have a tidList. set to MAX_VALUE when using predictive pptest.
 	 */
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int highestTidList) {
 
 		int maxTransId;
-
-		// if (ByteIndexedTransactionsList.compatible(counters)) {
-		// this.transactions = new ByteIndexedTransactionsList(counters);
-		// maxTransId = ByteIndexedTransactionsList.getMaxTransId(counters);
-		// } else
+		
 		if (ShortIndexedTransactionsList.compatible(counters)) {
 			this.transactions = new ShortIndexedTransactionsList(counters);
 			maxTransId = ShortIndexedTransactionsList.getMaxTransId(counters);
@@ -54,11 +59,7 @@ public class Dataset implements Cloneable {
 			this.transactions = new IntIndexedTransactionsList(counters);
 			maxTransId = IntIndexedTransactionsList.getMaxTransId(counters);
 		}
-
-		// if (ByteConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
-		// this.tidLists = new
-		// ByteConsecutiveItemsConcatenatedTidList(counters);
-		// } else
+		
 		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
 			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters);
 		} else {
@@ -74,17 +75,15 @@ public class Dataset implements Cloneable {
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
-					this.tidLists.addTransaction(item, transId);
+					
+					if (item <= highestTidList) {
+						this.tidLists.addTransaction(item, transId);
+					}
 				}
 
 				writer.endTransaction();
 			}
 		}
-	}
-
-	@Override
-	protected Dataset clone() {
-		return new Dataset(this.transactions.clone(), this.tidLists.clone());
 	}
 
 	public void compress(int coreItem) {

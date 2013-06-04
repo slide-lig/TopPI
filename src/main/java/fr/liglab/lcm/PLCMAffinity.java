@@ -52,10 +52,10 @@ public class PLCMAffinity extends PLCM {
 	@Override
 	void createThreads(int nbThreads) {
 		int totalSockets = AffinityLock.cpuLayout().sockets();
-		int corePerSocket = nbThreads / totalSockets; //AffinityLock.cpuLayout().coresPerSocket();
-		int usedSockets = totalSockets; //nbThreads / corePerSocket;
-		if (nbThreads % totalSockets != 0) {
-			corePerSocket++;
+		int corePerSocket = AffinityLock.cpuLayout().coresPerSocket();
+		int usedSockets = nbThreads / corePerSocket;
+		if (nbThreads % corePerSocket != 0) {
+			usedSockets++;
 		}
 		if (usedSockets > totalSockets) {
 			throw new IllegalArgumentException("nbThreads " + nbThreads + " seems to be too much for " + totalSockets
