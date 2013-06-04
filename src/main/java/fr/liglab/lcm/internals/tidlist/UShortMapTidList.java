@@ -1,22 +1,21 @@
 package fr.liglab.lcm.internals.tidlist;
 
 import fr.liglab.lcm.internals.Counters;
+import gnu.trove.iterator.TCharIterator;
 import gnu.trove.iterator.TIntIterator;
 import gnu.trove.iterator.TIntObjectIterator;
-import gnu.trove.iterator.TShortIterator;
-import gnu.trove.list.TShortList;
-import gnu.trove.list.array.TShortArrayList;
+import gnu.trove.list.TCharList;
+import gnu.trove.list.array.TCharArrayList;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 
 public class UShortMapTidList extends TidList {
 
-	@SuppressWarnings("cast")
 	public static boolean compatible(int maxTid) {
-		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
+		return maxTid <= Character.MAX_VALUE;
 	}
 
-	private TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
+	private TIntObjectMap<TCharList> occurrences = new TIntObjectHashMap<TCharList>();
 
 	public UShortMapTidList(Counters c) {
 		this(c.distinctTransactionsCounts);
@@ -25,7 +24,7 @@ public class UShortMapTidList extends TidList {
 	public UShortMapTidList(final int[] lengths) {
 		for (int i = 0; i < lengths.length; i++) {
 			if (lengths[i] > 0) {
-				this.occurrences.put(i, new TShortArrayList(lengths[i]));
+				this.occurrences.put(i, new TCharArrayList(lengths[i]));
 			}
 		}
 	}
@@ -33,22 +32,22 @@ public class UShortMapTidList extends TidList {
 	@Override
 	public TidList clone() {
 		UShortMapTidList o = (UShortMapTidList) super.clone();
-		o.occurrences = new TIntObjectHashMap<TShortList>(this.occurrences.size());
-		TIntObjectIterator<TShortList> iter = this.occurrences.iterator();
+		o.occurrences = new TIntObjectHashMap<TCharList>(this.occurrences.size());
+		TIntObjectIterator<TCharList> iter = this.occurrences.iterator();
 		while (iter.hasNext()) {
 			iter.advance();
-			o.occurrences.put(iter.key(), new TShortArrayList(iter.value()));
+			o.occurrences.put(iter.key(), new TCharArrayList(iter.value()));
 		}
 		return o;
 	}
 
 	@Override
 	public TIntIterator get(final int item) {
-		final TShortList l = this.occurrences.get(item);
+		final TCharList l = this.occurrences.get(item);
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		} else {
-			final TShortIterator iter = l.iterator();
+			final TCharIterator iter = l.iterator();
 			return new TIntIterator() {
 
 				@Override
@@ -63,12 +62,7 @@ public class UShortMapTidList extends TidList {
 
 				@Override
 				public int next() {
-					int v = iter.next();
-					if (v >= 0) {
-						return v;
-					} else {
-						return -v + Short.MAX_VALUE;
-					}
+					return iter.next();
 				}
 			};
 		}
@@ -76,7 +70,7 @@ public class UShortMapTidList extends TidList {
 
 	@Override
 	public TIntIterable getIterable(int item) {
-		final TShortList l = this.occurrences.get(item);
+		final TCharList l = this.occurrences.get(item);
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		} else {
@@ -84,7 +78,7 @@ public class UShortMapTidList extends TidList {
 
 				@Override
 				public TIntIterator iterator() {
-					final TShortIterator iter = l.iterator();
+					final TCharIterator iter = l.iterator();
 					return new TIntIterator() {
 
 						@Override
@@ -99,12 +93,7 @@ public class UShortMapTidList extends TidList {
 
 						@Override
 						public int next() {
-							int v = iter.next();
-							if (v >= 0) {
-								return v;
-							} else {
-								return -v + Short.MAX_VALUE;
-							}
+							return iter.next();
 						}
 					};
 				}
@@ -114,17 +103,14 @@ public class UShortMapTidList extends TidList {
 
 	@Override
 	public void addTransaction(final int item, int transaction) {
-		if (transaction > Short.MAX_VALUE) {
-			transaction = -transaction + Short.MAX_VALUE;
-			if (transaction < Short.MIN_VALUE) {
-				throw new IllegalArgumentException(transaction + " too big for a short");
-			}
+		if (transaction > Character.MAX_VALUE) {
+			throw new IllegalArgumentException(transaction + " too big for a short");
 		}
-		TShortList l = this.occurrences.get(item);
+		TCharList l = this.occurrences.get(item);
 		if (l == null) {
 			throw new IllegalArgumentException("item " + item + " has no tidlist");
 		}
-		l.add((short) transaction);
+		l.add((char) transaction);
 	}
 
 }

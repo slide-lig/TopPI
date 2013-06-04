@@ -2,7 +2,6 @@ package fr.liglab.lcm.internals.transactions;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.lcm.internals.Counters;
 import gnu.trove.iterator.TIntIterator;

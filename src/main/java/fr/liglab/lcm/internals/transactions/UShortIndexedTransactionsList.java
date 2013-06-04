@@ -5,11 +5,10 @@ import java.util.Arrays;
 import fr.liglab.lcm.internals.Counters;
 
 public final class UShortIndexedTransactionsList extends IndexedTransactionsList {
-	private short[] concatenated;
+	private char[] concatenated;
 
-	@SuppressWarnings("cast")
 	public static boolean compatible(Counters c) {
-		return c.getMaxFrequent() <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE) - 1;
+		return c.getMaxFrequent() < Character.MAX_VALUE;
 	}
 
 	public static int getMaxTransId(Counters c) {
@@ -22,20 +21,17 @@ public final class UShortIndexedTransactionsList extends IndexedTransactionsList
 
 	public UShortIndexedTransactionsList(int transactionsLength, int nbTransactions) {
 		super(nbTransactions);
-		this.concatenated = new short[transactionsLength];
+		this.concatenated = new char[transactionsLength];
 	}
 
 	@Override
 	void writeItem(int item) {
 		// O is for empty
 		item++;
-		if (item > Short.MAX_VALUE) {
-			item = -item + Short.MAX_VALUE;
-			if (item < Short.MIN_VALUE) {
-				throw new IllegalArgumentException(item + " too big for a short");
-			}
+		if (item > Character.MAX_VALUE) {
+			throw new IllegalArgumentException(item + " too big for a char");
 		}
-		this.concatenated[this.writeIndex] = (short) item;
+		this.concatenated[this.writeIndex] = (char) item;
 		this.writeIndex++;
 	}
 
@@ -63,14 +59,9 @@ public final class UShortIndexedTransactionsList extends IndexedTransactionsList
 			concatenated[this.pos] = 0;
 		}
 
-		@SuppressWarnings("cast")
 		@Override
 		int getPosVal() {
-			if (concatenated[this.pos] > 0) {
-				return concatenated[this.pos] - 1;
-			} else {
-				return ((int) -concatenated[this.pos]) + ((int) Short.MAX_VALUE) - 1;
-			}
+			return concatenated[this.pos] - 1;
 		}
 
 	}

@@ -6,12 +6,11 @@ import fr.liglab.lcm.internals.Counters;
 
 public class UShortConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsConcatenatedTidList {
 
-	@SuppressWarnings("cast")
 	public static boolean compatible(int maxTid) {
-		return maxTid <= ((int) Short.MAX_VALUE) - ((int) Short.MIN_VALUE);
+		return maxTid <= Character.MAX_VALUE;
 	}
 
-	private short[] array;
+	private char[] array;
 
 	@Override
 	public TidList clone() {
@@ -22,28 +21,20 @@ public class UShortConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsC
 
 	@Override
 	void allocateArray(int size) {
-		this.array = new short[size];
+		this.array = new char[size];
 	}
 
 	@Override
 	void write(int position, int transaction) {
-		if (transaction > Short.MAX_VALUE) {
-			transaction = -transaction + Short.MAX_VALUE;
-			if (transaction < Short.MIN_VALUE) {
-				throw new IllegalArgumentException(transaction + " too big for a short");
-			}
+		if (transaction > Character.MAX_VALUE) {
+			throw new IllegalArgumentException(transaction + " too big for a char");
 		}
-		this.array[position] = (short) transaction;
+		this.array[position] = (char) transaction;
 	}
 
-	@SuppressWarnings("cast")
 	@Override
 	int read(int position) {
-		if (this.array[position] >= 0) {
-			return this.array[position];
-		} else {
-			return ((int) -this.array[position]) + ((int) Short.MAX_VALUE);
-		}
+		return this.array[position];
 	}
 
 	public UShortConsecutiveItemsConcatenatedTidList(Counters c, int highestItem) {
