@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 import fr.liglab.lcm.internals.Counters;
 
-public class UShortIndexedTransactionsList extends IndexedTransactionsList {
+public final class UShortIndexedTransactionsList extends IndexedTransactionsList {
 	private short[] concatenated;
 
 	@SuppressWarnings("cast")
@@ -51,47 +51,21 @@ public class UShortIndexedTransactionsList extends IndexedTransactionsList {
 		return new TransIter();
 	}
 
-	private class TransIter extends IndexedReusableIterator {
+	private final class TransIter extends BasicTransIter {
 
-		private int transNum;
-		private int pos;
-		private int nextPos;
-		private int end;
-
-		public TransIter() {
+		@Override
+		boolean isNextPosValid() {
+			return concatenated[this.nextPos] != 0;
 		}
 
 		@Override
-		void set(int begin, int end, int transNum) {
-			this.transNum = transNum;
-			this.nextPos = begin - 1;
-			this.end = end;
-			this.findNext();
-		}
-
-		private void findNext() {
-			while (true) {
-				this.nextPos++;
-				if (nextPos == this.end) {
-					this.nextPos = -1;
-					return;
-				}
-				if (concatenated[nextPos] != 0) {
-					return;
-				}
-			}
-		}
-
-		@Override
-		public int getTransactionSupport() {
-			return getTransSupport(transNum);
+		void removePosVal() {
+			concatenated[this.pos] = 0;
 		}
 
 		@SuppressWarnings("cast")
 		@Override
-		public int next() {
-			this.pos = this.nextPos;
-			this.findNext();
+		int getPosVal() {
 			if (concatenated[this.pos] > 0) {
 				return concatenated[this.pos] - 1;
 			} else {
@@ -99,21 +73,5 @@ public class UShortIndexedTransactionsList extends IndexedTransactionsList {
 			}
 		}
 
-		@Override
-		public boolean hasNext() {
-			return this.nextPos != -1;
-		}
-
-		@Override
-		public void setTransactionSupport(int s) {
-			setTransSupport(this.transNum, s);
-		}
-
-		@Override
-		public void remove() {
-			concatenated[this.pos] = 0;
-		}
-
 	}
-
 }
