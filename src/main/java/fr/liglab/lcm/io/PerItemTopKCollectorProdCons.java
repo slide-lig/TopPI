@@ -47,7 +47,11 @@ public class PerItemTopKCollectorProdCons implements PatternsCollector {
 	}
 
 	public void collect(final int support, final int[] pattern) {
-		this.queue.add(new PatternWithFreq(support, pattern));
+		try {
+			this.queue.put(new PatternWithFreq(support, pattern));
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	protected void insertPatternInTop(PatternWithFreq pwf, int item) {
@@ -178,7 +182,9 @@ public class PerItemTopKCollectorProdCons implements PatternsCollector {
 	}
 
 	private final class ConsThread extends Thread {
-
+		private ConsThread(){
+			super("Topk Consumer");
+		}
 		@Override
 		public void run() {
 			boolean interrupted = false;
