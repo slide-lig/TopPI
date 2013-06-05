@@ -1,8 +1,6 @@
 package fr.liglab.lcm;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import com.higherfrequencytrading.affinity.AffinityLock;
@@ -24,7 +22,7 @@ public class PLCMAffinity extends PLCM {
 		al.bind(false); // bind main thread to current (locked) core - false=> allow another thread if HT
 	}
 
-	private List<List<PLCMAffinityThread>> threadsBySocket;
+	private PLCMAffinityThread[][] threadsBySocket;
 	private final int copySocketModulo;
 
 	public PLCMAffinity(PatternsCollector patternsCollector) {
@@ -63,52 +61,49 @@ public class PLCMAffinity extends PLCM {
 		}
 		//System.out.println("CPU layout\n" + AffinityLock.cpuLayout());
 		System.err.println("using " + usedSockets + " socket(s) with " + corePerSocket + " threads per socket");
-		int remainingThreads = nbThreads;
-		this.threadsBySocket = new ArrayList<List<PLCMAffinityThread>>(usedSockets);
-		int id = 0;
+		
 		AffinityLock[] socketLocks = new AffinityLock[usedSockets];
 		socketLocks[0] = al.acquireLock(AffinityStrategies.SAME_SOCKET);
 		for (int s = 1; s < usedSockets; s++) {
-			//System.out.println("getting lock different socket as " + al.cpuId());
 			socketLocks[s] = al.acquireLock(AffinityStrategies.DIFFERENT_SOCKET);
 		}
 		al.release();
+
+		int id = 0;
+		int remainingThreads = nbThreads;
+		this.threadsBySocket = new PLCMAffinityThread[usedSockets][];
+		
 		for (int s = 0; s < usedSockets; s++) {
-			//System.out.println("positioning threads for socket " + s);
-			
-			List<PLCMAffinityThread> l = new ArrayList<PLCMAffinityThread>(corePerSocket);
-			this.threadsBySocket.add(l);
+			PLCMAffinityThread[] onThisSocket = new PLCMAffinityThread[Math.min(corePerSocket, remainingThreads)];
+			this.threadsBySocket[s] = onThisSocket;
 			Semaphore bindingSem = new Semaphore(1);
 			
-			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, remainingThreads--, id++) {
-				if (c == 0) {
-					l.add(new PLCMAffinityThread(id, s, socketLocks[s], bindingSem, false));
-				} else {
-					//System.out.println("getting lock same socket as " + socketLocks[s].cpuId());
-					l.add(new PLCMAffinityThread(id, s, socketLocks[s], bindingSem, true));
-				}
+			for (int c = 0; c < corePerSocket && remainingThreads > 0; c++, id++, remainingThreads--) {
+				PLCMAffinityThread t = new PLCMAffinityThread(id, s, socketLocks[s], bindingSem, (c != 0));
+				onThisSocket[c] = t;
+				this.threads.add(t);
 			}
-		}
-
-		for (List<PLCMAffinityThread> l : threadsBySocket) {
-			this.threads.addAll(l);
 		}
 	}
 
 	@Override
 	void initializeAndStartThreads(final ExplorationStep initState) {
+		
 		Semaphore copySem = new Semaphore(0);
-		Semaphore initializedSem = new Semaphore(0);
 		int nbCopies = 0;
-		for (int i = 0; i < this.threadsBySocket.size(); i++) {
-			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i != 0 && i % this.copySocketModulo == 0) {
-				// first socket gets the initial dataset because it should be on
-				// the same socket as the main thread which created it
-				nbCopies++;
-				PLCMAffinityThread t = l.get(0);
-				t.prepareForCopy(initState, copySem, initializedSem);
-				t.start();
+		for (int socketId = 0; socketId < this.threadsBySocket.length; socketId++) {
+			if (socketId % this.copySocketModulo == 0) {
+				if (socketId == 0) {
+					// we're on the same socket as the main thread, which created initState
+					PLCMAffinityThread t = this.threadsBySocket[socketId][0];
+					t.init(initState);
+					t.start();
+				} else {
+					nbCopies++;
+					PLCMAffinityThread t = this.threadsBySocket[socketId][0];
+					t.prepareForCopy(initState, copySem);
+					t.start();
+				}
 			}
 		}
 		if (nbCopies > 0) {
@@ -119,36 +114,14 @@ public class PLCMAffinity extends PLCM {
 				System.exit(-1);
 			}
 		}
-		for (int i = 0; i < this.threadsBySocket.size(); i++) {
-			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i == 0 || i % this.copySocketModulo != 0) {
-				for (PLCMAffinityThread t : l) {
-					t.init(initState);
-				}
-			} else {
-				ExplorationStep copiedState = l.get(0).datasetToCopy;
-				for (PLCMAffinityThread t : l) {
-					t.init(copiedState);
-				}
+		
+		//// copies done. now it's time to start follower threads, which will simply start by stealing
+		for (PLCMThread thread : this.threads) {
+			if (!thread.isAlive()) {
+				thread.start();
 			}
-		}
-		for (int i = 0; i < this.threadsBySocket.size(); i++) {
-			List<PLCMAffinityThread> l = this.threadsBySocket.get(i);
-			if (i == 0 || i % this.copySocketModulo != 0) {
-				for (PLCMAffinityThread t : l) {
-					t.start();
-				}
-			} else {
-				for (int j = 1; j < l.size(); j++) {
-					l.get(j).start();
-				}
-			}
-		}
-		if (nbCopies > 0) {
-			initializedSem.release(nbCopies);
 		}
 		
-		PLCM.chrono = System.currentTimeMillis();
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
@@ -160,53 +133,35 @@ public class PLCMAffinity extends PLCM {
 	@Override
 	public ExplorationStep stealJob(final PLCMThread t) {
 		PLCMAffinityThread thief = (PLCMAffinityThread) t;
-		// System.out.println(t.getName() + " trying to steal");
-		// here we need to readlock because the owner thread can write
-		for (int level = 0; level < thief.position.length; level++) {
-			// System.out.println("level " + level + " candidates " +
-			// this.threads.size());
-			for (PLCMThread v : this.threads) {
-				PLCMAffinityThread victim = (PLCMAffinityThread) v;
-				if (victim == thief) {
-					continue;
-				}
-				
-				/*
-				 *  FIXME why not simply steal
-				 *  1. from fellow threads in threadsBySocket
-				 *  2. otherwise, from any other in this.threads
-				 *  ?
-				 *  
-				 *  actually, it may be what's done here...
-				 */
-				
-				
-				boolean steal = true;
-				for (int higherLevel = level + 1; higherLevel < thief.position.length; higherLevel++) {
-					if (thief.position[higherLevel] != victim.position[higherLevel]) {
-						// System.out.println(thief.getName() +
-						// " cannot steal from " + victim.getName() +
-						// " at level "
-						// + level + " because of higher level " + higherLevel);
-						steal = false;
-						break;
-					}
-				}
-				if (steal) {
-					// System.out.println(thief.getName() +
-					// " tries to steal from " + victim.getName() + " at level "
-					// + level);
+		
+		/// FIXME this will only work if copySocketModulo is ==1 or ==usedSockets
+		
+		for (PLCMAffinityThread fellow : this.threadsBySocket[thief.socketId]) {
+			if (fellow == thief) {
+				continue;
+			}
+			
+			ExplorationStep e = stealJob(thief, fellow);
+			if (e != null) {
+				System.out.println(thief.getName() + " STEALING FROM FELLOW THREAD " + fellow.getName());
+				return e;
+			}
+		}
+		
+		for (int socketId = 0; socketId < this.threadsBySocket.length; socketId++) {
+			if (socketId != thief.socketId) {
+				for (PLCMAffinityThread victim : this.threadsBySocket[socketId]) {
 					ExplorationStep e = stealJob(thief, victim);
 					if (e != null) {
-						// System.out.println(thief.getName() +
-						// " great success stealing from " + victim.getName()
-						// + " at level " + level);
+						System.out.println(thief.getName() + " STEALING FROM FAR THREAD " + victim.getName());
 						return e;
 					}
 				}
 			}
 		}
-		//System.out.println(thief.getName() + " didn't manage to steal anything, bad thief");
+		
+		System.out.println(thief.getName() + " didn't manage to steal anything, bad thief");
+		
 		return null;
 	}
 
@@ -221,26 +176,24 @@ public class PLCMAffinity extends PLCM {
 	private class PLCMAffinityThread extends PLCMThread {
 		private final int[] position;
 		private AffinityLock al;
-		private final int group;
-		private Semaphore datasetCopySem;
-		private Semaphore initializedSem;
-		private ExplorationStep datasetToCopy;
+		private final int socketId;
+		private Semaphore datasetCopySem = null;
+		private ExplorationStep datasetToCopy = null;
 		private Semaphore socketMatesSem;
 		private final boolean getNewAL;
 		
-		private PLCMAffinityThread(int id, int group, AffinityLock al, Semaphore bindingSem, boolean getNewAL) {
+		private PLCMAffinityThread(int id, int socket, AffinityLock al, Semaphore bindingSem, boolean getNewAL) {
 			super(id);
 			this.al = al;
 			this.position = new int[3];
-			this.group = group;
+			this.socketId = socket;
 			this.socketMatesSem = bindingSem;
 			this.getNewAL = getNewAL;
 		}
 
-		private void prepareForCopy(ExplorationStep datasetToCopy, Semaphore datasetCopySem, Semaphore initializedSem) {
+		private void prepareForCopy(ExplorationStep datasetToCopy, Semaphore datasetCopySem) {
 			this.datasetToCopy = datasetToCopy;
 			this.datasetCopySem = datasetCopySem;
-			this.initializedSem = initializedSem;
 		}
 
 		@Override
@@ -265,23 +218,14 @@ public class PLCMAffinity extends PLCM {
 			this.position[0] = al.cpuId();
 			this.position[1] = AffinityLock.cpuLayout().coreId(al.cpuId());
 			this.position[2] = AffinityLock.cpuLayout().socketId(al.cpuId());
-			this.setName("Thread #" + this.id + " group " + this.group + " placed on " + Arrays.toString(this.position));
+			this.setName("Thread #" + this.id + " placed on " + Arrays.toString(this.position));
 			
 			/// maybe copy the initial dataset
 			
 			if (this.datasetCopySem != null) {
-				datasetToCopy = datasetToCopy.copy();
+				this.init(datasetToCopy.copy());
 				datasetCopySem.release();
-				try {
-					initializedSem.acquire();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					System.exit(-1);
-				}
 				datasetCopySem = null;
-				initializedSem = null;
-				datasetToCopy = null;
-
 			}
 			
 			super.run();
