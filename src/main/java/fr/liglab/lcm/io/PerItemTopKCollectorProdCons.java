@@ -182,7 +182,9 @@ public class PerItemTopKCollectorProdCons implements PatternsCollector {
 	}
 
 	private final class ConsThread extends Thread {
-
+		private ConsThread(){
+			super("Topk Consumer");
+		}
 		@Override
 		public void run() {
 			boolean interrupted = false;
