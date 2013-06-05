@@ -143,7 +143,6 @@ public class PLCMAffinity extends PLCM {
 			
 			ExplorationStep e = stealJob(thief, fellow);
 			if (e != null) {
-				System.out.println(thief.getName() + " STEALING FROM FELLOW THREAD " + fellow.getName());
 				return e;
 			}
 		}
@@ -153,7 +152,6 @@ public class PLCMAffinity extends PLCM {
 				for (PLCMAffinityThread victim : this.threadsBySocket[socketId]) {
 					ExplorationStep e = stealJob(thief, victim);
 					if (e != null) {
-						System.out.println(thief.getName() + " STEALING FROM FAR THREAD " + victim.getName());
 						return e;
 					}
 				}

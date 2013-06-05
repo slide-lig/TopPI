@@ -137,11 +137,6 @@ public class PLCM {
 			ExplorationStep next = sj.next();
 			
 			if (next != null) {
-				/// FIXME ? this means that once we steal a job at exploration level 0 , 
-				/// we won't ever steal until it's all done
-				
-				System.out.println(thief.getName() + " is self-stacking a pattern of length "+sj.pattern.length);
-				
 				thief.init(sj);
 				victim.lock.readLock().unlock();
 				return next;
