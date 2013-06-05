@@ -135,10 +135,13 @@ public class PLCM {
 		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
 			ExplorationStep sj = victim.stackedJobs.get(stealPos);
 			ExplorationStep next = sj.next();
-
+			
 			if (next != null) {
-				// System.out.println(thief.getName() +
-				// " stealing from " + victim.getName());
+				/// FIXME ? this means that once we steal a job at exploration level 0 , 
+				/// we won't ever steal until it's all done
+				
+				System.out.println(thief.getName() + " is self-stacking a pattern of length "+sj.pattern.length);
+				
 				thief.init(sj);
 				victim.lock.readLock().unlock();
 				return next;
@@ -183,14 +186,13 @@ public class PLCM {
 
 		@Override
 		public void run() {
-			// no need to readlock, this thread is the only one that can do
-			// writes
+			// no need to readlock, this thread is the only one that can do writes
 			boolean exit = false;
 			while (!exit) {
 				ExplorationStep sj = null;
 				if (!this.stackedJobs.isEmpty()) {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
-
+					
 					ExplorationStep extended = sj.next();
 					// iterator is finished, remove it from the stack
 					if (extended == null) {
@@ -206,8 +208,7 @@ public class PLCM {
 						this.lcm(extended);
 					}
 
-				} else { // our list was empty, we should steal from another
-							// thread
+				} else { // our list was empty, we should steal from another thread
 					ExplorationStep stolj = stealJob(this);
 					if (stolj == null) {
 						exit = true;
