@@ -32,11 +32,10 @@ public final class UByteIndexedTransactionsList extends IndexedTransactionsList 
 
 	@Override
 	void writeItem(int item) {
-		// O is for empty
-		item++;
+		// Byte.MIN_VALUE is for empty
 		if (item > Byte.MAX_VALUE) {
 			item = -item + Byte.MAX_VALUE;
-			if (item < Byte.MIN_VALUE) {
+			if (item <= Byte.MIN_VALUE) {
 				throw new IllegalArgumentException(item + " too big for a byte");
 			}
 		}
@@ -55,21 +54,21 @@ public final class UByteIndexedTransactionsList extends IndexedTransactionsList 
 
 		@Override
 		boolean isNextPosValid() {
-			return concatenated[this.nextPos] != 0;
+			return concatenated[this.nextPos] != Byte.MIN_VALUE;
 		}
 
 		@Override
 		void removePosVal() {
-			concatenated[this.pos] = 0;
+			concatenated[this.pos] = Byte.MIN_VALUE;
 		}
 
 		@SuppressWarnings("cast")
 		@Override
 		int getPosVal() {
-			if (concatenated[this.pos] > 0) {
-				return concatenated[this.pos] - 1;
+			if (concatenated[this.pos] >= 0) {
+				return concatenated[this.pos];
 			} else {
-				return ((int) -concatenated[this.pos]) + ((int) Byte.MAX_VALUE) - 1;
+				return ((int) -concatenated[this.pos]) + ((int) Byte.MAX_VALUE);
 			}
 		}
 

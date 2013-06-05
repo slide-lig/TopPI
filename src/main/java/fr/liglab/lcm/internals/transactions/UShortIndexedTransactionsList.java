@@ -26,9 +26,8 @@ public final class UShortIndexedTransactionsList extends IndexedTransactionsList
 
 	@Override
 	void writeItem(int item) {
-		// O is for empty
-		item++;
-		if (item > Character.MAX_VALUE) {
+		// MAX_VALUE is for empty;
+		if (item == Character.MAX_VALUE) {
 			throw new IllegalArgumentException(item + " too big for a char");
 		}
 		this.concatenated[this.writeIndex] = (char) item;
@@ -51,17 +50,17 @@ public final class UShortIndexedTransactionsList extends IndexedTransactionsList
 
 		@Override
 		boolean isNextPosValid() {
-			return concatenated[this.nextPos] != 0;
+			return concatenated[this.nextPos] != Character.MAX_VALUE;
 		}
 
 		@Override
 		void removePosVal() {
-			concatenated[this.pos] = 0;
+			concatenated[this.pos] = Character.MAX_VALUE;
 		}
 
 		@Override
 		int getPosVal() {
-			return concatenated[this.pos] - 1;
+			return concatenated[this.pos];
 		}
 
 	}

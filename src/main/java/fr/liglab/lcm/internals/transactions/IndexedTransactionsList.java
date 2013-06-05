@@ -41,31 +41,43 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 			} else {
 				end = this.writeIndex;
 			}
-			iter.set(this.indexAndFreqs[startPos], end, transaction);
+			iter.set(this.indexAndFreqs[startPos], end);
 		}
 	}
 
 	abstract class IndexedReusableIterator implements ReusableTransactionIterator {
-		abstract void set(int begin, int end, int transNum);
+		private int transNum;
+
+		abstract void set(int begin, int end);
 
 		@Override
-		final public void setTransaction(int transaction) {
+		public final void setTransaction(int transaction) {
+			this.transNum = transaction;
 			positionIterator(transaction, this);
+		}
+
+		@Override
+		public final int getTransactionSupport() {
+			return getTransSupport(transNum);
+		}
+
+		@Override
+		public final void setTransactionSupport(int s) {
+			setTransSupport(this.transNum, s);
 		}
 	}
 
 	abstract class BasicTransIter extends IndexedReusableIterator {
-		int transNum;
 		int pos;
 		int nextPos;
-		int end;
+		private int end;
+		private boolean first;
 
 		@Override
-		final void set(int begin, int end, int transNum) {
-			this.transNum = transNum;
+		final void set(int begin, int end) {
 			this.nextPos = begin - 1;
 			this.end = end;
-			this.findNext();
+			first = true;
 		}
 
 		private void findNext() {
@@ -88,11 +100,6 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 		abstract int getPosVal();
 
 		@Override
-		public int getTransactionSupport() {
-			return getTransSupport(transNum);
-		}
-
-		@Override
 		public int next() {
 			this.pos = this.nextPos;
 			this.findNext();
@@ -101,12 +108,11 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 
 		@Override
 		public boolean hasNext() {
+			if (first) {
+				first = false;
+				findNext();
+			}
 			return this.nextPos != -1;
-		}
-
-		@Override
-		public void setTransactionSupport(int s) {
-			setTransSupport(this.transNum, s);
 		}
 
 		@Override

@@ -5,14 +5,14 @@ import java.util.Iterator;
 import fr.liglab.lcm.PLCM;
 import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
-import fr.liglab.lcm.internals.tidlist.ShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.tidlist.TidList;
 import fr.liglab.lcm.internals.tidlist.TidList.TIntIterable;
+import fr.liglab.lcm.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.lcm.internals.transactions.IntIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.ReusableTransactionIterator;
-import fr.liglab.lcm.internals.transactions.ShortIndexedTransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsList;
 import fr.liglab.lcm.internals.transactions.TransactionsWriter;
+import fr.liglab.lcm.internals.transactions.UShortIndexedTransactionsList;
 import gnu.trove.iterator.TIntIterator;
 
 /**
@@ -32,7 +32,7 @@ public class Dataset implements Cloneable {
 		this.transactions = transactions;
 		this.tidLists = occurrences;
 	}
-	
+
 	@Override
 	protected Dataset clone() {
 		return new Dataset(this.transactions.clone(), this.tidLists.clone());
@@ -41,30 +41,42 @@ public class Dataset implements Cloneable {
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
 		this(counters, transactions, Integer.MAX_VALUE);
 	}
-	
+
 	/**
 	 * @param counters
-	 * @param transactions assumed to be filtered according to counters
-	 * @param tidListBound - highest item (exclusive) which will have a tidList. set to MAX_VALUE when using predictive pptest.
+	 * @param transactions
+	 *            assumed to be filtered according to counters
+	 * @param tidListBound
+	 *            - highest item (exclusive) which will have a tidList. set to
+	 *            MAX_VALUE when using predictive pptest.
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
 
 		int maxTransId;
-		
-		if (ShortIndexedTransactionsList.compatible(counters)) {
-			this.transactions = new ShortIndexedTransactionsList(counters);
-			maxTransId = ShortIndexedTransactionsList.getMaxTransId(counters);
+
+		// if (UByteIndexedTransactionsList.compatible(counters)) {
+		// this.transactions = new UByteIndexedTransactionsList(counters);
+		// maxTransId = UByteIndexedTransactionsList.getMaxTransId(counters);
+		// } else
+		if (UShortIndexedTransactionsList.compatible(counters)) {
+			this.transactions = new UShortIndexedTransactionsList(counters);
+			maxTransId = UShortIndexedTransactionsList.getMaxTransId(counters);
 		} else {
 			this.transactions = new IntIndexedTransactionsList(counters);
 			maxTransId = IntIndexedTransactionsList.getMaxTransId(counters);
 		}
-		
-		if (ShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
-			this.tidLists = new ShortConsecutiveItemsConcatenatedTidList(counters, tidListBound);
+
+		// if (UByteConsecutiveItemsConcatenatedTidList.compatible(maxTransId))
+		// {
+		// this.tidLists = new
+		// UByteConsecutiveItemsConcatenatedTidList(counters, tidListBound);
+		// } else
+		if (UShortConsecutiveItemsConcatenatedTidList.compatible(maxTransId)) {
+			this.tidLists = new UShortConsecutiveItemsConcatenatedTidList(counters, tidListBound);
 		} else {
 			this.tidLists = new IntConsecutiveItemsConcatenatedTidList(counters, tidListBound);
 		}
-		
+
 		TransactionsWriter writer = this.transactions.getWriter();
 		while (transactions.hasNext()) {
 			TransactionReader transaction = transactions.next();
@@ -74,7 +86,7 @@ public class Dataset implements Cloneable {
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
-					
+
 					if (item < tidListBound) {
 						this.tidLists.addTransaction(item, transId);
 					}

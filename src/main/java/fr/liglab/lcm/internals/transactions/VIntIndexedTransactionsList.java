@@ -120,7 +120,6 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 
 	private class TransIter extends IndexedReusableIterator {
 
-		private int transNum;
 		private int val;
 		private IntHolder pos;
 		private int end;
@@ -130,8 +129,7 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		}
 
 		@Override
-		public void set(int begin, int end, int transNum) {
-			this.transNum = transNum;
+		public void set(int begin, int end) {
 			this.pos = new IntHolder(begin);
 			this.end = end;
 			this.findNext();
@@ -152,11 +150,6 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		}
 
 		@Override
-		public int getTransactionSupport() {
-			return getTransSupport(transNum);
-		}
-
-		@Override
 		public int next() {
 			// because we saved 0 for empty
 			int res = this.val - 1;
@@ -167,11 +160,6 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		@Override
 		public boolean hasNext() {
 			return this.val != -1;
-		}
-
-		@Override
-		public void setTransactionSupport(int s) {
-			setTransSupport(this.transNum, s);
 		}
 
 		@Override
