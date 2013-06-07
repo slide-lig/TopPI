@@ -19,6 +19,7 @@ public class FileCollector implements PatternsCollector {
 	protected static final int BUFFER_CAPACITY = 4096;
 	
 	protected long collected = 0;
+	protected long collectedLength = 0;
 	protected FileOutputStream stream;
 	protected FileChannel channel;
 	protected ByteBuffer buffer;
@@ -55,6 +56,7 @@ public class FileCollector implements PatternsCollector {
 		
 		safePut((byte) '\n');
 		this.collected++;
+		this.collectedLength += pattern.length;
 	}
 	
 	protected void putInt(final int i) {
@@ -96,5 +98,13 @@ public class FileCollector implements PatternsCollector {
 		}
 		
 		return this.collected;
+	}
+
+	public int getAveragePatternLength() {
+		if (this.collected == 0) {
+			return 0;
+		} else {
+			return (int) (this.collectedLength / this.collected);
+		}
 	}
 }

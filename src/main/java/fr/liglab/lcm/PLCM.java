@@ -326,7 +326,10 @@ public class PLCM {
 
 		long outputted = collector.close();
 		
-		System.err.println(miner.toString() + " // mined in " + chrono + "ms // outputted " + outputted + " patterns");
+		System.err.println(miner.toString() + 
+				" // mined in " + chrono + 
+				"ms // outputted " + outputted +
+				" patterns // average length = "+ collector.getAveragePatternLength());
 		
 		if (memoryWatch != null) {
 			memoryWatch.interrupt();

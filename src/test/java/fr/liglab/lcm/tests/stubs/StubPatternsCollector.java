@@ -23,6 +23,7 @@ public class StubPatternsCollector implements PatternsCollector {
 	
 	protected static Map<Integer, Set<Set<Integer>>> expected = new TreeMap<Integer, Set<Set<Integer>>>();
 	protected long collected = 0;
+	protected long collectedLength = 0;
 	
 	public void expectCollect(Integer support, Integer... patternItems) {
 		Set<Set<Integer>> supportExpectation = null;
@@ -56,6 +57,7 @@ public class StubPatternsCollector implements PatternsCollector {
 					expected.remove(support);
 				}
 				this.collected++;
+				this.collectedLength += pattern.length;
 				return;
 			}
 		}
@@ -82,5 +84,13 @@ public class StubPatternsCollector implements PatternsCollector {
 		}
 		
 		return this.collected;
+	}
+
+	public int getAveragePatternLength() {
+		if (this.collected == 0) {
+			return 0;
+		} else {
+			return (int) (this.collectedLength / this.collected);
+		}
 	}
 }

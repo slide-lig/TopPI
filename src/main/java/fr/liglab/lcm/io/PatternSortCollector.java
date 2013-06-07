@@ -24,4 +24,8 @@ public class PatternSortCollector implements PatternsCollector {
 		return this.decorated.close();
 	}
 
+	public int getAveragePatternLength() {
+		return this.decorated.getAveragePatternLength();
+	}
+
 }
