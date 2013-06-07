@@ -2,7 +2,6 @@ package fr.liglab.lcm;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -15,7 +14,6 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import fr.liglab.lcm.internals.ExplorationStep;
-import fr.liglab.lcm.internals.ExplorationStep.Progress;
 import fr.liglab.lcm.internals.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
 import fr.liglab.lcm.io.NullCollector;
@@ -23,6 +21,8 @@ import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.StdOutCollector;
+import fr.liglab.lcm.util.MemoryPeakWatcherThread;
+import fr.liglab.lcm.util.ProgressWatcherThread;
 
 /**
  * LCM implementation, based on UnoAUA04 :
@@ -31,7 +31,7 @@ import fr.liglab.lcm.io.StdOutCollector;
  */
 public class PLCM {
 	final List<PLCMThread> threads;
-	private WatcherThread progressWatch;
+	private ProgressWatcherThread progressWatch;
 	protected static long chrono;
 
 	private final PatternsCollector collector;
@@ -79,7 +79,7 @@ public class PLCM {
 
 		this.initializeAndStartThreads(initState);
 
-		this.progressWatch = new WatcherThread(initState);
+		this.progressWatch = new ProgressWatcherThread(initState);
 		this.progressWatch.start();
 
 		for (PLCMThread t : this.threads) {
@@ -222,34 +222,7 @@ public class PLCM {
 			this.lock.writeLock().unlock();
 		}
 	}
-
-	private class WatcherThread extends Thread {
-		/**
-		 * ping delay, in milliseconds
-		 */
-		private static final long PRINT_STATUS_EVERY = 5 * 60 * 1000;
-
-		private final ExplorationStep step;
-
-		public WatcherThread(ExplorationStep initState) {
-			this.step = initState;
-		}
-
-		@Override
-		public void run() {
-			while (true) {
-				try {
-					Thread.sleep(PRINT_STATUS_EVERY);
-					Progress progress = this.step.getProgression();
-					System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - root iterator state : %2$d/%3$d\n",
-							Calendar.getInstance(), progress.current, progress.last);
-				} catch (InterruptedException e) {
-					return;
-				}
-			}
-		}
-	}
-
+	
 	public static void main(String[] args) {
 
 		Options options = new Options();
@@ -266,6 +239,7 @@ public class PLCM {
 				"How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false, "Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
+		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -294,6 +268,7 @@ public class PLCM {
 	public static void standalone(CommandLine cmd) {
 		String[] args = cmd.getArgs();
 		int minsup = Integer.parseInt(args[1]);
+		MemoryPeakWatcherThread memoryWatch = null;
 
 		String outputPath = null;
 		if (args.length >= 3) {
@@ -308,6 +283,11 @@ public class PLCM {
 		if (cmd.hasOption('c')) {
 			nbSocketsShareCopy = Integer.parseInt(cmd.getOptionValue('c'));
 			PLCMAffinity.bindMainThread();
+		}
+		
+		if (cmd.hasOption('m')) {
+			memoryWatch = new MemoryPeakWatcherThread();
+			memoryWatch.start();
 		}
 
 		chrono = System.currentTimeMillis();
@@ -345,8 +325,13 @@ public class PLCM {
 		chrono = System.currentTimeMillis() - chrono;
 
 		long outputted = collector.close();
-
+		
 		System.err.println(miner.toString() + " // mined in " + chrono + "ms // outputted " + outputted + " patterns");
+		
+		if (memoryWatch != null) {
+			memoryWatch.interrupt();
+			System.err.println("maxUsedMemory = "+memoryWatch.getMaxUsedMemory()+"bytes");
+		}
 	}
 
 	/**
