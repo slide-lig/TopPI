@@ -10,8 +10,8 @@ import java.nio.charset.Charset;
 
 
 /**
- * a PatternsCollector that write to the path provided at instanciation
- * It will throw an exception if output file already exists
+ * a thread-unsafe PatternsCollector that write to the path provided at instanciation
+ * @see MultiThreadedFileCollector
  */
 public class FileCollector implements PatternsCollector {
 	
@@ -39,7 +39,7 @@ public class FileCollector implements PatternsCollector {
 		buffer.clear();
 	}
 	
-	public synchronized void collect(final int support, final int[] pattern) {
+	public void collect(final int support, final int[] pattern) {
 		putInt(support);
 		safePut((byte) '\t'); // putChar('\t') would append TWO bytes, but in ASCII we need only one
 		
@@ -106,5 +106,19 @@ public class FileCollector implements PatternsCollector {
 		} else {
 			return (int) (this.collectedLength / this.collected);
 		}
+	}
+	
+	/**
+	 * @return how many patterns have been written so far
+	 */
+	public long getCollected() {
+		return collected;
+	}
+	
+	/**
+	 * @return sum of collected patterns' lengths
+	 */
+	public long getCollectedLength() {
+		return collectedLength;
 	}
 }

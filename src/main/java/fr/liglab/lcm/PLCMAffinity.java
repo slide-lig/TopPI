@@ -24,19 +24,11 @@ public class PLCMAffinity extends PLCM {
 
 	private PLCMAffinityThread[][] threadsBySocket;
 	private final int copySocketModulo;
-
-	public PLCMAffinity(PatternsCollector patternsCollector) {
-		this(patternsCollector, Runtime.getRuntime().availableProcessors());
-	}
-
+	
 	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
 		this(patternsCollector, nbThreads, 1);
 	}
-
-	public PLCMAffinity(PatternsCollector patternsCollector, int nbSocketsShareCopy, boolean b) {
-		this(patternsCollector, Runtime.getRuntime().availableProcessors(), nbSocketsShareCopy);
-	}
-
+	
 	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
 		super(patternsCollector, nbThreads);
 		this.copySocketModulo = copySocketModulo;

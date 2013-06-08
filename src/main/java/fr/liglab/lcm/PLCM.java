@@ -16,8 +16,8 @@ import org.apache.commons.cli.PosixParser;
 import fr.liglab.lcm.internals.ExplorationStep;
 import fr.liglab.lcm.internals.FrequentsIteratorRenamer;
 import fr.liglab.lcm.io.FileCollector;
+import fr.liglab.lcm.io.MultiThreadedFileCollector;
 import fr.liglab.lcm.io.NullCollector;
-import fr.liglab.lcm.io.PatternSortCollector;
 import fr.liglab.lcm.io.PatternsCollector;
 import fr.liglab.lcm.io.PerItemTopKCollector;
 import fr.liglab.lcm.io.StdOutCollector;
@@ -37,11 +37,7 @@ public class PLCM {
 	private final PatternsCollector collector;
 
 	private final long[] globalCounters;
-
-	public PLCM(PatternsCollector patternsCollector) {
-		this(patternsCollector, Runtime.getRuntime().availableProcessors());
-	}
-
+	
 	public PLCM(PatternsCollector patternsCollector, int nbThreads) {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
@@ -302,22 +298,18 @@ public class PLCM {
 			ExplorationStep.verbose = true;
 		}
 		
-		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState);
+		int nbThreads = Runtime.getRuntime().availableProcessors();
+		if (cmd.hasOption('t')) {
+			nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
+		}
+		
+		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
 
 		PLCM miner;
-		if (cmd.hasOption('t')) {
-			int nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
-			if (nbSocketsShareCopy == 0) {
-				miner = new PLCM(collector, nbThreads);
-			} else {
-				miner = new PLCMAffinity(collector, nbThreads, nbSocketsShareCopy);
-			}
+		if (nbSocketsShareCopy == 0) {
+			miner = new PLCM(collector, nbThreads);
 		} else {
-			if (nbSocketsShareCopy == 0) {
-				miner = new PLCM(collector);
-			} else {
-				miner = new PLCMAffinity(collector, nbSocketsShareCopy, false);
-			}
+			miner = new PLCMAffinity(collector, nbThreads, nbSocketsShareCopy);
 		}
 
 		chrono = System.currentTimeMillis();
@@ -339,8 +331,10 @@ public class PLCM {
 
 	/**
 	 * Parse command-line arguments to instanciate the right collector
+	 * @param nbThreads 
 	 */
-	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, ExplorationStep initState) {
+	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, 
+			ExplorationStep initState, int nbThreads) {
 
 		PatternsCollector collector = null;
 
@@ -349,7 +343,11 @@ public class PLCM {
 		} else {
 			if (outputPath != null) {
 				try {
-					collector = new FileCollector(outputPath);
+					if (cmd.hasOption('k')) {
+						collector = new FileCollector(outputPath);
+					} else {
+						collector = new MultiThreadedFileCollector(outputPath, nbThreads);
+					}
 				} catch (IOException e) {
 					e.printStackTrace(System.err);
 					System.err.println("Aborting mining.");
@@ -358,7 +356,7 @@ public class PLCM {
 			} else {
 				collector = new StdOutCollector();
 			}
-			collector = new PatternSortCollector(collector);
+			//collector = new PatternSortCollector(collector);
 		}
 		
 		if (cmd.hasOption('k')) {
