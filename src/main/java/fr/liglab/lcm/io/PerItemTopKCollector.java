@@ -12,6 +12,8 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
@@ -103,16 +105,15 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public long close() {
-		// we do not want deduplication anymore
-		// final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
+		final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
-					// if (dedup.add(itemTopK[i])) {
-					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
-					// }
+					if (dedup.add(itemTopK[i])) {
+						this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
+					}
 				}
 			}
 		}
