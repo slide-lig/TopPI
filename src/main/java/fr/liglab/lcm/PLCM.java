@@ -242,7 +242,7 @@ public class PLCM {
 		try {
 			CommandLine cmd = parser.parse(options, args);
 
-			if (cmd.getArgs().length < 2 || cmd.getArgs().length > 3) {
+			if (cmd.getArgs().length < 2 || cmd.getArgs().length > 3 || cmd.hasOption('h')) {
 				printMan(options);
 			} else {
 				standalone(cmd);
