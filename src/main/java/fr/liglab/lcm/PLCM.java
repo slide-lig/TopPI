@@ -232,14 +232,15 @@ public class PLCM {
 		options.addOption("c", true,
 				"How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
 		options.addOption("h", false, "Show help");
-		options.addOption("i", false, "(has no effect without -k) Outputs a single pattern for each frequent item : " +
+		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item : " +
 				"the item itself and its patterns count (max=K) - given support will be item's support count");
-		options.addOption("I", false, "(has no effect without -k) Outputs a single pattern for distinct frequent item supports S, " +
+		options.addOption("I", false, "(use only with -k) Outputs a single pattern for distinct frequent item supports S, " +
 				"containing a single integer: average support of patterns found for items having a support count of S - given support will be items support count");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
+		options.addOption("u", false, "(use only with -k) output unique patterns only");
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false, "Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
 		
@@ -379,6 +380,7 @@ public class PLCM {
 			
 			topKcoll.setInfoMode(cmd.hasOption('i'));
 			topKcoll.setSupportInfoMode(cmd.hasOption('I'));
+			topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
 
 			initState.appendSelector(topKcoll.asSelector());
 			collector = topKcoll;

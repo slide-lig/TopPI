@@ -13,6 +13,8 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.procedure.TIntObjectProcedure;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
@@ -39,6 +41,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * pattern containing a single integer ; the average support count of patterns for items of frequency S
 	 */
 	protected boolean supportInfoMode;
+	
+	protected boolean outputUniqueOnly;
 
 	public PerItemTopKCollector(final PatternsCollector follower, final int k, final int nbItems,
 			final FrequentsIterator items) {
@@ -118,28 +122,45 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public long close() {
-		// we do not want deduplication anymore
-		// final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
-		
 		if (this.infoMode) {
 			this.collectItemStats();
 		} else if (this.supportInfoMode) {
 			this.collectPatternSupportsStats();
+		} else if (this.outputUniqueOnly) {
+			this.outputUniquePatterns();
 		} else {
-			for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
-				for (int i = 0; i < itemTopK.length; i++) {
-					if (itemTopK[i] == null) {
-						break;
-					} else {
-						// if (dedup.add(itemTopK[i])) {
+			this.outputAll();
+		}
+		
+		return this.decorated.close();
+	}
+
+	private void outputUniquePatterns() {
+		final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
+		
+		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+			for (int i = 0; i < itemTopK.length; i++) {
+				if (itemTopK[i] == null) {
+					break;
+				} else {
+					if (dedup.add(itemTopK[i])) {
 						this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
-						// }
 					}
 				}
 			}
 		}
-		
-		return this.decorated.close();
+	}
+
+	private void outputAll() {
+		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+			for (int i = 0; i < itemTopK.length; i++) {
+				if (itemTopK[i] == null) {
+					break;
+				} else {
+					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
+				}
+			}
+		}
 	}
 
 	private void collectPatternSupportsStats() {
@@ -397,5 +418,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public void setSupportInfoMode(boolean outputSupportInfoOnly) {
 		this.supportInfoMode = outputSupportInfoOnly;
+	}
+
+	public void setOutputUniqueOnly(boolean outputUniqueOnly) {
+		this.outputUniqueOnly = outputUniqueOnly;
 	}
 }
