@@ -234,6 +234,8 @@ public class PLCM {
 		options.addOption("h", false, "Show help");
 		options.addOption("i", false, "(has no effect without -k) Outputs a single pattern for each frequent item : " +
 				"the item itself and its patterns count (max=K) - given support will be item's support count");
+		options.addOption("I", false, "(has no effect without -k) Outputs a single pattern for distinct frequent item supports S, " +
+				"containing a single integer: average support of patterns found for items having a support count of S - given support will be items support count");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
@@ -376,6 +378,7 @@ public class PLCM {
 					extensions);
 			
 			topKcoll.setInfoMode(cmd.hasOption('i'));
+			topKcoll.setSupportInfoMode(cmd.hasOption('I'));
 
 			initState.appendSelector(topKcoll.asSelector());
 			collector = topKcoll;

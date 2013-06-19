@@ -5,6 +5,7 @@ import fr.liglab.lcm.internals.ExplorationStep;
 import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.Selector;
 import gnu.trove.iterator.TIntObjectIterator;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -31,6 +32,13 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * (max=k) - given support will be item's support count.
 	 */
 	protected boolean infoMode;
+	
+	/**
+	 * When set to true, instead of outputting each item's top-k-patterns the program will only 
+	 * group frequent items by support count, and output for each distinct support value S a single 
+	 * pattern containing a single integer ; the average support count of patterns for items of frequency S
+	 */
+	protected boolean supportInfoMode;
 
 	public PerItemTopKCollector(final PatternsCollector follower, final int k, final int nbItems,
 			final FrequentsIterator items) {
@@ -115,6 +123,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 		
 		if (this.infoMode) {
 			this.collectItemStats();
+		} else if (this.supportInfoMode) {
+			this.collectPatternSupportsStats();
 		} else {
 			for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 				for (int i = 0; i < itemTopK.length; i++) {
@@ -130,6 +140,41 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 		
 		return this.decorated.close();
+	}
+
+	private void collectPatternSupportsStats() {
+		TIntObjectHashMap<TIntArrayList> patternsSupportByItemSupport = new TIntObjectHashMap<TIntArrayList>();
+		TIntObjectIterator<PatternWithFreq[]> iterator = this.topK.iterator();
+		
+		while (iterator.hasNext()) {
+			iterator.advance();
+			
+			PatternWithFreq[] itemTopK = iterator.value();
+			
+			/// hack hack hack !
+			int itemSupport = itemTopK[0].supportCount;
+			
+			TIntArrayList patternSupports;
+			
+			if (patternsSupportByItemSupport.containsKey(itemSupport)) {
+				patternSupports = patternsSupportByItemSupport.get(itemSupport);
+			} else {
+				patternSupports = new TIntArrayList();
+				patternsSupportByItemSupport.put(itemSupport, patternSupports);
+			}
+			
+			for (int i = 0;  i < itemTopK.length && itemTopK[i] != null; i++) {
+				PatternWithFreq patternWithFreq = itemTopK[i];
+				patternSupports.add(patternWithFreq.supportCount);
+			}
+		}
+		
+		int[] itemSupports = patternsSupportByItemSupport.keys();
+		Arrays.sort(itemSupports);
+		for (int i = 0; i < itemSupports.length; i++) {
+			TIntArrayList supports = patternsSupportByItemSupport.get(itemSupports[i]);
+			this.decorated.collect(itemSupports[i], new int[] {supports.sum()/supports.size()});
+		}
 	}
 
 	/**
@@ -348,5 +393,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public void setInfoMode(boolean outputInfoOnly) {
 		this.infoMode = outputInfoOnly;
+	}
+
+	public void setSupportInfoMode(boolean outputSupportInfoOnly) {
+		this.supportInfoMode = outputSupportInfoOnly;
 	}
 }
