@@ -4,6 +4,7 @@ import fr.liglab.lcm.PLCM.PLCMCounters;
 import fr.liglab.lcm.internals.ExplorationStep;
 import fr.liglab.lcm.internals.FrequentsIterator;
 import fr.liglab.lcm.internals.Selector;
+import fr.liglab.lcm.internals.TransactionReader;
 import gnu.trove.iterator.TIntObjectIterator;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
@@ -43,6 +44,13 @@ public class PerItemTopKCollector implements PatternsCollector {
 	protected boolean supportInfoMode;
 	
 	protected boolean outputUniqueOnly;
+	
+	/**
+	 * when provided (through readPerItemKFrom() ) the collector, before closing and outputting 
+	 * collected patterns, will read the given file and restrict each item's topK to the given value.
+	 * file format is simple ASCII (as input files) and should give, per line : ITEM_ID NB_PATTERNS_TO_KEEP
+	 */
+	protected String pathToPerItemK = null;
 
 	public PerItemTopKCollector(final PatternsCollector follower, final int k, final int nbItems,
 			final FrequentsIterator items) {
@@ -122,6 +130,10 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public long close() {
+		if (this.pathToPerItemK != null) {
+			this.applyPerItemKRestriction();
+		}
+		
 		if (this.infoMode) {
 			this.collectItemStats();
 		} else if (this.supportInfoMode) {
@@ -133,6 +145,23 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 		
 		return this.decorated.close();
+	}
+
+	private void applyPerItemKRestriction() {
+		FileReader reader = new FileReader(this.pathToPerItemK);
+		
+		while(reader.hasNext()) {
+			TransactionReader line = reader.next();
+			int itemID = line.next();
+			int maxPatterns = line.next();
+			
+			if (maxPatterns < this.k) {
+				PatternWithFreq[] patternWithFreqs = this.topK.get(itemID);
+				for (int i = maxPatterns; i < patternWithFreqs.length && patternWithFreqs[i] != null; i++) {
+					patternWithFreqs[i] = null;
+				}
+			}
+		}
 	}
 
 	private void outputUniquePatterns() {
@@ -422,5 +451,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public void setOutputUniqueOnly(boolean outputUniqueOnly) {
 		this.outputUniqueOnly = outputUniqueOnly;
+	}
+
+	public void readPerItemKFrom(String path) {
+		this.pathToPerItemK = path;
 	}
 }

@@ -238,6 +238,7 @@ public class PLCM {
 				"containing a single integer: average support of patterns found for items having a support count of S - given support will be items support count");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
+		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
 		options.addOption("u", false, "(use only with -k) output unique patterns only");
@@ -381,6 +382,10 @@ public class PLCM {
 			topKcoll.setInfoMode(cmd.hasOption('i'));
 			topKcoll.setSupportInfoMode(cmd.hasOption('I'));
 			topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
+			
+			if (cmd.hasOption('r')){
+				topKcoll.readPerItemKFrom(cmd.getOptionValue('r'));
+			}
 
 			initState.appendSelector(topKcoll.asSelector());
 			collector = topKcoll;
