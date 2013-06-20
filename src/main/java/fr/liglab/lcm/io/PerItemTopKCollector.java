@@ -39,7 +39,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 	/**
 	 * When set to true, instead of outputting each item's top-k-patterns the program will only 
 	 * group frequent items by support count, and output for each distinct support value S a single 
-	 * pattern containing a single integer ; the average support count of patterns for items of frequency S
+	 * pattern containing two integers ;support sum of patterns found for items having a support count of S, 
+	 * and the pattern count
 	 */
 	protected boolean supportInfoMode;
 	
@@ -223,7 +224,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		Arrays.sort(itemSupports);
 		for (int i = 0; i < itemSupports.length; i++) {
 			TIntArrayList supports = patternsSupportByItemSupport.get(itemSupports[i]);
-			this.decorated.collect(itemSupports[i], new int[] {supports.sum()/supports.size()});
+			this.decorated.collect(itemSupports[i], new int[] {supports.sum(), supports.size()});
 		}
 	}
 

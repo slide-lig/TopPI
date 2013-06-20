@@ -235,7 +235,7 @@ public class PLCM {
 		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item : " +
 				"the item itself and its patterns count (max=K) - given support will be item's support count");
 		options.addOption("I", false, "(use only with -k) Outputs a single pattern for distinct frequent item supports S, " +
-				"containing a single integer: average support of patterns found for items having a support count of S - given support will be items support count");
+				"containing a two integers: support sum of patterns found for items having a support count of S, and pattern count - given support will be items support count");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
