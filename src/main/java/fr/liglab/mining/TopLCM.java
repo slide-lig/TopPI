@@ -30,7 +30,7 @@ import fr.liglab.mining.util.ProgressWatcherThread;
  * "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
  * by Takeaki Uno el. al.
  */
-public class PLCM {
+public class TopLCM {
 	final List<TopLCMThread> threads;
 	private ProgressWatcherThread progressWatch;
 	protected static long chrono;
@@ -39,7 +39,7 @@ public class PLCM {
 
 	private final long[] globalCounters;
 	
-	public PLCM(PatternsCollector patternsCollector, int nbThreads) {
+	public TopLCM(PatternsCollector patternsCollector, int nbThreads) {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
@@ -286,7 +286,7 @@ public class PLCM {
 		int nbSocketsShareCopy = 0;
 		if (cmd.hasOption('c')) {
 			nbSocketsShareCopy = Integer.parseInt(cmd.getOptionValue('c'));
-			PLCMAffinity.bindMainThread();
+			TopLCMAffinity.bindMainThread();
 		}
 		
 		if (cmd.hasOption('m')) {
@@ -313,11 +313,11 @@ public class PLCM {
 		
 		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
 
-		PLCM miner;
+		TopLCM miner;
 		if (nbSocketsShareCopy == 0) {
-			miner = new PLCM(collector, nbThreads);
+			miner = new TopLCM(collector, nbThreads);
 		} else {
-			miner = new PLCMAffinity(collector, nbThreads, nbSocketsShareCopy);
+			miner = new TopLCMAffinity(collector, nbThreads, nbSocketsShareCopy);
 		}
 
 		chrono = System.currentTimeMillis();

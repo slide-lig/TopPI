@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
-import fr.liglab.mining.PLCM;
-import fr.liglab.mining.PLCM.TopLCMCounters;
+import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 
 /**
  * Main class for chained exploration filters, implemented as an immutable
@@ -52,7 +52,7 @@ public abstract class Selector {
 		if (this.allowExploration(extension, state)) {
 			return (this.next == null || this.next.select(extension, state));
 		} else {
-			((PLCM.TopLCMThread) Thread.currentThread()).counters[this.getCountersKey().ordinal()]++;
+			((TopLCM.TopLCMThread) Thread.currentThread()).counters[this.getCountersKey().ordinal()]++;
 			return false;
 		}
 	}

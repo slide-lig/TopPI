@@ -1,6 +1,6 @@
 package fr.liglab.mining.io;
 
-import fr.liglab.mining.PLCM.TopLCMCounters;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;

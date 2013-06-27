@@ -2,8 +2,8 @@ package fr.liglab.mining.internals;
 
 import java.util.Iterator;
 
-import fr.liglab.mining.PLCM;
-import fr.liglab.mining.PLCM.TopLCMCounters;
+import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList;
 import fr.liglab.mining.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
@@ -98,7 +98,7 @@ public class Dataset implements Cloneable {
 	}
 
 	public void compress(int coreItem) {
-		((PLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
+		((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
 		this.transactions.compress(coreItem);
 	}
 

@@ -14,7 +14,7 @@ import fr.liglab.mining.io.PatternsCollector;
  * "An Efficient Algorithm for Enumerating Closed Patterns in Transaction Databases"
  * by Takeaki Uno el. al.
  */
-public class PLCMAffinity extends PLCM {
+public class TopLCMAffinity extends TopLCM {
 	private static AffinityLock al;
 
 	static void bindMainThread() {
@@ -25,11 +25,11 @@ public class PLCMAffinity extends PLCM {
 	private TopLCMAffinityThread[][] threadsBySocket;
 	private final int copySocketModulo;
 	
-	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
+	public TopLCMAffinity(PatternsCollector patternsCollector, int nbThreads) {
 		this(patternsCollector, nbThreads, 1);
 	}
 	
-	public PLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
+	public TopLCMAffinity(PatternsCollector patternsCollector, int nbThreads, int copySocketModulo) {
 		super(patternsCollector, nbThreads);
 		this.copySocketModulo = copySocketModulo;
 		if (copySocketModulo < 1 || copySocketModulo > AffinityLock.cpuLayout().sockets()) {
