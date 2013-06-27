@@ -1,14 +1,14 @@
 package fr.liglab.mining.internals;
 
-import java.util.Arrays;
-import java.util.Calendar;
-
-import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
+
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Iterator;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -51,8 +51,13 @@ public final class ExplorationStep implements Cloneable {
 	 * "pattern".
 	 */
 	public final int core_item;
-
-	public final Dataset dataset;
+	
+	/**
+	 * Don't EVER access the dataset field directly (even internally)
+	 * @see getDataset
+	 */
+	protected Dataset dataset = null;
+	protected LazyDataset lazyDataset = null;
 
 	public final Counters counters;
 
@@ -130,14 +135,14 @@ public final class ExplorationStep implements Cloneable {
 
 			try {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-					TransactionsIterable support = this.dataset.getSupport(candidate);
+					TransactionsIterable support = this.getDataset().getSupport(candidate);
 
 					// System.out.println("extending "+Arrays.toString(this.pattern)+
 					// " with "+
 					// candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
 
 					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), candidate,
-							this.dataset.getIgnoredItems(), this.counters.maxFrequent);
+							this.getDataset().getIgnoredItems(), this.counters.maxFrequent);
 
 					int greatest = Integer.MIN_VALUE;
 					for (int i = 0; i < candidateCounts.closure.length; i++) {
@@ -195,7 +200,6 @@ public final class ExplorationStep implements Cloneable {
 			this.candidates = null;
 			this.failedFPTests = null;
 			this.selectChain = null;
-			this.dataset = null;
 			this.predictiveFPTestMode = false;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
@@ -206,7 +210,7 @@ public final class ExplorationStep implements Cloneable {
 				this.selectChain = parent.selectChain.copy();
 			}
 
-			// ! \\ From here, order is important
+			// ! \\ From here, order is important ...
 			
 			if (parent.predictiveFPTestMode) {
 				this.predictiveFPTestMode = true;
@@ -220,43 +224,59 @@ public final class ExplorationStep implements Cloneable {
 				}
 			}
 
-			// indeed, instantiateDataset is influenced by longTransactionsMode
-			this.dataset = instanciateDataset(parent, support);
+			// ... because instantiateDataset is influenced by longTransactionsMode
+			this.instanciateDataset(parent, support);
 
 			// and intanciateDataset may choose to trigger some renaming in counters
 			this.candidates = this.counters.getExtensionsIterator();
 
 		}
 	}
-
-	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
+	
+	private void instanciateDataset(final ExplorationStep parent, final TransactionsIterable support) {
 		final double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
 		if (!this.predictiveFPTestMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
-			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
+			this.dataset = new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
 			final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
-
-			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate()+1;
-			try {
-				Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
-				if (LCM_STYLE) {
-					dataset.compress(this.core_item);
-				}
-
-				return dataset;
-			} catch (ArrayIndexOutOfBoundsException e) {
-				System.out.println("WAT core_item = "+this.core_item);
-				e.printStackTrace();
-				System.exit(1);
-			}
-			
-			return null;
+			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);			
+			this.lazyDataset = new LazyDataset(filtered);
 		}
 	}
+	
+	public Dataset getDataset() {
+		if (this.dataset == null && this.lazyDataset != null) {
+			this.dataset = this.lazyDataset.instanciate(this);
+			this.lazyDataset = null;
+		}
+		
+		return this.dataset;
+	}
+	
+	/**
+	 * We use this class to trigger dataset filtering only when needed, ie. when we found a valid 
+	 * candidate extension in the current ExplorationStep (it may not happen, for instance when k=1)
+	 */
+	protected final class LazyDataset {
+		private final Iterator<TransactionReader> transactions;
+		
+		LazyDataset(final Iterator<TransactionReader> transactions) {
+			this.transactions = transactions;
+		}
+		
+		Dataset instanciate(final ExplorationStep target) {
+			final int tidsLimit = target.predictiveFPTestMode ? Integer.MAX_VALUE : target.counters.getMaxCandidate()+1;
+			Dataset dataset = new Dataset(target.counters, this.transactions, tidsLimit);
+			if (LCM_STYLE) {
+				dataset.compress(target.core_item);
+			}
+			return dataset;
+		}
+	}
+	
+	
 
 	public int getFailedFPTest(final int item) {
 		synchronized (this.failedFPTests) {
@@ -290,6 +310,8 @@ public final class ExplorationStep implements Cloneable {
 		return new ExplorationStep(pattern, core_item, dataset.clone(), counters.clone(), selectChain, candidates,
 				failedFPTests, predictiveFPTestMode);
 	}
+	
+	
 	
 	public Progress getProgression() {
 		return new Progress();
