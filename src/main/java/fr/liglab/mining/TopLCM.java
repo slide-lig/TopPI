@@ -96,18 +96,17 @@ public class TopLCM {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 
-		builder.append("PLCM exploration (");
+		builder.append("{\"name\":\"TopLCM\", \"threads\":");
 		builder.append(this.threads.size());
-		builder.append(" threads)");
-
+		
 		TopLCMCounters[] counters = TopLCMCounters.values();
 
 		for (int i = 0; i < this.globalCounters.length; i++) {
 			TopLCMCounters counter = counters[i];
 
-			builder.append(", ");
+			builder.append(", \"");
 			builder.append(counter.toString());
-			builder.append(':');
+			builder.append("\":");
 			builder.append(this.globalCounters[i]);
 		}
 
@@ -145,7 +144,7 @@ public class TopLCM {
 
 	/**
 	 * Some classes in EnumerationStep may declare counters here. see references
-	 * to PLCMThread.counters
+	 * to TopLCMCounters.counters
 	 */
 	public enum TopLCMCounters {
 		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections, TransactionsCompressions
@@ -158,7 +157,7 @@ public class TopLCM {
 		protected final int id;
 
 		public TopLCMThread(final int id) {
-			super("PLCMThread" + id);
+			super("TopLCMThread" + id);
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
@@ -259,7 +258,7 @@ public class TopLCM {
 	}
 
 	public static void printMan(Options options) {
-		String syntax = "java fr.liglab.LCM [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
+		String syntax = "java fr.liglab.mining.TopLCM [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
 		String header = "\nIf OUTPUT_PATH is missing, patterns are printed to standard output.\nOptions are :";
 		String footer = "\nFor advanced tuning you may also set properties : " + 
 				ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD + ", "

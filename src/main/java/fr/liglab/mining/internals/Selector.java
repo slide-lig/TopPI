@@ -26,8 +26,7 @@ public abstract class Selector {
 	abstract protected Selector copy(Selector newNext);
 
 	/**
-	 * @return which enum value from PLCMCounters will be used to count this
-	 *         Selector's rejections
+	 * @return which enum value from TopLCMCounters will be used to count this Selector's rejections
 	 */
 	abstract protected TopLCMCounters getCountersKey();
 

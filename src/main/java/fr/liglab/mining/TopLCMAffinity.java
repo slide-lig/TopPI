@@ -154,15 +154,7 @@ public class TopLCMAffinity extends TopLCM {
 		
 		return null;
 	}
-
-	/**
-	 * Some classes in EnumerationStep may declare counters here. see references
-	 * to PLCMThread.counters
-	 */
-	public enum TopLCMCounters {
-		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections,
-	}
-
+	
 	private class TopLCMAffinityThread extends TopLCMThread {
 		private final int[] position;
 		private AffinityLock al;
