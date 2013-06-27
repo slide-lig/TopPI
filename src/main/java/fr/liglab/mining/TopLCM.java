@@ -2,7 +2,10 @@ package fr.liglab.mining;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -93,7 +96,7 @@ public class TopLCM {
 		this.progressWatch.interrupt();
 	}
 
-	public String toString() {
+	public String toString(Map<String,Long> additionalCounters) {
 		StringBuilder builder = new StringBuilder();
 
 		builder.append("{\"name\":\"TopLCM\", \"threads\":");
@@ -109,8 +112,23 @@ public class TopLCM {
 			builder.append("\":");
 			builder.append(this.globalCounters[i]);
 		}
-
+		
+		if (additionalCounters != null) {
+			for (Entry<String, Long> entry : additionalCounters.entrySet()) {
+				builder.append(", \"");
+				builder.append(entry.getKey());
+				builder.append("\":");
+				builder.append(entry.getValue());
+			}
+		}
+		
+		builder.append('}');
+		
 		return builder.toString();
+	}
+	
+	public String toString() {
+		return this.toString(null);
 	}
 
 	ExplorationStep stealJob(TopLCMThread thief) {
@@ -295,8 +313,8 @@ public class TopLCM {
 
 		chrono = System.currentTimeMillis();
 		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
-		chrono = System.currentTimeMillis() - chrono;
-		System.err.println("Dataset loaded in " + chrono + "ms");
+		long loadingTime = System.currentTimeMillis() - chrono;
+		System.err.println("Dataset loaded in " + loadingTime + "ms");
 		
 		if (cmd.hasOption('V')) {
 			ExplorationStep.verbose = true;
@@ -322,18 +340,19 @@ public class TopLCM {
 		chrono = System.currentTimeMillis();
 		miner.lcm(initState);
 		chrono = System.currentTimeMillis() - chrono;
+		
+		Map<String,Long> additionalCounters = new HashMap<String, Long>();
+		additionalCounters.put("miningTime", chrono);
+		additionalCounters.put("outputtedPatterns", collector.close());
+		additionalCounters.put("loadingTime", loadingTime);
+		additionalCounters.put("avgPatternLength", (long) collector.getAveragePatternLength());
 
-		long outputted = collector.close();
-		
-		System.err.println(miner.toString() + 
-				" // mined in " + chrono + 
-				"ms // outputted " + outputted +
-				" patterns // average length = "+ collector.getAveragePatternLength());
-		
 		if (memoryWatch != null) {
 			memoryWatch.interrupt();
-			System.err.println("maxUsedMemory = "+memoryWatch.getMaxUsedMemory()+"bytes");
+			additionalCounters.put("maxUsedMemory", memoryWatch.getMaxUsedMemory());
 		}
+		
+		System.err.println(miner.toString(additionalCounters));
 	}
 
 	/**
