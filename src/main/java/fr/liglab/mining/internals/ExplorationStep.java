@@ -1,5 +1,7 @@
 package fr.liglab.mining.internals;
 
+import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileReader;
@@ -130,6 +132,10 @@ public final class ExplorationStep implements Cloneable {
 			int candidate = this.candidates.next();
 
 			if (candidate < 0) {
+				if (this.dataset == null && this.lazyDataset != null) {
+					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.AvoidedFilterings.ordinal()]++;
+				}
+				
 				return null;
 			}
 
