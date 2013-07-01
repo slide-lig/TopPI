@@ -144,16 +144,18 @@ public class TopLCM {
 		return null;
 	}
 
-	ExplorationStep stealJob(TopLCMThread thief, TopLCMThread victim) {
+	final ExplorationStep stealJob(TopLCMThread thief, TopLCMThread victim) {
 		victim.lock.readLock().lock();
 		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
 			ExplorationStep sj = victim.stackedJobs.get(stealPos);
-			ExplorationStep next = sj.next();
-			
-			if (next != null) {
-				thief.init(sj);
-				victim.lock.readLock().unlock();
-				return next;
+			if (sj.isStealable()) {
+				ExplorationStep next = sj.next();
+				
+				if (next != null) {
+					thief.init(sj);
+					victim.lock.readLock().unlock();
+					return next;
+				}
 			}
 		}
 		victim.lock.readLock().unlock();

@@ -1,5 +1,8 @@
 package fr.liglab.mining.internals;
 
+import java.util.Arrays;
+import java.util.Calendar;
+
 import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
@@ -7,10 +10,6 @@ import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
-
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Iterator;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -59,7 +58,12 @@ public final class ExplorationStep implements Cloneable {
 	 * @see getDataset
 	 */
 	protected Dataset dataset = null;
-	protected LazyDataset lazyDataset = null;
+	
+	/**
+	 * A to-be-filtered dataset
+	 * @see getDataset
+	 */
+	protected TransactionsIterable lazyDataset = null;
 
 	public final Counters counters;
 
@@ -141,14 +145,21 @@ public final class ExplorationStep implements Cloneable {
 
 			try {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-					TransactionsIterable support = this.getDataset().getSupport(candidate);
+					boolean toBeRefreshed = (this.dataset == null);
+					Dataset dataset = this.getDataset();
+					
+					if (toBeRefreshed) {
+						candidate = this.candidates.next();
+					}
+					
+					TransactionsIterable support = dataset.getSupport(candidate);
 
 					// System.out.println("extending "+Arrays.toString(this.pattern)+
 					// " with "+
 					// candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
 
 					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), candidate,
-							this.getDataset().getIgnoredItems(), this.counters.maxFrequent);
+							dataset.getIgnoredItems(), this.counters.maxFrequent);
 
 					int greatest = Integer.MIN_VALUE;
 					for (int i = 0; i < candidateCounts.closure.length; i++) {
@@ -235,7 +246,6 @@ public final class ExplorationStep implements Cloneable {
 
 			// and intanciateDataset may choose to trigger some renaming in counters
 			this.candidates = this.counters.getExtensionsIterator();
-
 		}
 	}
 	
@@ -246,15 +256,17 @@ public final class ExplorationStep implements Cloneable {
 		if (!this.predictiveFPTestMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
 			this.dataset = new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
-			final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
-			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);			
-			this.lazyDataset = new LazyDataset(filtered);
+			this.lazyDataset = support;
 		}
 	}
 	
+	/**
+	 * WARNING : lazy instanciation may happen and cause an item 
+	 * @return the projected dataset 
+	 */
 	public Dataset getDataset() {
 		if (this.dataset == null && this.lazyDataset != null) {
-			this.dataset = this.lazyDataset.instanciate(this);
+			this.dataset = instanciateLazyDatasetAndUpdateCandidatesIterator(this);
 			this.lazyDataset = null;
 		}
 		
@@ -262,24 +274,30 @@ public final class ExplorationStep implements Cloneable {
 	}
 	
 	/**
-	 * We use this class to trigger dataset filtering only when needed, ie. when we found a valid 
+	 * We use this method to trigger dataset filtering and renaming compression only when needed, ie. when we found a valid 
 	 * candidate extension in the current ExplorationStep (it may not happen, for instance when k=1)
+	 * 
+	 * This method will alter target's candidates iterator, this is why an ExplorationStep becomes 
+	 * thread-safe (stealable) only once its dataset instanciation is done.
 	 */
-	protected final class LazyDataset {
-		private final Iterator<TransactionReader> transactions;
+	private static Dataset instanciateLazyDatasetAndUpdateCandidatesIterator(final ExplorationStep target) {
+		final int[] renaming = target.counters.compressRenamingAndUpdateCandidatesIterator(target.candidates);
+		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(target.lazyDataset.iterator(), renaming);
 		
-		LazyDataset(final Iterator<TransactionReader> transactions) {
-			this.transactions = transactions;
-		}
+		final int tidsLimit = target.predictiveFPTestMode ? Integer.MAX_VALUE : target.counters.getMaxCandidate()+1;
+		Dataset dataset = new Dataset(target.counters, filtered, tidsLimit);
 		
-		Dataset instanciate(final ExplorationStep target) {
-			final int tidsLimit = target.predictiveFPTestMode ? Integer.MAX_VALUE : target.counters.getMaxCandidate()+1;
-			Dataset dataset = new Dataset(target.counters, this.transactions, tidsLimit);
-			if (LCM_STYLE) {
-				dataset.compress(target.core_item);
-			}
-			return dataset;
+		if (LCM_STYLE) {
+			dataset.compress(target.core_item);
 		}
+		return dataset;
+	}
+	
+	/**
+	 * @return true if another thread may steal this job
+	 */
+	public boolean isStealable(){
+		return this.lazyDataset == null;
 	}
 	
 	

@@ -360,13 +360,13 @@ public final class Counters implements Cloneable {
 	/**
 	 * Will compress an older renaming, by removing infrequent items. Contained
 	 * arrays (except closure) will refer new item IDs
-	 * 
-	 * @param olderReverseRenaming
-	 *            reverseRenaming from the dataset that fed this Counter
+	 * @param freqsIterator will be resetted according to computed items' translations
+	 * you should invoke its next() method again in order to have current candidate's new ID 
 	 * @return the translation from the old renaming to the compressed one
 	 *         (gives -1 for removed items)
 	 */
-	public int[] compressRenaming(int[] olderReverseRenaming) {
+	public int[] compressRenamingAndUpdateCandidatesIterator(FrequentsIterator freqsIterator) {
+		int[] olderReverseRenaming = this.reverseRenaming;
 		int[] renaming = new int[olderReverseRenaming.length];
 		this.reverseRenaming = new int[this.nbFrequents];
 
@@ -397,7 +397,10 @@ public final class Counters implements Cloneable {
 
 		this.maxFrequent = newItemID - 1;
 		this.compactedArrays = true;
-
+		
+		int currentIterated = renaming[freqsIterator.peek()]; // can't be -1 because current candidate triggered all this
+		freqsIterator.reset(currentIterated, this.maxCandidate);
+		
 		return renaming;
 	}
 
@@ -417,7 +420,7 @@ public final class Counters implements Cloneable {
 	/**
 	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
 	 * 
-	 * @return an iterator over frequent items (in ascending order)
+	 * @return an iterator over frequent items (in ascending order) - there's only one instance per thread, use it with care.
 	 */
 	public FrequentsIterator getLocalFrequentsIterator(final int from, final int to) {
 		FrequentIterator iterator = this.localFrequentsIterator.get(Thread.currentThread().getId());
@@ -426,7 +429,7 @@ public final class Counters implements Cloneable {
 			this.localFrequentsIterator.put(Thread.currentThread().getId(), iterator);
 		}
 		
-		iterator.recycle(from, to);
+		iterator.reset(from, to);
 		return iterator;
 	}
 
@@ -436,7 +439,7 @@ public final class Counters implements Cloneable {
 	 */
 	protected class ExtensionsIterator implements FrequentsIterator {
 		private final AtomicInteger index;
-		private final int max;
+		private int max;
 
 		/**
 		 * will provide an iterator on frequent items (in increasing order) in
@@ -444,6 +447,12 @@ public final class Counters implements Cloneable {
 		 */
 		public ExtensionsIterator(final int to) {
 			this.index = new AtomicInteger(0);
+			this.max = to;
+		}
+		
+		@Override
+		public void reset(final int from, final int to) {
+			this.index.set(from);
 			this.max = to;
 		}
 
@@ -474,7 +483,7 @@ public final class Counters implements Cloneable {
 
 		@Override
 		public int peek() {
-			return this.index.get();
+			return this.index.get() - 1;
 		}
 
 		@Override
@@ -489,13 +498,7 @@ public final class Counters implements Cloneable {
 		private int max;
 		
 		FrequentIterator() {
-			this.max = 0;
-			this.index = 0;
-		}
-		
-		public void recycle(final int from, final int to) {
-			this.max = to;
-			this.index = from;
+			this.reset(0,0);
 		}
 
 		@Override
@@ -523,12 +526,18 @@ public final class Counters implements Cloneable {
 
 		@Override
 		public int peek() {
-			return this.index;
+			return this.index - 1;
 		}
 
 		@Override
 		public int last() {
 			return this.max;
+		}
+
+		@Override
+		public void reset(int from, int to) {
+			this.index = from;
+			this.max = to;
 		}
 	}
 }
