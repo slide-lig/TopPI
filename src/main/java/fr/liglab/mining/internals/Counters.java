@@ -1,12 +1,12 @@
 package fr.liglab.mining.internals;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import fr.liglab.mining.internals.FrequentsIterator;
-import fr.liglab.mining.internals.TransactionReader;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -115,6 +115,13 @@ public final class Counters implements Cloneable {
 	 * Exclusive index of the first item >= core_item in current base
 	 */
 	protected int maxCandidate;
+	
+	/**
+	 * We use our own map, although it will contain a single item most of the time, because 
+	 * ThreadLocal causes (huge) memory leaks when used as a non-static field.
+	 * @see getLocalFrequentsIterator
+	 */
+	protected Map<Long,FrequentIterator> localFrequentsIterator = new HashMap<Long,FrequentIterator>(1);
 
 	/**
 	 * Does item counting over a projected dataset
@@ -413,7 +420,14 @@ public final class Counters implements Cloneable {
 	 * @return an iterator over frequent items (in ascending order)
 	 */
 	public FrequentsIterator getLocalFrequentsIterator(final int from, final int to) {
-		return new FrequentIterator(from, to);
+		FrequentIterator iterator = this.localFrequentsIterator.get(Thread.currentThread().getId());
+		if (iterator == null) {
+			iterator = new FrequentIterator();
+			this.localFrequentsIterator.put(Thread.currentThread().getId(), iterator);
+		}
+		
+		iterator.recycle(from, to);
+		return iterator;
 	}
 
 	/**
@@ -472,9 +486,14 @@ public final class Counters implements Cloneable {
 	protected class FrequentIterator implements FrequentsIterator {
 
 		private int index;
-		private final int max;
-
-		public FrequentIterator(final int from, final int to) {
+		private int max;
+		
+		FrequentIterator() {
+			this.max = 0;
+			this.index = 0;
+		}
+		
+		public void recycle(final int from, final int to) {
 			this.max = to;
 			this.index = from;
 		}
