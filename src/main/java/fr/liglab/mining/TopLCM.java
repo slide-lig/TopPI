@@ -165,12 +165,7 @@ public class TopLCM {
 	 * to TopLCMCounters.counters
 	 */
 	public enum TopLCMCounters {
-		ExplorationStepInstances, 
-		ExplorationStepCatchedWrongFirstParents, 
-		FirstParentTestRejections, 
-		TopKRejections, 
-		TransactionsCompressions,
-		AvoidedFilterings
+		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections, TransactionsCompressions
 	}
 
 	public class TopLCMThread extends Thread {
