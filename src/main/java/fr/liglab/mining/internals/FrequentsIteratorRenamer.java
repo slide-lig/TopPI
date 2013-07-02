@@ -42,9 +42,4 @@ public class FrequentsIteratorRenamer implements FrequentsIterator {
 	public int last() {
 		return this.renaming[this.wrapped.last()];
 	}
-
-	@Override
-	public void reset(int from, int to) {
-		throw new RuntimeException("You should not be using FrequentsIteratorRenamer outside of the initial ExplorationStep");
-	}
 }
