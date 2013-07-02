@@ -6,7 +6,6 @@ import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;
 import fr.liglab.mining.internals.TransactionReader;
 import gnu.trove.iterator.TIntObjectIterator;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntIntHashMap;
@@ -31,18 +30,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 	
 	/**
 	 * When set to true, instead of outputting each item's top-k-patterns the program will only 
-	 * give a single (fake) pattern per frequent item : the item itself and its patterns count 
-	 * (max=k) - given support will be item's support count.
+	 * give a single (fake) pattern per frequent item : the item itself, its patterns count (max=K), 
+	 * its patterns' supports sum and its lowest pattern support. 
+	 * Given support will be item's support count.
 	 */
 	protected boolean infoMode;
-	
-	/**
-	 * When set to true, instead of outputting each item's top-k-patterns the program will only 
-	 * group frequent items by support count, and output for each distinct support value S a single 
-	 * pattern containing two integers ;support sum of patterns found for items having a support count of S, 
-	 * and the pattern count
-	 */
-	protected boolean supportInfoMode;
 	
 	protected boolean outputUniqueOnly;
 	
@@ -137,8 +129,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		
 		if (this.infoMode) {
 			this.collectItemStats();
-		} else if (this.supportInfoMode) {
-			this.collectPatternSupportsStats();
 		} else if (this.outputUniqueOnly) {
 			this.outputUniquePatterns();
 		} else {
@@ -193,41 +183,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	private void collectPatternSupportsStats() {
-		TIntObjectHashMap<TIntArrayList> patternsSupportByItemSupport = new TIntObjectHashMap<TIntArrayList>();
-		TIntObjectIterator<PatternWithFreq[]> iterator = this.topK.iterator();
-		
-		while (iterator.hasNext()) {
-			iterator.advance();
-			
-			PatternWithFreq[] itemTopK = iterator.value();
-			
-			/// hack hack hack !
-			int itemSupport = itemTopK[0].supportCount;
-			
-			TIntArrayList patternSupports;
-			
-			if (patternsSupportByItemSupport.containsKey(itemSupport)) {
-				patternSupports = patternsSupportByItemSupport.get(itemSupport);
-			} else {
-				patternSupports = new TIntArrayList();
-				patternsSupportByItemSupport.put(itemSupport, patternSupports);
-			}
-			
-			for (int i = 0;  i < itemTopK.length && itemTopK[i] != null; i++) {
-				PatternWithFreq patternWithFreq = itemTopK[i];
-				patternSupports.add(patternWithFreq.supportCount);
-			}
-		}
-		
-		int[] itemSupports = patternsSupportByItemSupport.keys();
-		Arrays.sort(itemSupports);
-		for (int i = 0; i < itemSupports.length; i++) {
-			TIntArrayList supports = patternsSupportByItemSupport.get(itemSupports[i]);
-			this.decorated.collect(itemSupports[i], new int[] {supports.sum(), supports.size()});
-		}
-	}
-
 	/**
 	 * @see infoMode
 	 */
@@ -241,12 +196,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 			PatternWithFreq[] itemTopK = iterator.value();
 			
 			int nbPatterns = 0;
+			int supportSum = 0;
 			while (nbPatterns < this.k && itemTopK[nbPatterns] != null) {
+				supportSum += itemTopK[nbPatterns].getSupportCount();
 				nbPatterns++;
 			}
 			
+			int lowestSupport = itemTopK[nbPatterns-1].getSupportCount();
+			
 			if (itemTopK[0] != null) {
-				this.decorated.collect(itemTopK[0].getSupportCount(), new int[] {item, nbPatterns});
+				this.decorated.collect(itemTopK[0].getSupportCount(), new int[] {item, nbPatterns, supportSum, lowestSupport});
 			}
 		}
 	}
@@ -444,10 +403,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public void setInfoMode(boolean outputInfoOnly) {
 		this.infoMode = outputInfoOnly;
-	}
-
-	public void setSupportInfoMode(boolean outputSupportInfoOnly) {
-		this.supportInfoMode = outputSupportInfoOnly;
 	}
 
 	public void setOutputUniqueOnly(boolean outputUniqueOnly) {

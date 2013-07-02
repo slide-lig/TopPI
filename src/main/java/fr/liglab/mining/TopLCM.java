@@ -249,10 +249,8 @@ public class TopLCM {
 		options.addOption("c", true,
 				"How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
 		options.addOption("h", false, "Show help");
-		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item : " +
-				"the item itself and its patterns count (max=K) - given support will be item's support count");
-		options.addOption("I", false, "(use only with -k) Outputs a single pattern for distinct frequent item supports S, " +
-				"containing a two integers: support sum of patterns found for items having a support count of S, and pattern count - given support will be items support count");
+		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item. Given support is item's support count and pattern's items are " +
+				"the item itself, its patterns count (max=K), its patterns' supports sum and its lowest pattern support.");
 		options.addOption("k", true, "Run in top-k-per-item mode");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
@@ -390,15 +388,14 @@ public class TopLCM {
 		
 		if (cmd.hasOption('k')) {
 			int k = Integer.parseInt(cmd.getOptionValue('k'));
-
+			
 			FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
 					initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
-
+			
 			PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents,
 					extensions);
 			
 			topKcoll.setInfoMode(cmd.hasOption('i'));
-			topKcoll.setSupportInfoMode(cmd.hasOption('I'));
 			topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
 			
 			if (cmd.hasOption('r')){
