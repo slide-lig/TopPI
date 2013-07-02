@@ -17,7 +17,7 @@ public class CompactionTest {
 		
 		ExplorationStep init = new ExplorationStep(2, FileReaderTest.PATH_MICRO);
 		
-		TransactionsIterable support = init.getDataset().getSupport(1);
+		TransactionsIterable support = init.dataset.getSupport(1);
 		Counters candidateCounts = new Counters(2, support.iterator(), 
 				1, null, 5);
 		System.out.println(Arrays.toString(init.counters.getReverseRenaming()));
