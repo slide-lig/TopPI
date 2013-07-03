@@ -1,9 +1,7 @@
 package fr.liglab.mining.internals;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -121,7 +119,11 @@ public final class Counters implements Cloneable {
 	 * ThreadLocal causes (huge) memory leaks when used as a non-static field.
 	 * @see getLocalFrequentsIterator
 	 */
-	protected Map<Long,FrequentIterator> localFrequentsIterator = new HashMap<Long,FrequentIterator>(1);
+	private static final ThreadLocal<FrequentIterator> localFrequentsIterator = new ThreadLocal<FrequentIterator>() {
+		@Override protected FrequentIterator initialValue() {
+			return new FrequentIterator();
+		}
+	};
 
 	/**
 	 * Does item counting over a projected dataset
@@ -420,13 +422,8 @@ public final class Counters implements Cloneable {
 	 * @return an iterator over frequent items (in ascending order)
 	 */
 	public FrequentsIterator getLocalFrequentsIterator(final int from, final int to) {
-		FrequentIterator iterator = this.localFrequentsIterator.get(Thread.currentThread().getId());
-		if (iterator == null) {
-			iterator = new FrequentIterator();
-			this.localFrequentsIterator.put(Thread.currentThread().getId(), iterator);
-		}
-		
-		iterator.recycle(from, to);
+		FrequentIterator iterator = localFrequentsIterator.get();
+		iterator.recycle(from, to, this);
 		return iterator;
 	}
 
@@ -483,24 +480,26 @@ public final class Counters implements Cloneable {
 		}
 	}
 
-	protected class FrequentIterator implements FrequentsIterator {
+	static protected class FrequentIterator implements FrequentsIterator {
 
 		private int index;
 		private int max;
+		private int[] supportsFilter;
 		
 		FrequentIterator() {
 			this.max = 0;
 			this.index = 0;
 		}
 		
-		public void recycle(final int from, final int to) {
+		public void recycle(final int from, final int to, final Counters instance) {
 			this.max = to;
 			this.index = from;
+			this.supportsFilter = instance.compactedArrays ? null : instance.supportCounts;
 		}
 
 		@Override
 		public int next() {
-			if (compactedArrays) {
+			if (this.supportsFilter == null) {
 				final int nextIndex = this.index++;
 				if (nextIndex < this.max) {
 					return nextIndex;
@@ -511,7 +510,7 @@ public final class Counters implements Cloneable {
 				while (true) {
 					final int nextIndex = this.index++;
 					if (nextIndex < this.max) {
-						if (supportCounts[nextIndex] > 0) {
+						if (this.supportsFilter[nextIndex] > 0) {
 							return nextIndex;
 						}
 					} else {
