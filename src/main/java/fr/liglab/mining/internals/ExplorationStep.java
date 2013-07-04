@@ -182,9 +182,9 @@ public final class ExplorationStep implements Cloneable {
 
 		if (verbose) {
 			if (parent.pattern.length == 0 || ultraVerbose) {
-				System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - thread %2$d projecting %3$s with %4$s\n",
+				System.err.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"pattern\":%3$s,\"extension_internal\":%4$d,\"extension\":%5$d}\n",
 						Calendar.getInstance(), Thread.currentThread().getId(), Arrays.toString(parent.pattern),
-						reverseRenaming[extension]);
+						extension, reverseRenaming[extension]);
 			}
 		}
 
