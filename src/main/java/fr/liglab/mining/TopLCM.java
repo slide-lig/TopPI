@@ -15,6 +15,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.util.GenericOptionsParser;
 
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
@@ -237,7 +239,7 @@ public class TopLCM {
 		}
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 
 		Options options = new Options();
 		CommandLineParser parser = new PosixParser();
@@ -248,10 +250,11 @@ public class TopLCM {
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
 		options.addOption("c", true,
 				"How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
+		options.addOption("g", true, "(use only with -k) Enables Hadoop and gives the number of groups in which the search space will be splitted");
 		options.addOption("h", false, "Show help");
 		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item. Given support is item's support count and pattern's items are " +
 				"the item itself, its patterns count (max=K), its patterns' supports sum and its lowest pattern support.");
-		options.addOption("k", true, "Run in top-k-per-item mode");
+		options.addOption("k", true, "Restrict to top-k-per-item mining");
 		options.addOption("m", false, "Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
 		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
@@ -265,6 +268,11 @@ public class TopLCM {
 
 			if (cmd.getArgs().length < 2 || cmd.getArgs().length > 3 || cmd.hasOption('h')) {
 				printMan(options);
+			} else if (cmd.hasOption('g')) {
+				GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
+				cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
+				
+				hadoop(cmd, hadoopCmd.getConfiguration());
 			} else {
 				standalone(cmd);
 			}
@@ -407,5 +415,23 @@ public class TopLCM {
 		}
 
 		return collector;
+	}
+
+	public static void hadoop(CommandLine cmd, Configuration conf) throws Exception {
+		String[] args = cmd.getArgs();
+
+		if (args.length != 3) {
+			throw new IllegalArgumentException("Output's prefix path must be provided when using Hadoop");
+			
+		}
+		
+		conf.set(TopLCMoverHadoop.KEY_INPUT, args[0]);
+		conf.setInt(TopLCMoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
+		conf.set(TopLCMoverHadoop.KEY_OUTPUT, args[2]);
+		conf.setInt(TopLCMoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
+		conf.setInt(TopLCMoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
+		
+		TopLCMoverHadoop driver = new TopLCMoverHadoop(conf);
+		System.exit(driver.run(args));
 	}
 }
