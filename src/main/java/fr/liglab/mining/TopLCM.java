@@ -27,6 +27,7 @@ import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.io.StdOutCollector;
+import fr.liglab.mining.mapred.TopLCMoverHadoop;
 import fr.liglab.mining.util.MemoryPeakWatcherThread;
 import fr.liglab.mining.util.ProgressWatcherThread;
 
