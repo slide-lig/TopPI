@@ -21,6 +21,9 @@ import java.util.Set;
  * top-k-per-items patterns.
  * 
  * Thread-safe and initialized with known frequent items.
+ * 
+ * Note the collector will only consider items provided at instantiation ; any other 
+ * will be silently ignored. This is useful when mining by groups.
  */
 public class PerItemTopKCollector implements PatternsCollector {
 
@@ -66,9 +69,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	protected void insertPatternInTop(final int support, final int[] pattern, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 
-		if (itemTopK == null) {
-			throw new RuntimeException("item not initialized " + item);
-		} else {
+		if (itemTopK != null) {
 			synchronized (itemTopK) {
 				updateTop(support, pattern, itemTopK);
 			}
@@ -209,12 +210,15 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 		}
 	}
-
+	
+	/**
+	 * @return MAX_VALUE if item is unknown, -1 if item's top-K isn't full, or item's K-th itemset's support count
+	 */
 	protected int getBound(final int item) {
 		final PatternWithFreq[] itemTopK = this.topK.get(item);
-		// itemTopK == null should never happen in theory, as
-		// currentPattern should be in there at least
-		if (itemTopK == null || itemTopK[this.k - 1] == null) {
+		if (itemTopK == null) {
+			return Integer.MAX_VALUE;
+		} else if (itemTopK[this.k - 1] == null) {
 			return -1;
 		} else {
 			return itemTopK[this.k - 1].getSupportCount();

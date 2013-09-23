@@ -34,6 +34,7 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 	// app parameters
 	private int nbGroups;
 	private TIntIntMap rebasing = null;
+	private Grouper grouper = null;
 
 	// these will be cleared after each map(), they're just here to avoid repeated instanciations
 	protected final ItemsetsFactory transaction = new ItemsetsFactory();
@@ -46,6 +47,8 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 		if (this.rebasing == null) {
 			this.rebasing = DistCache.readRebasing(conf);
 			this.nbGroups = conf.getInt(TopLCMoverHadoop.KEY_NBGROUPS, 1);
+			int maxItem = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
+			this.grouper = new Grouper(this.nbGroups, maxItem);
 		}
 		
 		this.combiner = new TIntObjectHashMap<List<int[]>>(this.nbGroups);
@@ -69,7 +72,7 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 			if (this.rebasing.containsKey(item)) {
 				int rebased = this.rebasing.get(item);
 				this.transaction.add(rebased);
-				this.destinations.add(rebased % this.nbGroups);
+				this.destinations.add(this.grouper.getGroupId(rebased));
 			}
 		}
 		

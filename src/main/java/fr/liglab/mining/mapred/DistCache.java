@@ -64,8 +64,14 @@ final class DistCache {
 	/**
 	 * @return a map which associates a rebased item ID to its original ID
 	 */
-	static TIntIntMap readReverseRebasing(Configuration conf) throws IOException {
-		TIntIntMap map = new TIntIntHashMap();
+	static int[] readReverseRebasing(Configuration conf) throws IOException {
+		final int maxId = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, -1);
+		
+		if (maxId < 0) {
+			throw new IllegalArgumentException("Given configuration should contain a value for "+TopLCMoverHadoop.KEY_REBASING_MAX_ID);
+		}
+		
+		int[] map = new int[maxId];
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		
@@ -76,7 +82,7 @@ final class DistCache {
 				IntWritable value = new IntWritable();
 				
 				while(reader.next(key, value)) {
-					map.put(value.get(), key.get());
+					map[value.get()] = key.get();
 				}
 				
 				reader.close();
