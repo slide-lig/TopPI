@@ -96,6 +96,40 @@ public final class ExplorationStep implements Cloneable {
 
 		this.failedFPTests = new TIntIntHashMap();
 	}
+	
+	/**
+	 * Start exploration on one of Hadoop's sub-dataset
+	 * @param minimumSupport
+	 * @param transactions
+	 * @param maxItem
+	 * @param reverseRenaming
+	 */
+	public ExplorationStep(int minimumSupport, Iterable<TransactionReader> transactions,
+			int maxItem, int[] reverseRenaming) {
+		this.core_item = Integer.MAX_VALUE;
+		this.selectChain = null;
+		this.predictiveFPTestMode = false;
+		
+		this.counters = new Counters(minimumSupport, transactions.iterator(), 
+				maxItem+1, null, maxItem+1);
+		this.counters.compressRenaming(reverseRenaming);
+		
+		this.pattern = this.counters.closure;
+		if (this.pattern.length > 0) {
+			for (int i = 0; i < this.pattern.length; i++) {
+				this.pattern[i] = reverseRenaming[this.pattern[i]];
+			}
+		}
+		
+		this.dataset = new Dataset(this.counters, transactions.iterator());
+		// FIXME
+		// from here we actually instantiated 3 times the dataset's size
+		// once in dataset.transactions, one in dataset.tidLists (both are OK) and 
+		// worse, once again in transactions.cached
+		
+		this.candidates = this.counters.getExtensionsIterator();
+		this.failedFPTests = new TIntIntHashMap();
+	}
 
 	private ExplorationStep(int[] pattern, int core_item, Dataset dataset, Counters counters, Selector selectChain,
 			FrequentsIterator candidates, TIntIntHashMap failedFPTests, boolean predictiveFPTestMode) {

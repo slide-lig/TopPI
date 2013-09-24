@@ -34,6 +34,7 @@ final class DistCache {
 			
 			if (stringified.charAt(lastSlash+1) != '_') {
 				DistributedCache.addCacheFile(file.toUri(), conf);
+				System.out.println(file.toUri().toString());
 			}
 		}
 	}

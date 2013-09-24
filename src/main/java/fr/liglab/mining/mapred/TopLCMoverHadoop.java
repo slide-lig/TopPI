@@ -70,7 +70,7 @@ public class TopLCMoverHadoop implements Tool {
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
 		
 		if (genItemMap(rebasingMapPath)) {
-			DistCache.copyToCache(conf, rebasingMapPath);
+			DistCache.copyToCache(this.conf, rebasingMapPath);
 			
 			if (mineSinglePass(topKperItemPath)) {
 				return 0;
