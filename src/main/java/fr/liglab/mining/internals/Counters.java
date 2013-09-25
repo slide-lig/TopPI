@@ -369,7 +369,7 @@ public final class Counters implements Cloneable {
 	 *         (gives -1 for removed items)
 	 */
 	public int[] compressRenaming(int[] olderReverseRenaming) {
-		int[] renaming = new int[olderReverseRenaming.length];
+		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		this.reverseRenaming = new int[this.nbFrequents];
 
 		// we will always have newItemID <= item

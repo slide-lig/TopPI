@@ -72,7 +72,7 @@ final class DistCache {
 			throw new IllegalArgumentException("Given configuration should contain a value for "+TopLCMoverHadoop.KEY_REBASING_MAX_ID);
 		}
 		
-		int[] map = new int[maxId];
+		int[] map = new int[maxId+1];
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		

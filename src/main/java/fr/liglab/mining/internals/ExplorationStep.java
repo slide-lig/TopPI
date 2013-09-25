@@ -2,6 +2,7 @@ package fr.liglab.mining.internals;
 
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Iterator;
 
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
@@ -112,7 +113,7 @@ public final class ExplorationStep implements Cloneable {
 		
 		this.counters = new Counters(minimumSupport, transactions.iterator(), 
 				maxItem+1, null, maxItem+1);
-		this.counters.compressRenaming(reverseRenaming);
+		int[] renaming = this.counters.compressRenaming(reverseRenaming);
 		
 		this.pattern = this.counters.closure;
 		if (this.pattern.length > 0) {
@@ -121,7 +122,9 @@ public final class ExplorationStep implements Cloneable {
 			}
 		}
 		
-		this.dataset = new Dataset(this.counters, transactions.iterator());
+		Iterator<TransactionReader> trans = transactions.iterator();
+		trans = new TransactionsRenamingDecorator(trans, renaming);
+		this.dataset = new Dataset(this.counters, trans);
 		// FIXME
 		// from here we actually instantiated 3 times the dataset's size
 		// once in dataset.transactions, one in dataset.tidLists (both are OK) and 
