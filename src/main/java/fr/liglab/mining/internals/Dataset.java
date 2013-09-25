@@ -164,4 +164,9 @@ public class Dataset implements Cloneable {
 			return this.it.hasNext();
 		}
 	}
+	
+	@Override
+	public String toString() {
+		return this.transactions.toString();
+	}
 }
