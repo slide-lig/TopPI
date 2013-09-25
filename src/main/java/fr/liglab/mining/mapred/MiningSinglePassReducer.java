@@ -11,6 +11,7 @@ import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
+import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
@@ -37,6 +38,9 @@ public class MiningSinglePassReducer extends
 		
 		final int gid = gidW.get();
 		final Configuration conf = context.getConfiguration();
+
+		ExplorationStep.verbose = conf.getBoolean(TopLCMoverHadoop.KEY_VERBOSE, false);
+		ExplorationStep.ultraVerbose = conf.getBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, false);
 		
 		final int k        = conf.getInt(TopLCMoverHadoop.KEY_K, 1);
 		final int minsup   = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 1000);
@@ -53,16 +57,23 @@ public class MiningSinglePassReducer extends
 		Grouper grouper = new Grouper(nbGroups, maxId);
 		
 		PatternsCollector collector = new HadoopPatternsCollector(context);
+
+		if (conf.getBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, false)) {
+			collector = new PatternSortCollector(collector);
+		}
 		
 		FrequentsIterator groupItems = grouper.getGroupItems(gid);
 		groupItems = new FrequentsIteratorRenamer(groupItems, this.reverseRebasing);
-		collector = new PerItemTopKCollector(collector, k, maxId, groupItems);
+		PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, maxId, groupItems);
 		
-		TopLCM miner = new TopLCM(collector, 1);
+		topKcoll.setInfoMode(conf.getBoolean(TopLCMoverHadoop.KEY_PATTERNS_INFO, false));
+		topKcoll.setOutputUniqueOnly(conf.getBoolean(TopLCMoverHadoop.KEY_UNIQUE_PATTERNS, false));
+		
+		TopLCM miner = new TopLCM(topKcoll, 1);
 		// TODO invoke context.progress sometimes
 		miner.lcm(initState);
 		
 		context.progress();
-		collector.close();
+		topKcoll.close();
 	}
 }

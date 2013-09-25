@@ -23,14 +23,21 @@ import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
  * The Hadoop driver.
  */
 public class TopLCMoverHadoop implements Tool {
+	
 	////////////////////MANDATORY CONFIGURATION PROPERTIES ////////////////////
-		
 	public static final String KEY_INPUT    = "toplcm.path.input";
 	public static final String KEY_OUTPUT   = "toplcm.path.output";
 	public static final String KEY_MINSUP   = "toplcm.minsup";
 	public static final String KEY_NBGROUPS = "toplcm.nbGroups";
 	public static final String KEY_K        = "toplcm.topK";
 	
+	
+	//////////////////// OPTIONS ////////////////////
+	public static final String KEY_VERBOSE         = "toplcm.verbose";
+	public static final String KEY_ULTRA_VERBOSE   = "toplcm.verbose.ultra";
+	public static final String KEY_SORT_PATTERNS   = "toplcm.patterns.sorted";
+	public static final String KEY_UNIQUE_PATTERNS = "toplcm.patterns.unique";
+	public static final String KEY_PATTERNS_INFO   = "toplcm.patterns.info";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	

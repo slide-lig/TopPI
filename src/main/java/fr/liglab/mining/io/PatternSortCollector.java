@@ -15,9 +15,8 @@ public class PatternSortCollector implements PatternsCollector {
 	}
 
 	public void collect(final int support, final int[] pattern) {
-		int[] sorted = Arrays.copyOf(pattern, pattern.length);
-		Arrays.sort(sorted);
-		this.decorated.collect(support, sorted);
+		Arrays.sort(pattern);
+		this.decorated.collect(support, pattern);
 	}
 
 	public long close() {
