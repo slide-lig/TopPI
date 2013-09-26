@@ -272,7 +272,7 @@ public class TopLCM {
 		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
-		options.addOption("u", false, "(use only with -k) output unique patterns only");
+		options.addOption("u", false, "(only for standalone, with -k) output unique patterns only");
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false, "Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
 		
@@ -448,9 +448,6 @@ public class TopLCM {
 		}
 		if (cmd.hasOption('s')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, true);
-		}
-		if (cmd.hasOption('u')) {
-			conf.setBoolean(TopLCMoverHadoop.KEY_UNIQUE_PATTERNS, true);
 		}
 		if (cmd.hasOption('v')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_VERBOSE, true);

@@ -36,7 +36,6 @@ public class TopLCMoverHadoop implements Tool {
 	public static final String KEY_VERBOSE         = "toplcm.verbose";
 	public static final String KEY_ULTRA_VERBOSE   = "toplcm.verbose.ultra";
 	public static final String KEY_SORT_PATTERNS   = "toplcm.patterns.sorted";
-	public static final String KEY_UNIQUE_PATTERNS = "toplcm.patterns.unique";
 	public static final String KEY_PATTERNS_INFO   = "toplcm.patterns.info";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////

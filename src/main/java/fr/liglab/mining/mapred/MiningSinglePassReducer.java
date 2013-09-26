@@ -70,7 +70,6 @@ public class MiningSinglePassReducer extends
 		PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, maxId, groupItems);
 		
 		topKcoll.setInfoMode(conf.getBoolean(TopLCMoverHadoop.KEY_PATTERNS_INFO, false));
-		topKcoll.setOutputUniqueOnly(conf.getBoolean(TopLCMoverHadoop.KEY_UNIQUE_PATTERNS, false));
 		
 		TopLCM miner = new TopLCM(topKcoll, 1);
 		// TODO invoke context.progress sometimes
