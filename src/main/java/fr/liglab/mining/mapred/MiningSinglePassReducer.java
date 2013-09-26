@@ -1,13 +1,16 @@
 package fr.liglab.mining.mapred;
 
 import java.io.IOException;
+import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.NullWritable;
+import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Reducer;
 
 import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
@@ -75,5 +78,15 @@ public class MiningSinglePassReducer extends
 		
 		context.progress();
 		topKcoll.close();
+		
+		for (Entry<TopLCMCounters, Long> entry : miner.getCounters().entrySet()) {
+			Counter counter = context.getCounter(entry.getKey());
+			counter.increment(entry.getValue());
+		}
 	}
 }
+
+
+
+
+

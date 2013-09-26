@@ -98,6 +98,18 @@ public class TopLCM {
 
 		this.progressWatch.interrupt();
 	}
+	
+	public Map<TopLCMCounters, Long> getCounters(){
+		HashMap<TopLCMCounters,Long> map = new HashMap<TopLCMCounters, Long>();
+		
+		TopLCMCounters[] counters = TopLCMCounters.values();
+
+		for (int i = 0; i < this.globalCounters.length; i++) {
+			map.put(counters[i], this.globalCounters[i]);
+		}
+		
+		return map;
+	}
 
 	public String toString(Map<String,Long> additionalCounters) {
 		StringBuilder builder = new StringBuilder();
