@@ -315,8 +315,8 @@ public class TopLCM {
 			outputPath = args[2];
 		}
 		
-		if (cmd.hasOption('k')) {
-			ExplorationStep.LCM_STYLE = false;
+		if (!cmd.hasOption('k')) {
+			ExplorationStep.LCM_STYLE = true;
 		}
 
 		int nbSocketsShareCopy = 0;

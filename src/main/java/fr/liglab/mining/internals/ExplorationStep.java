@@ -40,7 +40,7 @@ public final class ExplorationStep implements Cloneable {
 	 * prefix-preservation tests and compressions at all steps.
 	 * Setting this to false is better when mining top-k-per-item patterns.
 	 */
-	public static boolean LCM_STYLE = true;
+	public static boolean LCM_STYLE = false;
 
 	/**
 	 * closure of parent's pattern UNION extension
