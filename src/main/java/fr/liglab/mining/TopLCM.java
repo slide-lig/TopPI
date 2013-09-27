@@ -277,14 +277,12 @@ public class TopLCM {
 		options.addOption("V", false, "Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
 		
 		try {
-			CommandLine cmd = parser.parse(options, args);
+			GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
+			CommandLine cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
 
 			if (cmd.getArgs().length < 2 || cmd.getArgs().length > 3 || cmd.hasOption('h')) {
 				printMan(options);
 			} else if (cmd.hasOption('g')) {
-				GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
-				cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
-				
 				hadoop(cmd, hadoopCmd.getConfiguration());
 			} else {
 				standalone(cmd);
@@ -457,6 +455,6 @@ public class TopLCM {
 		}
 		
 		TopLCMoverHadoop driver = new TopLCMoverHadoop(conf);
-		System.exit(driver.run(args));
+		System.exit(driver.run());
 	}
 }

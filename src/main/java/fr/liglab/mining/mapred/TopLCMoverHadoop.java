@@ -12,8 +12,8 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
-import org.apache.hadoop.util.Tool;
 
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.ItemAndSupportWritable;
@@ -22,7 +22,7 @@ import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 /**
  * The Hadoop driver.
  */
-public class TopLCMoverHadoop implements Tool {
+public class TopLCMoverHadoop {
 	
 	////////////////////MANDATORY CONFIGURATION PROPERTIES ////////////////////
 	public static final String KEY_INPUT    = "toplcm.path.input";
@@ -33,10 +33,11 @@ public class TopLCMoverHadoop implements Tool {
 	
 	
 	//////////////////// OPTIONS ////////////////////
-	public static final String KEY_VERBOSE         = "toplcm.verbose";
-	public static final String KEY_ULTRA_VERBOSE   = "toplcm.verbose.ultra";
-	public static final String KEY_SORT_PATTERNS   = "toplcm.patterns.sorted";
-	public static final String KEY_PATTERNS_INFO   = "toplcm.patterns.info";
+	public static final String KEY_VERBOSE       = "toplcm.verbose";
+	public static final String KEY_ULTRA_VERBOSE = "toplcm.verbose.ultra";
+	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
+	public static final String KEY_PATTERNS_INFO = "toplcm.patterns.info";
+	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
@@ -45,18 +46,14 @@ public class TopLCMoverHadoop implements Tool {
 	 */
 	public static final String KEY_REBASING_MAX_ID = "toplcm.items.maxId";
 	
-	
-	
 	private Configuration conf;
 	private String input;
 	private String outputPrefix;
 	
-	@Override
 	public Configuration getConf() {
 		return this.conf;
 	}
-
-	@Override
+	
 	public void setConf(Configuration c) {
 		this.conf = c;
 		this.input = c.get(KEY_INPUT);
@@ -67,19 +64,21 @@ public class TopLCMoverHadoop implements Tool {
 		this.setConf(c);
 	}
 	
-	/**
-	 * @param args is ignored - use Configuration instead
-	 */
-	@Override
-	public int run(String[] args) throws Exception {
+	public int run() throws Exception {
 		String rebasingMapPath = this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME;
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
 		
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
 			
-			if (mineSinglePass(topKperItemPath)) {
-				return 0;
+			if (this.conf.get(KEY_SUB_DB_ONLY, "").length() > 0) {
+				if (justCreateSubDBs()) {
+					return 0;
+				}
+			} else {
+				if (mineSinglePass(topKperItemPath)) {
+					return 0;
+				}
 			}
 		}
 		
@@ -135,7 +134,6 @@ public class TopLCMoverHadoop implements Tool {
 	 * @throws ClassNotFoundException 
 	 */
 	private boolean mineSinglePass(String output) throws IOException, ClassNotFoundException, InterruptedException {
-
 		Job job = new Job(conf, "Mining (single-pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
@@ -156,5 +154,32 @@ public class TopLCMoverHadoop implements Tool {
 		
 		return job.waitForCompletion(true);
 	}
-
+	
+	/**
+	 * Test shuffle'n'sort
+	 * @return true on success
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 * @throws ClassNotFoundException 
+	 */
+	private boolean justCreateSubDBs() throws IOException, ClassNotFoundException, InterruptedException {
+		Job job = new Job(conf, "Creating sub-DBs from "+this.input);
+		job.setJarByClass(TopLCMoverHadoop.class);
+		
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setOutputFormatClass(NullOutputFormat.class);
+		job.setOutputKeyClass(NullWritable.class);
+		job.setOutputValueClass(NullWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(this.input) );
+		
+		job.setMapperClass(MiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
+		
+		job.setReducerClass(FakeMiningReducer.class);
+		job.setNumReduceTasks(1);
+		
+		return job.waitForCompletion(true);
+	}
 }
