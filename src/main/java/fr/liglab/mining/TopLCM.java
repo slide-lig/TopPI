@@ -16,6 +16,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import fr.liglab.mining.internals.ExplorationStep;
@@ -53,8 +54,14 @@ public class TopLCM {
 		this.threads = new ArrayList<TopLCMThread>(nbThreads);
 		this.createThreads(nbThreads);
 		this.globalCounters = new long[TopLCMCounters.values().length];
+		this.progressWatch = new ProgressWatcherThread();
 	}
 
+	@SuppressWarnings("rawtypes")
+	public void setHadoopContext(Context context) {
+		this.progressWatch.setHadoopContext(context);
+	}
+	
 	void createThreads(int nbThreads) {
 		for (int i = 0; i < nbThreads; i++) {
 			this.threads.add(new TopLCMThread(i));
@@ -82,7 +89,7 @@ public class TopLCM {
 
 		this.initializeAndStartThreads(initState);
 
-		this.progressWatch = new ProgressWatcherThread(initState);
+		this.progressWatch.setInitState(initState);
 		this.progressWatch.start();
 
 		for (TopLCMThread t : this.threads) {

@@ -49,12 +49,13 @@ public class MiningSinglePassReducer extends
 		final int minsup   = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 1000);
 		final int maxId    = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
 		final int nbGroups = conf.getInt(TopLCMoverHadoop.KEY_NBGROUPS, 1);
-		
+
+		// yeah it's ugly, but SubDatasetConverter holds a copy of the dataset so we'd 
+		// rather suggest to the VM this is a short-lasting object
 		ExplorationStep initState = new ExplorationStep(minsup, 
 				new SubDatasetConverter(transactions.iterator())
 				, maxId, this.reverseRebasing);
-		// yeah it's ugly, but SubDatasetConverter holds a copy of the dataset so we'd 
-		// rather suggest to the VM this is a short-lasting object
+		
 		context.progress();
 		
 		Grouper grouper = new Grouper(nbGroups, maxId);
@@ -72,7 +73,7 @@ public class MiningSinglePassReducer extends
 		topKcoll.setInfoMode(conf.getBoolean(TopLCMoverHadoop.KEY_PATTERNS_INFO, false));
 		
 		TopLCM miner = new TopLCM(topKcoll, 1);
-		// TODO invoke context.progress sometimes
+		miner.setHadoopContext(context);
 		miner.lcm(initState);
 		
 		context.progress();
@@ -82,6 +83,8 @@ public class MiningSinglePassReducer extends
 			Counter counter = context.getCounter(entry.getKey());
 			counter.increment(entry.getValue());
 		}
+		
+		context.progress();
 	}
 }
 
