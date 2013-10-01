@@ -74,6 +74,7 @@ public class MiningSinglePassReducer extends
 		
 		TopLCM miner = new TopLCM(topKcoll, 1);
 		miner.setHadoopContext(context);
+		initState.appendSelector(topKcoll.asSelector());
 		miner.lcm(initState);
 		
 		context.progress();
