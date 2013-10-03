@@ -25,16 +25,19 @@ import gnu.trove.set.hash.TIntHashSet;
  * outputted records are GroupID => concatenated transactions
  * Transactions will be filtered and rebased according to the global rebasing map 
  */
-public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, ConcatenatedTransactionsWritable> {
+public final class MiningMapper extends Mapper<LongWritable, Text, IntWritable, ConcatenatedTransactionsWritable> {
 	
 	// in-mapper combiners
 	private TIntObjectMap<List<int[]>> combiner;
 	private TIntIntMap combinerConcatenated;
+	private final IntWritable keyW = new IntWritable();
+	private final ConcatenatedTransactionsWritable valueW = new ConcatenatedTransactionsWritable();
 	
 	// app parameters
 	private int nbGroups;
 	private TIntIntMap rebasing = null;
 	private Grouper grouper = null;
+	private int dumpEvery = Integer.MAX_VALUE;
 
 	// these will be cleared after each map(), they're just here to avoid repeated instanciations
 	protected final ItemsetsFactory transaction = new ItemsetsFactory();
@@ -49,6 +52,7 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 			this.nbGroups = conf.getInt(TopLCMoverHadoop.KEY_NBGROUPS, 1);
 			int maxItem = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
 			this.grouper = new Grouper(this.nbGroups, maxItem);
+			this.dumpEvery = conf.getInt(TopLCMoverHadoop.KEY_COMBINED_TRANS_SIZE, Integer.MAX_VALUE);
 		}
 		
 		this.combiner = new TIntObjectHashMap<List<int[]>>(this.nbGroups);
@@ -82,8 +86,21 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 			TIntIterator it = this.destinations.iterator();
 			while (it.hasNext()) {
 				int gid = it.next();
-				this.combiner.get(gid).add(transaction);
-				this.combinerConcatenated.adjustValue(gid, transaction.length);
+				
+				final List<int[]> concatenated = this.combiner.get(gid);
+				concatenated.add(transaction);
+				
+				final int len = transaction.length;
+				int concatenatedLen = this.combinerConcatenated.adjustOrPutValue(gid, len, len);
+				
+				if (concatenatedLen >= this.dumpEvery) {
+					this.keyW.set(gid);
+					this.valueW.set(concatenated, concatenatedLen);
+					context.write(this.keyW, this.valueW);
+					
+					this.combiner.put(gid, new ArrayList<int[]>());
+					this.combinerConcatenated.put(gid, 0);
+				}
 			}
 			
 			this.destinations.clear();
@@ -92,20 +109,19 @@ public class MiningMapper extends Mapper<LongWritable, Text, IntWritable, Concat
 	
 	@Override
 	protected void cleanup(Context context) throws IOException, InterruptedException {
-		final IntWritable keyW = new IntWritable();
-		final ConcatenatedTransactionsWritable valueW = new ConcatenatedTransactionsWritable();
-		
 		TIntObjectIterator<List<int[]>> it = this.combiner.iterator();
 		
 		while (it.hasNext()) {
 			it.advance();
 			
 			final int gid = it.key();
+			final int len = this.combinerConcatenated.get(gid);
 			
-			keyW.set(gid);
-			valueW.set(it.value(), this.combinerConcatenated.get(gid));
-			
-			context.write(keyW, valueW);
+			if (len > 0) {
+				keyW.set(gid);
+				valueW.set(it.value(), len);
+				context.write(keyW, valueW);
+			}
 		}
 	}
 }

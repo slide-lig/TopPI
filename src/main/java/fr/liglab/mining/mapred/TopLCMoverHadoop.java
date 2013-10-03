@@ -38,6 +38,7 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
 	public static final String KEY_PATTERNS_INFO = "toplcm.patterns.info";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs";
+	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
