@@ -12,7 +12,7 @@ public abstract class Selector {
 	private final Selector next;
 
 	/**
-	 * @param extension
+	 * @param extension in state's local base
 	 * @param state
 	 * @return false if, at the given state, trying to extend the current
 	 *         pattern with the given extension is useless
@@ -26,7 +26,8 @@ public abstract class Selector {
 	abstract protected Selector copy(Selector newNext);
 
 	/**
-	 * @return which enum value from TopLCMCounters will be used to count this Selector's rejections
+	 * @return which enum value from TopLCMCounters will be used to count this Selector's rejections, 
+	 * or null if we don't want to count rejections from the implementing class
 	 */
 	abstract protected TopLCMCounters getCountersKey();
 
@@ -51,7 +52,10 @@ public abstract class Selector {
 		if (this.allowExploration(extension, state)) {
 			return (this.next == null || this.next.select(extension, state));
 		} else {
-			((TopLCM.TopLCMThread) Thread.currentThread()).counters[this.getCountersKey().ordinal()]++;
+			TopLCMCounters key = this.getCountersKey();
+			if (key != null) {
+				((TopLCM.TopLCMThread) Thread.currentThread()).counters[key.ordinal()]++;
+			}
 			return false;
 		}
 	}

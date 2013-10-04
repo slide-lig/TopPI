@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.CounterGroup;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
@@ -36,9 +37,9 @@ public class TopLCMoverHadoop {
 	public static final String KEY_VERBOSE       = "toplcm.verbose";
 	public static final String KEY_ULTRA_VERBOSE = "toplcm.verbose.ultra";
 	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
-	public static final String KEY_PATTERNS_INFO = "toplcm.patterns.info";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
+	public static final String KEY_METHOD = "toplcm.method";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
@@ -68,6 +69,7 @@ public class TopLCMoverHadoop {
 	public int run() throws Exception {
 		String rebasingMapPath = this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME;
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
+		String rawPatternsPath = this.outputPrefix + "/" + "rawPatterns";
 		
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
@@ -77,8 +79,20 @@ public class TopLCMoverHadoop {
 					return 0;
 				}
 			} else {
-				if (mineSinglePass(topKperItemPath)) {
-					return 0;
+				switch (this.conf.getInt(KEY_METHOD, 0)) {
+				case 1:
+					// Algo 1 : restrict starters to group's items, collect all item's top-Ks, aggregate
+					if (mineSinglePass(rawPatternsPath) && aggregate(rawPatternsPath, topKperItemPath)) {
+						return 0;
+					}
+					break;
+
+				default: // Algo 0: use all available starters but restrict collector to group's items. 
+					// doesn't need aggregation
+					if (mineSinglePass(topKperItemPath)) {
+						return 0;
+					}
+					break;
 				}
 			}
 		}
@@ -86,6 +100,42 @@ public class TopLCMoverHadoop {
 		return 1;
 	}
 	
+	/**
+	 * Restricts a pattern set to the top-K-per-item
+	 * @param input
+	 * @param output
+	 * @return true on success
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 * @throws ClassNotFoundException 
+	 */
+	private boolean aggregate(String input, String output) 
+			throws IOException, ClassNotFoundException, InterruptedException {
+		
+		Job job = new Job(conf, "Per-item top-k aggregation of itemsets from "+input);
+		job.setJarByClass(TopLCMoverHadoop.class);
+		
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(input) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		job.setMapperClass(AggregationMapper.class);
+		job.setMapOutputKeyClass(ItemAndSupportWritable.class);
+		job.setMapOutputValueClass(SupportAndTransactionWritable.class);
+		
+		job.setSortComparatorClass(ItemAndSupportWritable.SortComparator.class);
+		job.setGroupingComparatorClass(ItemAndSupportWritable.ItemOnlyComparator.class);
+		job.setPartitionerClass(AggregationReducer.AggregationPartitioner.class);
+		job.setReducerClass(AggregationReducer.class);
+		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		
+		return job.waitForCompletion(true);
+	}
+
 	/**
 	 * Item counting and rebasing job; its output is the rebasing map
 	 * KEY_REBASING_MAX_ID will be set in current Configuration
@@ -140,7 +190,7 @@ public class TopLCMoverHadoop {
 		
 		job.setInputFormatClass(TextInputFormat.class);
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		job.setOutputKeyClass(NullWritable.class);
+		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
 		FileInputFormat.addInputPath(job, new Path(this.input) );

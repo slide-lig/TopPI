@@ -448,9 +448,6 @@ public class TopLCM {
 		conf.setInt(TopLCMoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
 		conf.setInt(TopLCMoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
 		
-		if (cmd.hasOption('i')) {
-			conf.setBoolean(TopLCMoverHadoop.KEY_PATTERNS_INFO, true);
-		}
 		if (cmd.hasOption('s')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, true);
 		}
