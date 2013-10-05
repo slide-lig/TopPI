@@ -43,8 +43,8 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, SupportA
 	/**
 	 * All patterns involving an item should end to the same reducer
 	 */
-	public class AggregationPartitioner extends Partitioner<ItemAndSupportWritable, SupportAndTransactionWritable> {
-
+	public static class AggregationPartitioner extends Partitioner<ItemAndSupportWritable, SupportAndTransactionWritable> {
+		
 		@Override
 		public int getPartition(ItemAndSupportWritable key, SupportAndTransactionWritable value, int numPartitions) {
 			return key.getItem() % numPartitions;
