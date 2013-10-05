@@ -14,19 +14,18 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, SupportA
 	protected final IntWritable keyW = new IntWritable();
 	protected final SupportAndTransactionWritable valueW = new SupportAndTransactionWritable();
 	
-	protected int k,lastItem,lastCount;
+	protected int k,lastCount;
 	
 	@Override
 	protected void setup(Context context) throws java.io.IOException , InterruptedException {
 		this.k = context.getConfiguration().getInt(TopLCMoverHadoop.KEY_K, 1);
-		this.lastItem = -1;
 		this.lastCount = 0;
 	}
 	
 	protected void reduce(ItemAndSupportWritable key, java.lang.Iterable<SupportAndTransactionWritable> patterns, Context context)
 			throws java.io.IOException, InterruptedException {
 		
-		if (key.getItem() != this.lastItem) {
+		if (key.getItem() != this.keyW.get()) {
 			this.lastCount = 0;
 			this.keyW.set(key.getItem());
 		}
