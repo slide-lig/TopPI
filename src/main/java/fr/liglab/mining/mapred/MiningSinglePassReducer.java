@@ -1,6 +1,7 @@
 package fr.liglab.mining.mapred;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
@@ -91,7 +92,14 @@ public class MiningSinglePassReducer extends
 		miner.lcm(initState);
 		
 		context.progress();
-		collector.close();
+		long nbPatterns = collector.close();
+		
+		if (ExplorationStep.verbose) {
+			HashMap<String, Long> logged = new HashMap<String,Long>();
+			logged.put("gid", new Long(gid));
+			logged.put("nbPatterns", nbPatterns);
+			System.err.println(miner.toString(logged));
+		}
 		
 		for (Entry<TopLCMCounters, Long> entry : miner.getCounters().entrySet()) {
 			Counter counter = context.getCounter(entry.getKey());
