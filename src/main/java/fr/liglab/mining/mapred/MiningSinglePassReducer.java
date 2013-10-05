@@ -55,7 +55,7 @@ public class MiningSinglePassReducer extends
 		// rather suggest to the VM this is a short-lasting object
 		ExplorationStep initState = new ExplorationStep(minsup, 
 				new SubDatasetConverter(transactions.iterator())
-				, maxId, this.reverseRebasing);
+				, maxId, this.reverseRebasing, conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) != 1);
 		
 		context.progress();
 		
@@ -63,13 +63,14 @@ public class MiningSinglePassReducer extends
 		
 		FrequentsIterator collected;
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 0) {
-			collected = grouper.getGroupItems(gid);
-		} else {
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
 			collected = initState.counters.getExtensionsIterator();
+			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
+		} else {
+			collected = grouper.getGroupItems(gid);
+			collected = new FrequentsIteratorRenamer(collected, this.reverseRebasing);
 		}
 		
-		collected = new FrequentsIteratorRenamer(collected, this.reverseRebasing);
 		PerItemTopKCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
 		
 		Selector chain = topKcoll.asSelector();

@@ -84,13 +84,11 @@ public final class Counters implements Cloneable {
 	protected int maxFrequent;
 
 	/**
-	 * This array allows another class to output the discovered closure using
-	 * original items' IDs.
+	 * This array allows another class to output the discovered closure using original items' IDs.
 	 * 
-	 * After instanciation this field *must* be set by one of these methods -
-	 * reuseRenaming - the initial dataset's constructor (which also sets
-	 * "renaming") - compactRenaming (useful when recompacting dataset in
-	 * recursions)
+	 * After instanciation this field *must* be set by one of these methods
+	 * - reuseRenaming, the initial dataset's constructor (which also sets "renaming")
+	 * - compactRenaming, useful when recompacting dataset in recursions
 	 */
 	protected int[] reverseRenaming;
 
@@ -349,7 +347,7 @@ public final class Counters implements Cloneable {
 	}
 
 	/**
-	 * @return a translation from
+	 * @return a translation from internal item indexes to dataset's original indexes
 	 */
 	public int[] getReverseRenaming() {
 		return this.reverseRenaming;

@@ -104,16 +104,32 @@ public final class ExplorationStep implements Cloneable {
 	 * @param transactions
 	 * @param maxItem
 	 * @param reverseRenaming
+	 * @param compressRenaming 
 	 */
 	public ExplorationStep(int minimumSupport, Iterable<TransactionReader> transactions,
-			int maxItem, int[] reverseRenaming) {
+			int maxItem, int[] reverseRenaming, boolean compressRenaming) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 		this.predictiveFPTestMode = false;
 		
 		this.counters = new Counters(minimumSupport, transactions.iterator(), 
 				maxItem+1, null, maxItem+1);
-		int[] renaming = this.counters.compressRenaming(reverseRenaming);
+		
+		Iterator<TransactionReader> trans = transactions.iterator();
+		
+		if (compressRenaming) {
+			int[] renaming = this.counters.compressRenaming(reverseRenaming);
+			trans = new TransactionsRenamingDecorator(trans, renaming);
+		} else {
+			this.counters.reuseRenaming(reverseRenaming);
+			trans = new TransactionsFilteringDecorator(trans, this.counters.supportCounts);
+		}
+
+		this.dataset = new Dataset(this.counters, trans);
+		// FIXME
+		// from here we actually instantiated 3 times the dataset's size
+		// once in dataset.transactions, one in dataset.tidLists (both are OK) and 
+		// worse, once again in transactions.cached
 		
 		this.pattern = this.counters.closure;
 		if (this.pattern.length > 0) {
@@ -121,14 +137,6 @@ public final class ExplorationStep implements Cloneable {
 				this.pattern[i] = reverseRenaming[this.pattern[i]];
 			}
 		}
-		
-		Iterator<TransactionReader> trans = transactions.iterator();
-		trans = new TransactionsRenamingDecorator(trans, renaming);
-		this.dataset = new Dataset(this.counters, trans);
-		// FIXME
-		// from here we actually instantiated 3 times the dataset's size
-		// once in dataset.transactions, one in dataset.tidLists (both are OK) and 
-		// worse, once again in transactions.cached
 		
 		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
