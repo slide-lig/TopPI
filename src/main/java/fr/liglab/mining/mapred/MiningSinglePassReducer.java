@@ -55,7 +55,7 @@ public class MiningSinglePassReducer extends
 		// rather suggest to the VM this is a short-lasting object
 		ExplorationStep initState = new ExplorationStep(minsup, 
 				new SubDatasetConverter(transactions.iterator())
-				, maxId, this.reverseRebasing, conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) != 1);
+				, maxId, this.reverseRebasing, conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 0); // otherwise we give starters: don't compress renaming
 		
 		context.progress();
 		
@@ -64,9 +64,11 @@ public class MiningSinglePassReducer extends
 		FrequentsIterator collected;
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
+			// collect all
 			collected = initState.counters.getExtensionsIterator();
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
 		} else {
+			// collect group
 			collected = grouper.getGroupItems(gid);
 			collected = new FrequentsIteratorRenamer(collected, this.reverseRebasing);
 		}
@@ -75,7 +77,7 @@ public class MiningSinglePassReducer extends
 		
 		Selector chain = topKcoll.asSelector();
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) > 0) { // start group
 			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
 			chain = grouper.getStartersSelector(chain, gid);
 		}
