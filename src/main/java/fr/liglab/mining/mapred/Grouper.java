@@ -5,7 +5,7 @@ import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;
 
-public final class Grouper {
+public class Grouper {
 	
 	public final int nbGroups;
 	public final int maxItemID;
@@ -15,8 +15,26 @@ public final class Grouper {
 		this.maxItemID = maxItem;
 	}
 	
+	/**
+	 * @param itemId
+	 * @return item's groupID or -1 if we should dump the corresponding group (see SingleGroup)
+	 */
 	public int getGroupId(int itemId) {
 		return itemId % this.nbGroups;
+	}
+	
+	public static final class SingleGroup extends Grouper {
+		private final int groupId;
+		
+		public SingleGroup(int groupsCount, int maxItem, int singleGroupID) {
+			super(groupsCount, maxItem);
+			this.groupId = singleGroupID;
+		}
+		
+		@Override
+		public int getGroupId(int itemId) {
+			return (super.getGroupId(itemId) == this.groupId) ? this.groupId : -1;
+		}
 	}
 	
 	public FrequentsIterator getGroupItems(int groupId) {

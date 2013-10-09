@@ -10,6 +10,7 @@ import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 
+import fr.liglab.mining.mapred.Grouper.SingleGroup;
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
@@ -51,7 +52,14 @@ public final class MiningMapper extends Mapper<LongWritable, Text, IntWritable, 
 			this.rebasing = DistCache.readRebasing(conf);
 			this.nbGroups = conf.getInt(TopLCMoverHadoop.KEY_NBGROUPS, 1);
 			int maxItem = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
-			this.grouper = new Grouper(this.nbGroups, maxItem);
+			
+			int singleGroup = conf.getInt(TopLCMoverHadoop.KEY_SINGLE_GROUP, -1);
+			if (singleGroup == -1) {
+				this.grouper = new Grouper(this.nbGroups, maxItem);
+			} else {
+				this.grouper = new SingleGroup(this.nbGroups, maxItem, singleGroup);
+			}
+			
 			this.dumpEvery = conf.getInt(TopLCMoverHadoop.KEY_COMBINED_TRANS_SIZE, Integer.MAX_VALUE);
 		}
 		
@@ -76,13 +84,16 @@ public final class MiningMapper extends Mapper<LongWritable, Text, IntWritable, 
 			if (this.rebasing.containsKey(item)) {
 				int rebased = this.rebasing.get(item);
 				this.transaction.add(rebased);
-				this.destinations.add(this.grouper.getGroupId(rebased));
+				final int dest = this.grouper.getGroupId(rebased);
+				if (dest >= 0) {
+					this.destinations.add(dest);
+				}
 			}
 		}
 		
+		int[] transaction = this.transaction.get();
+		
 		if (!destinations.isEmpty()) {
-			int[] transaction = this.transaction.get();
-			
 			TIntIterator it = this.destinations.iterator();
 			while (it.hasNext()) {
 				int gid = it.next();

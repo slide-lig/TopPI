@@ -40,6 +40,7 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	public static final String KEY_METHOD = "toplcm.method";
+	public static final String KEY_SINGLE_GROUP = "toplcm.only.group";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
