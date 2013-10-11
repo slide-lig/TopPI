@@ -26,6 +26,8 @@ public class MiningSinglePassReducer extends
 	
 	private int[] reverseRebasing = null;
 	
+	private enum MyCounter {MINING_TIME};
+	
 	@Override
 	protected void setup(Context context) throws IOException, InterruptedException {
 		
@@ -92,7 +94,10 @@ public class MiningSinglePassReducer extends
 		
 		TopLCM miner = new TopLCM(collector, 1);
 		miner.setHadoopContext(context);
+
+		long chrono = System.currentTimeMillis();
 		miner.lcm(initState);
+		chrono = (System.currentTimeMillis() - chrono) / 1000;
 		
 		context.progress();
 		long nbPatterns = collector.close();
@@ -101,6 +106,7 @@ public class MiningSinglePassReducer extends
 			HashMap<String, Long> logged = new HashMap<String,Long>();
 			logged.put("gid", new Long(gid));
 			logged.put("nbPatterns", nbPatterns);
+			logged.put("miningTime", chrono);
 			System.err.println(miner.toString(logged));
 		}
 		
@@ -108,6 +114,7 @@ public class MiningSinglePassReducer extends
 			Counter counter = context.getCounter(entry.getKey());
 			counter.increment(entry.getValue());
 		}
+		context.getCounter(MyCounter.MINING_TIME).increment(chrono);
 		
 		context.progress();
 	}
