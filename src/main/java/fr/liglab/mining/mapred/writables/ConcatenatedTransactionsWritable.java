@@ -12,8 +12,8 @@ import org.apache.hadoop.io.Writable;
 public final class ConcatenatedTransactionsWritable implements Writable {
 	
 	private int toBeWrittenConcatenatedLengths;
-	private List<int[]> toBeWritten;
-	private int[] fromDisk;
+	private List<int[]> toBeWritten = null;
+	private int[] fromDisk = null;
 	
 	public ConcatenatedTransactionsWritable() {}
 	
@@ -42,15 +42,22 @@ public final class ConcatenatedTransactionsWritable implements Writable {
 
 	@Override
 	public void write(DataOutput out) throws IOException {
-		out.writeInt(this.toBeWrittenConcatenatedLengths + this.toBeWritten.size());
-		
-		Iterator<int[]> it = this.toBeWritten.iterator();
-		while (it.hasNext()) {
-			final int[] transaction = it.next();
-			out.writeInt(transaction.length);
+		if (this.toBeWritten != null) {
+			out.writeInt(this.toBeWrittenConcatenatedLengths + this.toBeWritten.size());
 			
-			for (int item : transaction) {
-				out.writeInt(item);
+			Iterator<int[]> it = this.toBeWritten.iterator();
+			while (it.hasNext()) {
+				final int[] transaction = it.next();
+				out.writeInt(transaction.length);
+				
+				for (int item : transaction) {
+					out.writeInt(item);
+				}
+			}
+		} else {
+			out.writeInt(this.fromDisk.length);
+			for (int i = 0; i < this.fromDisk.length; i++) {
+				out.writeInt(this.fromDisk[i]);
 			}
 		}
 	}

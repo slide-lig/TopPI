@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer.Context;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.io.PerItemTopKCollector;
@@ -66,4 +67,25 @@ public class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	public int getAveragePatternLength() {
 		return (int)(this.lengthCollected / this.nbCollected);
 	}
+	
+	public void writeTopKBounds(MultipleOutputs<?, ?> sideOutputs, String outputName, String path) throws IOException, InterruptedException {
+		final IntWritable itemW  = new IntWritable();
+		final IntWritable boundW = new IntWritable();
+		
+		TIntObjectIterator<PatternWithFreq[]> it = this.topK.iterator();
+		
+		while (it.hasNext()) {
+			it.advance();
+			if (it.value()[this.k - 1] != null) {
+				final int supportCount = it.value()[this.k - 1].getSupportCount();
+				
+				if (supportCount > 0) {
+					itemW.set(it.key());
+					boundW.set(supportCount);
+					sideOutputs.write(outputName, itemW, boundW, path);
+				}
+			}
+		}
+	}
+
 }

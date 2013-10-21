@@ -8,6 +8,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
@@ -17,23 +18,34 @@ import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
 import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
-import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
 public class MiningSinglePassReducer extends
 		Reducer<IntWritable, ConcatenatedTransactionsWritable, IntWritable, SupportAndTransactionWritable> {
 	
+	static final String BOUNDS_OUTPUT_NAME = "bounds";
+	static final String KEY_BOUNDS_PATH = "lcm.bound.path";
+	
 	private int[] reverseRebasing = null;
+	private MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs = null;
 	
 	private enum MyCounter {MINING_TIME};
 	
 	@Override
 	protected void setup(Context context) throws IOException, InterruptedException {
 		
-		if (this.reverseRebasing == null) {
-			Configuration conf = context.getConfiguration();
-			this.reverseRebasing = DistCache.readReverseRebasing(conf);
+		if (this.reverseRebasing != null) {
+			return;
+		}
+		
+		Configuration conf = context.getConfiguration();
+		this.reverseRebasing = DistCache.readReverseRebasing(conf);
+		
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 2) {
+			if (conf.get(KEY_BOUNDS_PATH) != null) {
+				this.sideOutputs = new MultipleOutputs<IntWritable, SupportAndTransactionWritable>(context);
+			}
 		}
 	}
 	
@@ -75,7 +87,7 @@ public class MiningSinglePassReducer extends
 			collected = new FrequentsIteratorRenamer(collected, this.reverseRebasing);
 		}
 		
-		PerItemTopKCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
+		PerItemTopKHadoopCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
 		
 		Selector chain = topKcoll.asSelector();
 		
@@ -102,6 +114,11 @@ public class MiningSinglePassReducer extends
 		context.progress();
 		long nbPatterns = collector.close();
 		
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 2 && conf.get(KEY_BOUNDS_PATH) != null) {
+			context.progress();
+			topKcoll.writeTopKBounds(this.sideOutputs, BOUNDS_OUTPUT_NAME, conf.get(KEY_BOUNDS_PATH));
+		}
+		
 		if (ExplorationStep.verbose) {
 			HashMap<String, Long> logged = new HashMap<String,Long>();
 			logged.put("gid", new Long(gid));
@@ -117,6 +134,15 @@ public class MiningSinglePassReducer extends
 		context.getCounter(MyCounter.MINING_TIME).increment(chrono);
 		
 		context.progress();
+	}
+	
+	@Override
+	protected void cleanup(Context context)
+			throws IOException, InterruptedException {
+		
+		if (this.sideOutputs != null) {
+			this.sideOutputs.close();
+		}
 	}
 }
 
