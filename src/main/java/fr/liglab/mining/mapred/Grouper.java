@@ -113,4 +113,56 @@ public class Grouper {
 			return null;
 		}
 	}
+	
+
+	public FrequentsIterator getNonGroupItems(int groupId) {
+		if (this.nbGroups == 1) {
+			throw new IllegalArgumentException("There's no item outside a unique group !");
+		}
+		
+		return new ItemsNotInGroupIterator(groupId, this.maxItemID, groupId);
+	}
+	
+	private final class ItemsNotInGroupIterator implements FrequentsIterator {
+		
+		private int current;
+		private final int max;
+		private final int groupId;
+		
+		public ItemsNotInGroupIterator(int start, int last, int gid) {
+			this.current = -1;
+			this.max = last;
+			this.groupId = gid;
+		}
+		
+		@Override
+		public int next() {
+			if (this.current == Integer.MIN_VALUE) {
+				return -1;
+			} else {
+				this.current++;
+				
+				if ((this.current % nbGroups) == this.groupId) {
+					this.current++;
+				}
+				
+				if (this.current > this.max) {
+					this.current = Integer.MIN_VALUE;
+					return -1;
+				} else {
+					return this.current;
+				}
+			}
+		}
+
+		@Override
+		public int peek() {
+			return this.current;
+		}
+
+		@Override
+		public int last() {
+			return this.max;
+		}
+	}
 }

@@ -75,7 +75,7 @@ public class TopLCMoverHadoop {
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
 		String rawPatternsPath = this.outputPrefix + "/" + "rawPatterns";
 		String subDBsPath      = this.outputPrefix + "/" + "subDBs";
-		String boundsPath      = this.outputPrefix + "/" + "bounds";
+		String boundsPath      = this.outputPrefix + "/" + DistCache.PER_ITEM_BOUNDS_DIRNAME;
 		
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
@@ -88,7 +88,7 @@ public class TopLCMoverHadoop {
 				switch (this.conf.getInt(KEY_METHOD, 0)) {
 				case 1:
 					// Algo 1: restrict starters to group's items, collect all item's top-Ks, aggregate
-					if (mineSinglePass(rawPatternsPath) && aggregate(rawPatternsPath, topKperItemPath)) {
+					if (mineSinglePass(rawPatternsPath) && aggregate(topKperItemPath, rawPatternsPath)) {
 						return 0;
 					}
 					break;
@@ -96,10 +96,12 @@ public class TopLCMoverHadoop {
 				case 2:
 					// Algo 2: 2 phases-mining
 					rawPatternsPath = rawPatternsPath + "/";
-					if (buildSubDBs(subDBsPath) && mineFirstPass(subDBsPath, rawPatternsPath + "1", boundsPath)) {
-						// put bounds in DistCache
-						// mining phase 2
-						// aggregate
+					if (buildSubDBs(subDBsPath) && 
+							mineFirstPass(subDBsPath, rawPatternsPath + "1", boundsPath) && 
+							mineSecondPass(subDBsPath, rawPatternsPath + "2", boundsPath) && 
+							aggregate (topKperItemPath, rawPatternsPath + "1", rawPatternsPath + "2")) {
+
+						return 0;
 					}
 					break;
 
@@ -125,7 +127,7 @@ public class TopLCMoverHadoop {
 	 * @throws InterruptedException 
 	 * @throws ClassNotFoundException 
 	 */
-	private boolean aggregate(String input, String output) 
+	private boolean aggregate(String output, String... inputs) 
 			throws IOException, ClassNotFoundException, InterruptedException {
 		
 		Job job = new Job(conf, "Per-item top-k aggregation of itemsets from "+input);
@@ -136,7 +138,9 @@ public class TopLCMoverHadoop {
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(input) );
+		for (String input : inputs) {
+			FileInputFormat.addInputPath(job, new Path(input) );
+		}
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		
 		job.setMapperClass(AggregationMapper.class);
@@ -216,7 +220,7 @@ public class TopLCMoverHadoop {
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
 		
-		job.setReducerClass(MiningSinglePassReducer.class);
+		job.setReducerClass(MiningReducer.class);
 		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
 		
 		
@@ -247,13 +251,13 @@ public class TopLCMoverHadoop {
 		FileInputFormat.addInputPath(job, new Path(in) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		
-		job.setReducerClass(MiningSinglePassReducer.class);
+		job.setReducerClass(MiningReducer.class);
 		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
 		
-		MultipleOutputs.addNamedOutput(job, MiningSinglePassReducer.BOUNDS_OUTPUT_NAME, 
+		MultipleOutputs.addNamedOutput(job, MiningReducer.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
 		
-		job.getConfiguration().set(MiningSinglePassReducer.KEY_BOUNDS_PATH, "tmp/bounds");
+		job.getConfiguration().set(MiningReducer.KEY_BOUNDS_PATH, "tmp/bounds");
 		
 		if (job.waitForCompletion(true)) {
 			FileSystem fs = FileSystem.get(conf);
@@ -269,6 +273,41 @@ public class TopLCMoverHadoop {
 		
 		return false;
 	}
+	
+	/**
+	 * Mining, pass 2/2 (start group/collect non-group)
+	 * @param in sub-DBs path
+	 * @param output 
+	 * @param bounds path of the bounds side-file
+	 * @return true on success
+	 * @throws IOException 
+	 * @throws InterruptedException 
+	 * @throws ClassNotFoundException 
+	 */
+	private boolean mineSecondPass(String in, String output, String bounds) throws IOException, ClassNotFoundException, InterruptedException {
+		Job job = new Job(this.conf, "Mining (second pass) "+this.input);
+		job.setJarByClass(TopLCMoverHadoop.class);
+		
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		job.setOutputFormatClass(SequenceFileOutputFormat.class);
+		job.setOutputKeyClass(IntWritable.class);
+		job.setOutputValueClass(SupportAndTransactionWritable.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
+		
+		FileInputFormat.addInputPath(job, new Path(in) );
+		FileOutputFormat.setOutputPath(job, new Path(output));
+		
+		job.setReducerClass(MiningReducer.class);
+		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		
+		DistCache.copyToCache(job.getConfiguration(), bounds);
+		
+		job.getConfiguration().setBoolean(MiningReducer.KEY_COLLECT_NON_GROUP, true);
+		
+		return job.waitForCompletion(true);
+	}
+	
 	
 	/**
 	 * @param output 

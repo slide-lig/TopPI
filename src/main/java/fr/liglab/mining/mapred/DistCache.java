@@ -19,6 +19,7 @@ import org.apache.hadoop.io.SequenceFile.Reader;
  */
 final class DistCache {
 	static final String REBASINGMAP_DIRNAME = "rebasing";
+	static final String PER_ITEM_BOUNDS_DIRNAME = "perItemBounds";
 	
 	/**
 	 * Adds given path to conf's distributed cache
@@ -39,14 +40,21 @@ final class DistCache {
 		}
 	}
 	
-
 	static TIntIntMap readRebasing(Configuration conf) throws IOException {
+		return readIntIntMap(conf, REBASINGMAP_DIRNAME);
+	}
+	
+	static TIntIntMap readPerItemBounds(Configuration conf) throws IOException {
+		return readIntIntMap(conf, PER_ITEM_BOUNDS_DIRNAME);
+	}
+	
+	private static TIntIntMap readIntIntMap(Configuration conf, String token) throws IOException {
 		TIntIntMap map = new TIntIntHashMap();
 		
 		FileSystem fs = FileSystem.getLocal(conf);
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
-			if (path.toString().contains(REBASINGMAP_DIRNAME)) {
+			if (path.toString().contains(token)) {
 				Reader reader = new Reader(fs, path, conf);
 				IntWritable key = new IntWritable();
 				IntWritable value = new IntWritable();

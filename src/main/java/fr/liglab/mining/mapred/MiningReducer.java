@@ -21,11 +21,12 @@ import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
-public class MiningSinglePassReducer extends
+public class MiningReducer extends
 		Reducer<IntWritable, ConcatenatedTransactionsWritable, IntWritable, SupportAndTransactionWritable> {
 	
 	static final String BOUNDS_OUTPUT_NAME = "bounds";
 	static final String KEY_BOUNDS_PATH = "lcm.bound.path";
+	static final String KEY_COLLECT_NON_GROUP = "lcm.collect.outgroup";
 	
 	private int[] reverseRebasing = null;
 	private MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs = null;
@@ -81,6 +82,9 @@ public class MiningSinglePassReducer extends
 			// collect all
 			collected = initState.counters.getExtensionsIterator();
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
+		} else if (conf.getBoolean(KEY_COLLECT_NON_GROUP, false)) {
+			collected = grouper.getNonGroupItems(gid);
+			collected = new FrequentsIteratorRenamer(collected, this.reverseRebasing);
 		} else {
 			// collect group
 			collected = grouper.getGroupItems(gid);
@@ -88,6 +92,8 @@ public class MiningSinglePassReducer extends
 		}
 		
 		PerItemTopKHadoopCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
+		
+		topKcoll.preloadBounds(DistCache.readPerItemBounds(conf));
 		
 		Selector chain = topKcoll.asSelector();
 		
@@ -116,7 +122,7 @@ public class MiningSinglePassReducer extends
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 2 && conf.get(KEY_BOUNDS_PATH) != null) {
 			context.progress();
-			topKcoll.writeTopKBounds(this.sideOutputs, BOUNDS_OUTPUT_NAME, conf.get(KEY_BOUNDS_PATH));
+			topKcoll.writeTopKBounds(this.sideOutputs, BOUNDS_OUTPUT_NAME, conf.get(KEY_BOUNDS_PATH), minsup);
 		}
 		
 		if (ExplorationStep.verbose) {
