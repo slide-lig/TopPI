@@ -16,7 +16,6 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
@@ -40,8 +39,8 @@ public class TopLCMoverHadoop {
 	public static final String KEY_VERBOSE       = "toplcm.verbose";
 	public static final String KEY_ULTRA_VERBOSE = "toplcm.verbose.ultra";
 	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
-	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
+	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
 	public static final String KEY_METHOD = "toplcm.method";
 	public static final String KEY_SINGLE_GROUP = "toplcm.only.group";
 	
@@ -80,38 +79,32 @@ public class TopLCMoverHadoop {
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
 			
-			if (this.conf.get(KEY_SUB_DB_ONLY, "").length() > 0) {
-				if (justCreateSubDBs()) {
+			switch (this.conf.getInt(KEY_METHOD, 0)) {
+			case 1:
+				// Algo 1: restrict starters to group's items, collect all item's top-Ks, aggregate
+				if (mineSinglePass(rawPatternsPath) && aggregate(topKperItemPath, rawPatternsPath)){
 					return 0;
 				}
-			} else {
-				switch (this.conf.getInt(KEY_METHOD, 0)) {
-				case 1:
-					// Algo 1: restrict starters to group's items, collect all item's top-Ks, aggregate
-					if (mineSinglePass(rawPatternsPath) && aggregate(topKperItemPath, rawPatternsPath)) {
-						return 0;
-					}
-					break;
-				
-				case 2:
-					// Algo 2: 2 phases-mining
-					rawPatternsPath = rawPatternsPath + "/";
-					if (buildSubDBs(subDBsPath) && 
-							mineFirstPass(subDBsPath, rawPatternsPath + "1", boundsPath) && 
-							mineSecondPass(subDBsPath, rawPatternsPath + "2", boundsPath) && 
-							aggregate (topKperItemPath, rawPatternsPath + "1", rawPatternsPath + "2")) {
+				break;
+			
+			case 2:
+				// Algo 2: 2 phases-mining
+				rawPatternsPath = rawPatternsPath + "/";
+				if (buildSubDBs(subDBsPath) && 
+						mineFirstPass(subDBsPath, rawPatternsPath + "1", boundsPath) && 
+						mineSecondPass(subDBsPath, rawPatternsPath + "2", boundsPath) && 
+						aggregate (topKperItemPath, rawPatternsPath + "1", rawPatternsPath + "2")) {
 
-						return 0;
-					}
-					break;
-
-				default: // Algo 0: use all available starters but restrict collector to group's items. 
-					// doesn't need aggregation
-					if (mineSinglePass(topKperItemPath)) {
-						return 0;
-					}
-					break;
+					return 0;
 				}
+				break;
+
+			default: // Algo 0: use all available starters but restrict collector to group's items. 
+				// doesn't need aggregation
+				if (mineSinglePass(topKperItemPath)) {
+					return 0;
+				}
+				break;
 			}
 		}
 		
@@ -331,34 +324,6 @@ public class TopLCMoverHadoop {
 		job.setMapperClass(MiningMapper.class);
 		job.setMapOutputKeyClass(IntWritable.class);
 		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		return job.waitForCompletion(true);
-	}
-	
-	/**
-	 * Test shuffle'n'sort
-	 * @return true on success
-	 * @throws IOException 
-	 * @throws InterruptedException 
-	 * @throws ClassNotFoundException 
-	 */
-	private boolean justCreateSubDBs() throws IOException, ClassNotFoundException, InterruptedException {
-		Job job = new Job(conf, "Creating sub-DBs from "+this.input);
-		job.setJarByClass(TopLCMoverHadoop.class);
-		
-		job.setInputFormatClass(TextInputFormat.class);
-		job.setOutputFormatClass(NullOutputFormat.class);
-		job.setOutputKeyClass(NullWritable.class);
-		job.setOutputValueClass(NullWritable.class);
-		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
-		
-		job.setMapperClass(MiningMapper.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		job.setReducerClass(FakeMiningReducer.class);
-		job.setNumReduceTasks(1);
 		
 		return job.waitForCompletion(true);
 	}

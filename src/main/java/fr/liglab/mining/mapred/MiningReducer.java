@@ -74,8 +74,11 @@ public class MiningReducer extends
 		
 		context.progress();
 		
-		Grouper grouper = new Grouper(nbGroups, maxId);
+		if (conf.get(TopLCMoverHadoop.KEY_SUB_DB_ONLY, "").length() > 0) {
+			return;
+		}
 		
+		Grouper grouper = new Grouper(nbGroups, maxId);
 		FrequentsIterator collected;
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
