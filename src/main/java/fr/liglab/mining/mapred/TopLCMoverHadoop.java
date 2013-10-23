@@ -247,10 +247,10 @@ public class TopLCMoverHadoop {
 		job.setReducerClass(MiningReducer.class);
 		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
 		
-		MultipleOutputs.addNamedOutput(job, MiningReducer.BOUNDS_OUTPUT_NAME, 
+		MultipleOutputs.addNamedOutput(job, LCMWrapper.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
 		
-		job.getConfiguration().set(MiningReducer.KEY_BOUNDS_PATH, "tmp/bounds");
+		job.getConfiguration().set(LCMWrapper.KEY_BOUNDS_PATH, "tmp/bounds");
 		
 		if (job.waitForCompletion(true)) {
 			FileSystem fs = FileSystem.get(conf);
@@ -296,7 +296,7 @@ public class TopLCMoverHadoop {
 		
 		DistCache.copyToCache(job.getConfiguration(), bounds);
 		
-		job.getConfiguration().setBoolean(MiningReducer.KEY_COLLECT_NON_GROUP, true);
+		job.getConfiguration().setBoolean(LCMWrapper.KEY_COLLECT_NON_GROUP, true);
 		
 		return job.waitForCompletion(true);
 	}
