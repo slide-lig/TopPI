@@ -41,7 +41,6 @@ public class MiningReducer extends
 		
 		final int gid = gidW.get();
 		final Configuration conf = context.getConfiguration();
-
 		
 		final int minsup   = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 1000);
 		final int maxId    = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
@@ -50,9 +49,9 @@ public class MiningReducer extends
 		// rather suggest to the VM this is a short-lasting object
 		ExplorationStep initState = new ExplorationStep(minsup, 
 				new SubDatasetConverter(transactions.iterator())
-				, maxId, this.reverseRebasing, conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 0); // otherwise we give starters: don't compress renaming
+				, maxId, this.reverseRebasing);
 		
-		LCMWrapper.mining(gid, context, initState, this.reverseRebasing, this.sideOutputs);
+		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing);
 	}
 	
 	@Override

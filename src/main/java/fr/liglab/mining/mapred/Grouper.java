@@ -78,8 +78,8 @@ public class Grouper {
 		}
 	}
 	
-	public Selector getStartersSelector(Selector next, int groupId) {
-		return new StartersSelector(next, groupId);
+	public Selector getStartersSelector(Selector next, int groupId, int[] renamingToGlobal) {
+		return new StartersSelector(next, groupId, renamingToGlobal);
 	}
 	
 	/**
@@ -90,17 +90,19 @@ public class Grouper {
 	private final class StartersSelector extends Selector {
 		
 		private final int gid;
+		private final int[] renaming;
 		
-		public StartersSelector(Selector follower, int groupId) {
+		public StartersSelector(Selector follower, int groupId, int[] renamingToGlobal) {
 			super(follower);
 			this.gid = groupId;
+			this.renaming = renamingToGlobal;
 		}
 		
 		@Override
 		protected boolean allowExploration(int extension, ExplorationStep state)
 				throws WrongFirstParentException {
 			
-			return (extension % nbGroups) == this.gid;
+			return (this.renaming[extension] % nbGroups) == this.gid;
 		}
 
 		@Override

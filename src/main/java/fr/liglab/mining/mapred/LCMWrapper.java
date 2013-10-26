@@ -4,6 +4,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
+
 import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
@@ -13,11 +18,6 @@ import fr.liglab.mining.internals.Selector;
 import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.mapreduce.Counter;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 public final class LCMWrapper {
 
@@ -34,14 +34,13 @@ public final class LCMWrapper {
 	 * @param initState
 	 * @param reverseRebasing
 	 * @param sideOutputs can be null
+	 * @param globalToInitial 
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
-	static void mining(int gid,
+	static void mining(int gid, ExplorationStep initState,
 			org.apache.hadoop.mapreduce.Reducer<?,?,IntWritable, SupportAndTransactionWritable>.Context context,
-			ExplorationStep initState, int[] reverseRebasing, 
-			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs) throws IOException, InterruptedException {
-		
+			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs, int[] globalToInitial) throws IOException, InterruptedException {
 		
 		final Configuration conf = context.getConfiguration();
 
@@ -68,11 +67,11 @@ public final class LCMWrapper {
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
 		} else if (conf.getBoolean(KEY_COLLECT_NON_GROUP, false)) {
 			collected = grouper.getNonGroupItems(gid);
-			collected = new FrequentsIteratorRenamer(collected, reverseRebasing);
+			collected = new FrequentsIteratorRenamer(collected, globalToInitial);
 		} else {
 			// collect group
 			collected = grouper.getGroupItems(gid);
-			collected = new FrequentsIteratorRenamer(collected, reverseRebasing);
+			collected = new FrequentsIteratorRenamer(collected, globalToInitial);
 		}
 		
 		PerItemTopKHadoopCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
@@ -83,7 +82,7 @@ public final class LCMWrapper {
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) > 0) { // start group
 			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
-			chain = grouper.getStartersSelector(chain, gid);
+			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState));
 		}
 		
 		initState.appendSelector(chain);
@@ -125,6 +124,20 @@ public final class LCMWrapper {
 		
 		context.progress();
 		
+	}
+
+	private static int[] buildRenamingToGlobal(ExplorationStep initState) {
+		int[] toCurrent = initState.counters.getRenaming();
+		int[] toGlobal = new int[initState.counters.getMaxFrequent()+1];
+		
+		for (int i = 0; i < toCurrent.length; i++) {
+			final int rebased = toCurrent[i];
+			if (rebased >= 0) {
+				toGlobal[rebased] = i;
+			}
+		}
+		
+		return toGlobal;
 	}
 
 }

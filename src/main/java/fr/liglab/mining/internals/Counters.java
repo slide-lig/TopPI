@@ -88,18 +88,19 @@ public final class Counters implements Cloneable {
 	 * 
 	 * After instanciation this field *must* be set by one of these methods
 	 * - reuseRenaming, the initial dataset's constructor (which also sets "renaming")
-	 * - compactRenaming, useful when recompacting dataset in recursions
+	 * - compressRenaming, useful when recompacting dataset in recursions
 	 */
 	protected int[] reverseRenaming;
 
 	/**
 	 * This field will be null EXCEPT if you're using the initial dataset's
-	 * constructor, in which case it computes its absolute renaming by the way.
+	 * constructor (in which case it computes its absolute renaming by the way)
+	 * OR if you called compressRenaming (in which case getRenaming will give back the same value)
 	 * 
 	 * It gives, for each original item ID, its new identifier. If it's negative
 	 * it means the item should be filtered.
 	 */
-	final int[] renaming;
+	protected int[] renaming = null;
 
 	/**
 	 * will be set to true if arrays have been compacted, ie. if supportCounts
@@ -347,6 +348,13 @@ public final class Counters implements Cloneable {
 	}
 
 	/**
+	 * @return the renaming map from instantiation's base to current base
+	 */
+	public int[] getRenaming() {
+		return renaming;
+	}
+	
+	/**
 	 * @return a translation from internal item indexes to dataset's original indexes
 	 */
 	public int[] getReverseRenaming() {
@@ -398,6 +406,8 @@ public final class Counters implements Cloneable {
 		this.maxFrequent = newItemID - 1;
 		this.compactedArrays = true;
 
+		this.renaming = renaming;
+		
 		return renaming;
 	}
 
