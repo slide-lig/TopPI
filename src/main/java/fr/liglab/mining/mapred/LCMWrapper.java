@@ -19,6 +19,14 @@ import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
+/**
+ * This wrapper lets another class handle the initState instantiation
+ * 
+ * Be careful in here because 3 different bases co-exists :
+ *  - the initial item indexing, used by the collector
+ *  - the global, used by all maps in DistCache, where 0 is the most frequent item
+ *  - a local one, used in initState, which is a compression of the global
+ */
 public final class LCMWrapper {
 
 	static final String BOUNDS_OUTPUT_NAME = "bounds";
