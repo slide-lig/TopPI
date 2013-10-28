@@ -1,15 +1,15 @@
 package fr.liglab.mining.internals;
 
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Iterator;
-
-import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
+import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
+
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Iterator;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -95,6 +95,30 @@ public final class ExplorationStep implements Cloneable {
 
 		this.candidates = this.counters.getExtensionsIterator();
 
+		this.failedFPTests = new TIntIntHashMap();
+	}
+
+	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, 
+			int[] reverseGlobalRenaming) {
+		this.core_item = Integer.MAX_VALUE;
+		this.selectChain = null;
+		this.predictiveFPTestMode = false;
+
+		this.counters = new Counters(minimumSupport, reader, maxItem+1, null, maxItem+1);
+		
+		int[] renaming = this.counters.compressRenaming(reverseGlobalRenaming);
+		reader.close(renaming);
+		
+		this.dataset = new Dataset(this.counters, reader);
+		
+		this.pattern = this.counters.closure;
+		if (this.pattern.length > 0) {
+			for (int i = 0; i < this.pattern.length; i++) {
+				this.pattern[i] = reverseGlobalRenaming[this.pattern[i]];
+			}
+		}
+		
+		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
 	}
 	

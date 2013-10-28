@@ -41,8 +41,9 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
-	public static final String KEY_METHOD = "toplcm.method";
-	public static final String KEY_SINGLE_GROUP = "toplcm.only.group";
+	public static final String KEY_METHOD        = "toplcm.method";
+	public static final String KEY_SINGLE_GROUP  = "toplcm.only.group";
+	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder";
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
@@ -201,21 +202,36 @@ public class TopLCMoverHadoop {
 		Job job = new Job(this.conf, "Mining (single-pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
-		job.setInputFormatClass(TextInputFormat.class);
+		if (this.conf.get(KEY_SUBDBS_BUILDER, "").length() > 0) {
+			job.setInputFormatClass(SequenceFileInputFormat.class);
+			FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
+			
+			job.setMapperClass(AlternativeMiningMapper.class);
+			job.setMapOutputKeyClass(IntWritable.class);
+			job.setMapOutputValueClass(IntWritable.class);
+			
+			job.setReducerClass(AlternativeMiningReducer.class);
+			
+			DistCache.copyToCache(job.getConfiguration(), this.input);
+			
+		} else {
+			job.setInputFormatClass(TextInputFormat.class);
+			FileInputFormat.addInputPath(job, new Path(this.input) );
+			
+			job.setMapperClass(MiningMapper.class);
+			job.setMapOutputKeyClass(IntWritable.class);
+			job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
+			
+			job.setReducerClass(MiningReducer.class);
+		}
+		
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
 		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		
-		job.setMapperClass(MiningMapper.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		job.setReducerClass(MiningReducer.class);
 		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
-		
 		
 		return job.waitForCompletion(true);
 	}

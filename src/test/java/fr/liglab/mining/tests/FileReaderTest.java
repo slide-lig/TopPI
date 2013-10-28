@@ -1,12 +1,18 @@
 package fr.liglab.mining.tests;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import fr.liglab.mining.internals.TransactionReader;
+import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
+import fr.liglab.mining.mapred.Grouper.SingleGroup;
 import fr.liglab.mining.tests.stubs.StubPatternsCollector;
+import gnu.trove.map.TIntIntMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 
 /**
  * Its special feature is providing FileReaders and StubPatternsCollectors
@@ -172,6 +178,33 @@ public class FileReaderTest {
 		readLine(reader.next(), 5,7);
 		readLine(reader.next(), 3,2,7);
 		readLine(reader.next(), 5,3,1,6,7);
+		assertFalse(reader.hasNext());
+	}
+	
+	@Test
+	public void testFilteredReader() {
+		int groupsCount = 2;
+		int maxItem = 4;
+		int singleGroupID = 0;
+		
+		SingleGroup filter = new SingleGroup(groupsCount, maxItem, singleGroupID);
+		
+		TIntIntMap renaming = new TIntIntHashMap();
+		renaming.put(1, 3);
+		renaming.put(2, -1);
+		renaming.put(3, 2);
+		renaming.put(5, 1);
+		renaming.put(6, 4);
+		renaming.put(7, 0);
+		
+		FileFilteredReader reader = null;
+		reader = new FileFilteredReader(PATH_MICRO, renaming, filter);
+		assertTrue(reader.hasNext());
+		readLine(reader.next(), 1,2,3,4,0);
+		readLine(reader.next(),   1,2,3,4);
+		readLine(reader.next(), 1,0);
+		//readLine(reader.next(), 0,2); filtered !
+		readLine(reader.next(), 1,2,3,4,0);
 		assertFalse(reader.hasNext());
 	}
 	
