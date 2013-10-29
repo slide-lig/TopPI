@@ -1,4 +1,4 @@
-package fr.liglab.mining.tests.stubs;
+package fr.liglab.mining.tests;
 
 import java.util.Arrays;
 import java.util.HashSet;

@@ -10,7 +10,6 @@ import fr.liglab.mining.internals.TransactionReader;
 import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.mapred.Grouper.SingleGroup;
-import fr.liglab.mining.tests.stubs.StubPatternsCollector;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 
@@ -185,7 +184,7 @@ public class FileReaderTest {
 	public void testFilteredReader() {
 		int groupsCount = 2;
 		int maxItem = 4;
-		int singleGroupID = 0;
+		int singleGroupID = 1;
 		
 		SingleGroup filter = new SingleGroup(groupsCount, maxItem, singleGroupID);
 		

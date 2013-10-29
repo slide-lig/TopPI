@@ -212,7 +212,9 @@ public class TopLCMoverHadoop {
 			
 			job.setReducerClass(AlternativeMiningReducer.class);
 			
-			DistCache.copyToCache(job.getConfiguration(), this.input);
+			if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("distcache")) {
+				DistCache.copyToCache(job.getConfiguration(), this.input);
+			}
 			
 		} else {
 			job.setInputFormatClass(TextInputFormat.class);

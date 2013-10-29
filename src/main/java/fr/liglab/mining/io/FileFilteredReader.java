@@ -3,7 +3,6 @@ package fr.liglab.mining.io;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -47,7 +46,6 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			grouper = filter;
 			
 			newPage();
-			preReadNext();
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -62,7 +60,6 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			grouper = filter;
 			
 			newPage();
-			preReadNext();
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -152,7 +149,11 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 				}
 			}
 			
-			Arrays.sort(currentPage, currentTransIdx, filteredI);
+			if (filteredI == currentTransIdx) {
+				prepareNextCopyReader();
+			}
+			
+			//  Arrays.sort(currentPage, currentTransIdx, filteredI);
 			this.nextCopyReader.setup(currentPage, currentTransIdx, filteredI);
 		} else {
 			this.nextCopyReader.setup(currentPage, currentTransIdx, currentTransIdx + currentTransLen);
@@ -188,9 +189,9 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 	}
 	
 	private void preReadNext() {
-		boolean chercheEncore = true;
+		boolean tryAgain = true;
 		
-		while (chercheEncore && nextChar != -1) {
+		while (tryAgain && nextChar != -1) {
 			skipNewLines();
 			
 			int[] page = currentPage;
@@ -198,8 +199,8 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			
 			while (lineReader.hasNext()) {
 				int next = lineReader.next();
-				if (chercheEncore && next >= 0 && grouper.getGroupId(next) >= 0) {
-					chercheEncore = false;
+				if (tryAgain && next >= 0 && grouper.getGroupId(next) >= 0) {
+					tryAgain = false;
 				}
 			}
 			
@@ -207,12 +208,15 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 				i = 0;
 			}
 			
-			if (chercheEncore) { // REWIND
+			if (tryAgain) { // REWIND
 				currentPageIndex = i+1;
 				currentTransIdx = i;
+				// just in case we rewinded the last transaction in the file :
+				currentPage[currentTransIdx] = -1;
 			} else {
 				copyReader.setup(currentPage, i+1, currentPage[i]+i+1);
 			}
+			skipNewLines();
 		}
 	}
 	
@@ -263,13 +267,11 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			}
 			
 			nextInt = initRenaming.get(nextInt);
-			if (nextInt < 0) {
-				return this.hasNext() ?  this.next() : nextInt;
+			if (nextInt >= 0) {
+				currentPage[currentPageIndex++] = nextInt;
+				currentTransLen++;
 			}
 			
-			currentPage[currentPageIndex++] = nextInt;
-			currentTransLen++;
-
 			if (nextChar == '\n') {
 				currentPage[currentTransIdx] = currentTransLen;
 				
