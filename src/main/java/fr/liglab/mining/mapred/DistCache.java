@@ -1,5 +1,6 @@
 package fr.liglab.mining.mapred;
 
+import gnu.trove.impl.Constants;
 import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 
@@ -41,16 +42,15 @@ final class DistCache {
 	}
 	
 	static TIntIntMap readRebasing(Configuration conf) throws IOException {
-		return readIntIntMap(conf, REBASINGMAP_DIRNAME);
+		return readIntIntMap(conf, REBASINGMAP_DIRNAME, conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 10));
 	}
 	
 	static TIntIntMap readPerItemBounds(Configuration conf) throws IOException {
-		return readIntIntMap(conf, PER_ITEM_BOUNDS_DIRNAME);
+		return readIntIntMap(conf, PER_ITEM_BOUNDS_DIRNAME, 1000);
 	}
 	
-	private static TIntIntMap readIntIntMap(Configuration conf, String token) throws IOException {
-		TIntIntMap map = new TIntIntHashMap();
-		
+	private static TIntIntMap readIntIntMap(Configuration conf, String token, int size) throws IOException {
+		TIntIntMap map = new TIntIntHashMap(size, Constants.DEFAULT_LOAD_FACTOR, -1, -1);
 		FileSystem fs = FileSystem.getLocal(conf);
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
