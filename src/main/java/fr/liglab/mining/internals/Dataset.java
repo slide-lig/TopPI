@@ -86,6 +86,10 @@ public class Dataset implements Cloneable {
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
+					
+					if (item < 0) {
+						System.err.println("WTF item "+item+" appearing in transaction "+transId);
+					}
 
 					if (item < tidListBound) {
 						this.tidLists.addTransaction(item, transId);

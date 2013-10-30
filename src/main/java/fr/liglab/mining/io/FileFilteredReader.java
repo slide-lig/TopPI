@@ -46,6 +46,7 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			grouper = filter;
 			
 			newPage();
+			preReadNext();
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
@@ -108,23 +109,24 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 		renaming = renamingMap;
 		
 		// last char should have been a '\n' so currentPageIndex was ready to write a new one
-		currentPageIndex--;
-		currentPage[currentPageIndex] = -1;
+		currentPage[currentTransIdx] = -1;
 		
 		pagesIterator = pages.iterator();
 		currentPage = null;
+		
+		nextCopyReader = new CopyReader();
 		prepareNextCopyReader();
 	}
 
 	private void prepareNextCopyReader() {
-		if (currentPage == null || currentPageIndex == COPY_PAGES_SIZE || 
-				currentPage[currentPageIndex] == -1) {
+		if (currentPage == null || currentTransIdx == COPY_PAGES_SIZE || 
+				currentPage[currentTransIdx] == -1) {
 			
 			if (pagesIterator.hasNext()) {
 				currentPage = pagesIterator.next();
-				currentPageIndex = 0;
+				currentTransIdx = 0;
 				
-				if (currentPage[currentPageIndex] == -1) { // yes, it may happen !
+				if (currentPage[0] == -1) { // yes, it may happen !
 					nextCopyReader = null;
 					return;
 				}
@@ -135,21 +137,20 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			}
 		}
 		
-		currentTransIdx = currentPageIndex;
-		
 		currentTransLen = currentPage[currentTransIdx];
 		currentTransIdx++;
 		
 		if (renaming != null) {
 			int filteredI = currentTransIdx;
 			for (int i = currentTransIdx; i < currentTransIdx + currentTransLen; i++) {
-				int renamed = renaming[currentPage[i]];
+				final int renamed = renaming[currentPage[i]];
 				if (renamed >= 0) {
 					currentPage[filteredI++] = renamed;
 				}
 			}
 			
-			if (filteredI == currentTransIdx) {
+			if (filteredI == currentTransIdx) { // completely filtered transaction ! try again
+				currentTransIdx += currentTransLen;
 				prepareNextCopyReader();
 			}
 			
@@ -159,29 +160,23 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			this.nextCopyReader.setup(currentPage, currentTransIdx, currentTransIdx + currentTransLen);
 		}
 		
-		currentPageIndex = currentTransIdx + currentTransLen;
+		currentTransIdx += currentTransLen;
 	}
 
 	public boolean hasNext() {
-		if (inBuffer == null) {
-			return nextCopyReader != null;
-		} else {
-			skipNewLines();
-			return nextChar != -1;
-		}
+		return nextCopyReader != null;
 	}
 	
 	public TransactionReader next() {
-		if (inBuffer == null) {
-			if (nextCopyReader != null) {
-				copyReader.setup(nextCopyReader.source, nextCopyReader.i, nextCopyReader.end);
+		if (nextCopyReader != null) {
+			copyReader.setup(nextCopyReader.source, nextCopyReader.i, nextCopyReader.end);
+			if (inBuffer == null) {
 				prepareNextCopyReader();
+			} else {
+				preReadNext();
 			}
-			return copyReader;
-		} else {
-			preReadNext();
-			return copyReader;
 		}
+		return copyReader;
 	}
 
 	public void remove() {
@@ -190,6 +185,11 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 	
 	private void preReadNext() {
 		boolean tryAgain = true;
+		
+		if (nextChar == -1) {
+			nextCopyReader = null;
+			return;
+		}
 		
 		while (tryAgain && nextChar != -1) {
 			skipNewLines();
@@ -204,17 +204,22 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 				}
 			}
 			
-			if (currentPage != page) {
+			if (currentPage != page) { // writeNewTransactionToNextPage occurred
 				i = 0;
 			}
 			
 			if (tryAgain) { // REWIND
+				if (currentTransIdx < COPY_PAGES_SIZE) {
+					currentPage[currentTransIdx] = -1;
+				}
 				currentPageIndex = i+1;
 				currentTransIdx = i;
-				// just in case we rewinded the last transaction in the file :
-				currentPage[currentTransIdx] = -1;
 			} else {
-				copyReader.setup(currentPage, i+1, currentPage[i]+i+1);
+				nextCopyReader.setup(currentPage, i+1, currentPage[i]+i+1);
+				
+				if (currentTransIdx >= COPY_PAGES_SIZE) {
+					newPage();
+				}
 			}
 			skipNewLines();
 		}
@@ -274,13 +279,8 @@ public final class FileFilteredReader implements Iterator<TransactionReader> {
 			
 			if (nextChar == '\n') {
 				currentPage[currentTransIdx] = currentTransLen;
-				
-				if (currentPageIndex == COPY_PAGES_SIZE) {
-					newPage();
-				} else {
-					currentTransIdx = currentPageIndex++;
-					currentTransLen = 0;
-				}
+				currentTransIdx = currentPageIndex++;
+				currentTransLen = 0;
 			}
 			
 			return nextInt;

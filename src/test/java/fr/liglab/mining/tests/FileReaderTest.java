@@ -205,6 +205,14 @@ public class FileReaderTest {
 		//readLine(reader.next(), 0,2); filtered !
 		readLine(reader.next(), 1,2,3,4,0);
 		assertFalse(reader.hasNext());
+		
+		reader.close(new int[] {-1,0,-1,-1,-1});
+		assertTrue(reader.hasNext());
+		readLine(reader.next(), 0);
+		readLine(reader.next(), 0);
+		readLine(reader.next(), 0);
+		readLine(reader.next(), 0);
+		assertFalse(reader.hasNext());
 	}
 	
 	@Test
