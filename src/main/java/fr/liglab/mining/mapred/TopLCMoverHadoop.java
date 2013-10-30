@@ -43,7 +43,7 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
 	public static final String KEY_METHOD        = "toplcm.method";
 	public static final String KEY_SINGLE_GROUP  = "toplcm.only.group";
-	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder";
+	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder"; // DistCache or hdfs,
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
