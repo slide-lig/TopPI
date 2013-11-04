@@ -9,6 +9,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.io.FileFilteredReader;
@@ -20,12 +21,21 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 	
 	private TIntIntMap rebasing;
 	private int[] reverseRebasing;
+	private MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs = null;
 
 	@Override
 	protected void setup(Context context) throws IOException, InterruptedException {
+		
+		
 		Configuration conf = context.getConfiguration();
-		rebasing = DistCache.readRebasing(conf);
-		reverseRebasing = DistCache.readReverseRebasing(conf);
+		this.rebasing = DistCache.readRebasing(conf);
+		this.reverseRebasing = DistCache.readReverseRebasing(conf);
+		
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 2) {
+			if (conf.get(LCMWrapper.KEY_BOUNDS_PATH) != null) {
+				this.sideOutputs  = new MultipleOutputs<IntWritable, SupportAndTransactionWritable>(context);
+			}
+		}
 	}
 	
 	@Override
@@ -37,6 +47,13 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 			reduceOverDistCache(gidW, itemsW, context);
 		} else if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("hdfs")) {
 			reduceOverHDFS(gidW, itemsW, context);
+		}
+	}
+	
+	@Override
+	protected void cleanup(Context context) throws IOException, InterruptedException {
+		if (this.sideOutputs != null) {
+			this.sideOutputs.close();
 		}
 	}
 
@@ -54,8 +71,8 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 		
 		FileFilteredReader reader = new FileFilteredReader(inputStream, rebasing, new SingleGroup(nbGroups, maxItemId, gid));
 		
-		initState = new ExplorationStep(minsup, reader, maxItemId, reverseRebasing);
-		LCMWrapper.mining(gid, initState, context, null, reverseRebasing);
+		initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing);
+		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing);
 	}
 
 	private void reduceOverDistCache(IntWritable gidW, Iterable<IntWritable> itemsW, Context context) throws IOException, InterruptedException {
@@ -72,10 +89,10 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 				SingleGroup filter = new SingleGroup(nbGroups, maxItemId, gid);
 				FileFilteredReader reader = new FileFilteredReader(path.toString(), rebasing, filter);
 				
-				initState = new ExplorationStep(minsup, reader, maxItemId, reverseRebasing);
+				initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing);
 			}
 		}
 		
-		LCMWrapper.mining(gid, initState, context, null, reverseRebasing);
+		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing);
 	}
 }

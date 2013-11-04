@@ -74,7 +74,6 @@ public class TopLCMoverHadoop {
 		String rebasingMapPath = this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME;
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
 		String rawPatternsPath = this.outputPrefix + "/" + "rawPatterns";
-		String subDBsPath      = this.outputPrefix + "/" + "subDBs";
 		String boundsPath      = this.outputPrefix + "/" + DistCache.PER_ITEM_BOUNDS_DIRNAME;
 		
 		if (genItemMap(rebasingMapPath)) {
@@ -91,9 +90,9 @@ public class TopLCMoverHadoop {
 			case 2:
 				// Algo 2: 2 phases-mining
 				rawPatternsPath = rawPatternsPath + "/";
-				if (buildSubDBs(subDBsPath) && 
-						mineFirstPass(subDBsPath, rawPatternsPath + "1", boundsPath) && 
-						mineSecondPass(subDBsPath, rawPatternsPath + "2", boundsPath) && 
+				conf.set(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "distcache");
+				if (mineFirstPass(rawPatternsPath + "1", boundsPath) && 
+						mineSecondPass(rawPatternsPath + "2", boundsPath) && 
 						aggregate (topKperItemPath, rawPatternsPath + "1", rawPatternsPath + "2")) {
 
 					return 0;
@@ -240,7 +239,6 @@ public class TopLCMoverHadoop {
 	
 	/**
 	 * Mining, pass 1/2 (start group/collect group)
-	 * @param in sub-DBs path
 	 * @param output 
 	 * @param bounds path of the bounds side-file
 	 * @return true on success
@@ -248,27 +246,31 @@ public class TopLCMoverHadoop {
 	 * @throws InterruptedException 
 	 * @throws ClassNotFoundException 
 	 */
-	private boolean mineFirstPass(String in, String output, String bounds) throws IOException, ClassNotFoundException, InterruptedException {
+	private boolean mineFirstPass(String output, String bounds) throws IOException, ClassNotFoundException, InterruptedException {
 		Job job = new Job(this.conf, "Mining (first pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
+		FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
+
+		job.setMapperClass(AlternativeMiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(IntWritable.class);
+		
+		job.setReducerClass(AlternativeMiningReducer.class);
+		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		
+		FileOutputFormat.setOutputPath(job, new Path(output));
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		FileInputFormat.addInputPath(job, new Path(in) );
-		FileOutputFormat.setOutputPath(job, new Path(output));
-		
-		job.setReducerClass(MiningReducer.class);
-		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
 		
 		MultipleOutputs.addNamedOutput(job, LCMWrapper.BOUNDS_OUTPUT_NAME, 
 				SequenceFileOutputFormat.class, IntWritable.class, IntWritable.class);
 		
 		job.getConfiguration().set(LCMWrapper.KEY_BOUNDS_PATH, "tmp/bounds");
+		
+		DistCache.copyToCache(job.getConfiguration(), this.input);
 		
 		if (job.waitForCompletion(true)) {
 			FileSystem fs = FileSystem.get(conf);
@@ -287,7 +289,6 @@ public class TopLCMoverHadoop {
 	
 	/**
 	 * Mining, pass 2/2 (start group/collect non-group)
-	 * @param in sub-DBs path
 	 * @param output 
 	 * @param bounds path of the bounds side-file
 	 * @return true on success
@@ -295,53 +296,29 @@ public class TopLCMoverHadoop {
 	 * @throws InterruptedException 
 	 * @throws ClassNotFoundException 
 	 */
-	private boolean mineSecondPass(String in, String output, String bounds) throws IOException, ClassNotFoundException, InterruptedException {
+	private boolean mineSecondPass(String output, String bounds) throws IOException, ClassNotFoundException, InterruptedException {
 		Job job = new Job(this.conf, "Mining (second pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
 		job.setInputFormatClass(SequenceFileInputFormat.class);
+		FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
+
+		job.setMapperClass(AlternativeMiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(IntWritable.class);
+		
+		job.setReducerClass(AlternativeMiningReducer.class);
+		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		
+		FileOutputFormat.setOutputPath(job, new Path(output));
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		FileInputFormat.addInputPath(job, new Path(in) );
-		FileOutputFormat.setOutputPath(job, new Path(output));
-		
-		job.setReducerClass(MiningReducer.class);
-		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
 		
 		DistCache.copyToCache(job.getConfiguration(), bounds);
+		DistCache.copyToCache(job.getConfiguration(), this.input);
 		
 		job.getConfiguration().setBoolean(LCMWrapper.KEY_COLLECT_NON_GROUP, true);
-		
-		return job.waitForCompletion(true);
-	}
-	
-	
-	/**
-	 * @param output 
-	 * @return true on success
-	 * @throws IOException 
-	 * @throws InterruptedException 
-	 * @throws ClassNotFoundException 
-	 */
-	private boolean buildSubDBs(String output) throws IOException, ClassNotFoundException, InterruptedException {
-		Job job = new Job(this.conf, "Building sub-DBs over "+this.input);
-		job.setJarByClass(TopLCMoverHadoop.class);
-		
-		job.setInputFormatClass(TextInputFormat.class);
-		job.setOutputFormatClass(SequenceFileOutputFormat.class);
-		job.setOutputKeyClass(IntWritable.class);
-		job.setOutputValueClass(ConcatenatedTransactionsWritable.class);
-		
-		FileInputFormat.addInputPath(job, new Path(this.input) );
-		FileOutputFormat.setOutputPath(job, new Path(output));
-		
-		job.setMapperClass(MiningMapper.class);
-		job.setMapOutputKeyClass(IntWritable.class);
-		job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
 		
 		return job.waitForCompletion(true);
 	}
