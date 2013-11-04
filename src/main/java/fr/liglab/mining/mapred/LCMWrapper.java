@@ -101,7 +101,7 @@ public final class LCMWrapper {
 			collector = new PatternSortCollector(collector);
 		}
 		
-		TopLCM miner = new TopLCM(collector, 1);
+		TopLCM miner = new TopLCM(collector, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();

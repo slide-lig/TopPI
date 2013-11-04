@@ -41,9 +41,10 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
-	public static final String KEY_METHOD        = "toplcm.method";
+	public static final String KEY_METHOD        = "toplcm.method"; // 2 implies builder=DistCache
 	public static final String KEY_SINGLE_GROUP  = "toplcm.only.group";
 	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder"; // DistCache or hdfs,
+	public static final String KEY_NB_THREADS    = "toplcm.reducer.threads"; // threads per reducer task - defaults to 1
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
