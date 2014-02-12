@@ -11,14 +11,14 @@ import gnu.trove.iterator.TIntIterator;
  * Allows to perform first-parent test BEFORE performing item counting for a
  * candidate extension
  */
-final class FirstParentTest extends Selector {
+public final class FirstParentTest extends Selector {
 
 	@Override
 	protected TopLCMCounters getCountersKey() {
 		return TopLCMCounters.FirstParentTestRejections;
 	}
 
-	FirstParentTest() {
+	public FirstParentTest() {
 		super();
 	}
 

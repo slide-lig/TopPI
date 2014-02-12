@@ -69,9 +69,7 @@ public final class ExplorationStep implements Cloneable {
 	 * are non-first-parent items associated to their actual first parent.
 	 */
 	private final TIntIntHashMap failedFPTests;
-
-	private final boolean predictiveFPTestMode;
-
+	
 	/**
 	 * Start exploration on a dataset contained in a file.
 	 * 
@@ -83,7 +81,6 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep(int minimumSupport, String path) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
-		this.predictiveFPTestMode = false;
 
 		FileReader reader = new FileReader(path);
 		this.counters = new Counters(minimumSupport, reader);
@@ -102,7 +99,6 @@ public final class ExplorationStep implements Cloneable {
 			int[] reverseGlobalRenaming) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
-		this.predictiveFPTestMode = false;
 
 		this.counters = new Counters(minimumSupport, reader, maxItem+1, null, maxItem+1);
 		
@@ -133,7 +129,6 @@ public final class ExplorationStep implements Cloneable {
 			int maxItem, int[] reverseRenaming) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
-		this.predictiveFPTestMode = false;
 		
 		this.counters = new Counters(minimumSupport, transactions.iterator(), 
 				maxItem+1, null, maxItem+1);
@@ -161,7 +156,7 @@ public final class ExplorationStep implements Cloneable {
 	}
 
 	private ExplorationStep(int[] pattern, int core_item, Dataset dataset, Counters counters, Selector selectChain,
-			FrequentsIterator candidates, TIntIntHashMap failedFPTests, boolean predictiveFPTestMode) {
+			FrequentsIterator candidates, TIntIntHashMap failedFPTests) {
 		super();
 		this.pattern = pattern;
 		this.core_item = core_item;
@@ -170,7 +165,6 @@ public final class ExplorationStep implements Cloneable {
 		this.selectChain = selectChain;
 		this.candidates = candidates;
 		this.failedFPTests = failedFPTests;
-		this.predictiveFPTestMode = predictiveFPTestMode;
 	}
 
 	/**
@@ -259,7 +253,6 @@ public final class ExplorationStep implements Cloneable {
 			this.failedFPTests = null;
 			this.selectChain = null;
 			this.dataset = null;
-			this.predictiveFPTestMode = false;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
 
@@ -268,57 +261,32 @@ public final class ExplorationStep implements Cloneable {
 			} else {
 				this.selectChain = parent.selectChain.copy();
 			}
-
-			// ! \\ From here, order is important
 			
-			if (parent.predictiveFPTestMode) {
-				this.predictiveFPTestMode = true;
-			} else {
-				final int averageLen = candidateCounts.distinctTransactionLengthSum
-						/ candidateCounts.distinctTransactionsCount;
-
-				this.predictiveFPTestMode = LCM_STYLE || averageLen > LONG_TRANSACTION_MODE_THRESHOLD;
-				if (this.predictiveFPTestMode) {
-					this.selectChain = new FirstParentTest(this.selectChain);
-				}
-			}
-
-			// indeed, instantiateDataset is influenced by longTransactionsMode
 			this.dataset = instanciateDataset(parent, support);
-
-			// and intanciateDataset may choose to trigger some renaming in counters
 			this.candidates = this.counters.getExtensionsIterator();
 
 		}
 	}
 
 	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
-		final double supportRate = this.counters.distinctTransactionsCount
-				/ (double) parent.dataset.getStoredTransactionsCount();
+		final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
 
-		if (!this.predictiveFPTestMode && (supportRate) > VIEW_SUPPORT_THRESHOLD) {
-			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
-		} else {
-			final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
+		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
-			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate()+1;
-			try {
-				Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
-				if (LCM_STYLE) {
-					dataset.compress(this.core_item);
-				}
-
-				return dataset;
-			} catch (ArrayIndexOutOfBoundsException e) {
-				System.out.println("WAT core_item = "+this.core_item);
-				e.printStackTrace();
-				System.exit(1);
+		try {
+			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE); // TODO the last argument is now obsolete
+			if (parent.pattern.length == 0) {
+				dataset.compress(this.core_item); // FIXME FIXME core_item refers an UNCOMPRESSED id
 			}
-			
-			return null;
+
+			return dataset;
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.out.println("WAT core_item = "+this.core_item);
+			e.printStackTrace();
+			System.exit(1);
 		}
+		
+		return null;
 	}
 
 	public int getFailedFPTest(final int item) {
@@ -351,7 +319,7 @@ public final class ExplorationStep implements Cloneable {
 
 	public ExplorationStep copy() {
 		return new ExplorationStep(pattern, core_item, dataset.clone(), counters.clone(), selectChain, candidates,
-				failedFPTests, predictiveFPTestMode);
+				failedFPTests);
 	}
 	
 	public Progress getProgression() {

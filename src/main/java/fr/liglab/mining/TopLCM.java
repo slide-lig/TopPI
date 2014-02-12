@@ -20,6 +20,7 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import fr.liglab.mining.internals.ExplorationStep;
+import fr.liglab.mining.internals.FirstParentTest;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
 import fr.liglab.mining.io.NullCollector;
@@ -85,6 +86,8 @@ public class TopLCM {
 		if (initState.pattern.length > 0) {
 			collector.collect(initState.counters.transactionsCount, initState.pattern);
 		}
+		
+		initState.appendSelector(new FirstParentTest());
 
 		this.initializeAndStartThreads(initState);
 
