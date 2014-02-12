@@ -15,6 +15,7 @@ import gnu.trove.procedure.TIntObjectProcedure;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
@@ -59,24 +60,51 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.topK.put(item, new PatternWithFreq[k]);
 		}
 	}
-
-	public void collect(final int support, final int[] pattern) {
-		for (final int item : pattern) {
-			insertPatternInTop(support, pattern, item);
-		}
-	}
-
-	protected void insertPatternInTop(final int support, final int[] pattern, int item) {
-		PatternWithFreq[] itemTopK = this.topK.get(item);
-
-		if (itemTopK != null) {
-			synchronized (itemTopK) {
-				updateTop(support, pattern, itemTopK);
+	
+	public final PatternPlaceholder preCollect(final int support, final int[] parentPattern, final int extension) {
+		PatternPlaceholder placeholder = new PatternPlaceholder(support, extension);
+		int nbRefs = 0;
+		for (final int item : parentPattern) {
+			if (insertPatternInTop(placeholder, item)) {
+				nbRefs++;
 			}
 		}
+		
+		if (insertPatternInTop(placeholder, extension)) {
+			nbRefs++;
+		}
+		
+		placeholder.setRefCount(nbRefs);
+		return placeholder;
 	}
-
-	private void updateTop(final int support, final int[] pattern, PatternWithFreq[] itemTopK) {
+	
+	public final void collect(final int support, final int[] pattern) {
+		PatternWithFreq entry = new PatternWithFreq(support, pattern);
+		for (final int item : pattern) {
+			insertPatternInTop(entry, item);
+		}
+	}
+	
+	/**
+	 * @return true if the insertion actually happened
+	 */
+	private boolean insertPatternInTop(PatternWithFreq entry, int item) {
+		PatternWithFreq[] itemTopK = this.topK.get(item);
+		
+		if (itemTopK != null) {
+			synchronized (itemTopK) {
+				return updateTop(entry, itemTopK);
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * @return true if the insertion actually happened
+	 */
+	private boolean updateTop(PatternWithFreq entry, PatternWithFreq[] itemTopK) {
+		final int support = entry.getSupportCount();
 		// we do not have k patterns for this item yet
 		if (itemTopK[this.k - 1] == null) {
 			// find the position of the last null entry
@@ -98,7 +126,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 				itemTopK[i] = itemTopK[i - 1];
 			}
 			// insert the new pattern where previously computed
-			itemTopK[newPosition] = new PatternWithFreq(support, pattern);
+			itemTopK[newPosition] = entry;
+			return true;
 		} else
 		// the support of the new pattern is higher than the kth previously
 		// known
@@ -113,14 +142,21 @@ public class PerItemTopKCollector implements PatternsCollector {
 					break;
 				}
 			}
+			
+			// no, there is no double locking behind this: two threads may be ejecting the same 
+			// pattern from two distinct topKlists
+			itemTopK[this.k - 1].onEjection();
+			
 			// make room for the new pattern, evicting the one at the end
 			for (int i = this.k - 1; i > newPosition; i--) {
 				itemTopK[i] = itemTopK[i - 1];
 			}
 			// insert the new pattern where previously computed
-			itemTopK[newPosition] = new PatternWithFreq(support, pattern);
+			itemTopK[newPosition] = entry;
+			return true;
 		}
 		// else not in top k for this item, do nothing
+		return false;
 	}
 
 	public long close() {
@@ -260,9 +296,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return sb.toString();
 	}
 
-	public static final class PatternWithFreq {
-		private final int supportCount;
-		private final int[] pattern;
+	public static class PatternWithFreq {
+		protected final int supportCount;
+		protected int[] pattern;
 
 		public PatternWithFreq(final int supportCount, final int[] pattern) {
 			super();
@@ -270,26 +306,28 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.pattern = pattern;
 		}
 
+		void onEjection() {}
+
 		public final int getSupportCount() {
-			return supportCount;
+			return this.supportCount;
 		}
 
 		public final int[] getPattern() {
-			return pattern;
+			return this.pattern;
 		}
 
 		@Override
-		public String toString() {
-			return "[supportCount=" + supportCount + ", pattern=" + Arrays.toString(pattern) + "]";
+		public final String toString() {
+			return "[supportCount=" + this.supportCount + ", pattern=" + Arrays.toString(this.pattern) + "]";
 		}
 
 		@Override
-		public int hashCode() {
-			return Arrays.hashCode(pattern);
+		public final int hashCode() {
+			return Arrays.hashCode(this.pattern);
 		}
 
 		@Override
-		public boolean equals(Object obj) {
+		public final boolean equals(Object obj) {
 			if (this == obj)
 				return true;
 			if (obj == null)
@@ -297,13 +335,42 @@ public class PerItemTopKCollector implements PatternsCollector {
 			if (getClass() != obj.getClass())
 				return false;
 			PatternWithFreq other = (PatternWithFreq) obj;
-			if (supportCount != other.supportCount)
+			if (this.supportCount != other.supportCount)
 				return false;
-			if (!Arrays.equals(pattern, other.pattern))
+			if (!Arrays.equals(this.pattern, other.pattern))
 				return false;
 			return true;
 		}
-
+	}
+	
+	public static class PatternPlaceholder extends PatternWithFreq {
+		public final int extension;
+		private final AtomicInteger refCount = new AtomicInteger();
+		
+		PatternPlaceholder(final int supportCount, final int extension) {
+			super(supportCount, null);
+			this.extension = extension;
+		}
+		
+		/**
+		 * to be called upon validation
+		 */
+		public void setPattern(int[] p) {
+			this.pattern = p;
+		}
+		
+		void setRefCount(int nbRefs) {
+			this.refCount.set(nbRefs);
+		}
+		
+		@Override
+		void onEjection() {
+			this.refCount.decrementAndGet();
+		}
+		
+		public boolean isStillInTopKs() {
+			return this.refCount.get() == 0;
+		}
 	}
 
 	public Selector asSelector() {
