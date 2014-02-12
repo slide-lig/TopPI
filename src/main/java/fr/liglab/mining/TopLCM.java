@@ -68,10 +68,6 @@ public class TopLCM {
 		}
 	}
 
-	public final void collect(int support, int[] pattern) {
-		this.collector.collect(support, pattern);
-	}
-
 	void initializeAndStartThreads(final ExplorationStep initState) {
 		for (TopLCMThread t : this.threads) {
 			t.init(initState);
@@ -172,7 +168,7 @@ public class TopLCM {
 		victim.lock.readLock().lock();
 		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
 			ExplorationStep sj = victim.stackedJobs.get(stealPos);
-			ExplorationStep next = sj.next();
+			ExplorationStep next = sj.next(this.collector);
 			
 			if (next != null) {
 				thief.init(sj);
@@ -226,7 +222,7 @@ public class TopLCM {
 				if (!this.stackedJobs.isEmpty()) {
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
 					
-					ExplorationStep extended = sj.next();
+					ExplorationStep extended = sj.next(collector);
 					// iterator is finished, remove it from the stack
 					if (extended == null) {
 						this.lock.writeLock().lock();
@@ -238,7 +234,7 @@ public class TopLCM {
 
 						this.lock.writeLock().unlock();
 					} else {
-						this.lcm(extended);
+						this.stackState(extended);
 					}
 
 				} else { // our list was empty, we should steal from another thread
@@ -246,15 +242,13 @@ public class TopLCM {
 					if (stolj == null) {
 						exit = true;
 					} else {
-						lcm(stolj);
+						stackState(stolj);
 					}
 				}
 			}
 		}
 
-		private void lcm(ExplorationStep state) {
-			collect(state.counters.transactionsCount, state.pattern);
-
+		private void stackState(ExplorationStep state) {
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();

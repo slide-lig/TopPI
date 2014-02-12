@@ -4,12 +4,17 @@ import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
+import fr.liglab.mining.io.PerItemTopKCollector;
+import fr.liglab.mining.io.PerItemTopKCollector.PatternPlaceholder;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -43,7 +48,7 @@ public final class ExplorationStep implements Cloneable {
 	public static boolean LCM_STYLE = false;
 
 	/**
-	 * closure of parent's pattern UNION extension
+	 * closure of parent's pattern UNION extension - using original item IDs
 	 */
 	public final int[] pattern;
 
@@ -70,6 +75,9 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	private final TIntIntHashMap failedFPTests;
 	
+	private final List<PatternPlaceholder> upcomingExtensions = Collections.synchronizedList(new LinkedList<PatternPlaceholder>());
+	private boolean preliminaryEnumerationTodo = true;
+
 	/**
 	 * Start exploration on a dataset contained in a file.
 	 * 
@@ -172,49 +180,77 @@ public final class ExplorationStep implements Cloneable {
 	 * corresponding ExplorationStep (extensions are enumerated by ascending
 	 * item IDs - in internal rebasing) Returns null when all valid extensions
 	 * have been generated
+	 * If it has not been done before, this method will perform the preliminary 
+	 * breadth-first exploration
 	 */
-	public ExplorationStep next() {
-		if (this.candidates == null) {
-			return null;
+	public ExplorationStep next(PerItemTopKCollector collector) {
+		if (preliminaryEnumerationTodo) {
+			// fill this.upcomingExtensions !
+			this.preliminaryExploration(collector);
+			preliminaryEnumerationTodo = false;
 		}
-
+		
+		return this.instantiateNextStep(collector);
+	}
+	
+	private void preliminaryExploration(PerItemTopKCollector collector) {
 		while (true) {
 			int candidate = this.candidates.next();
 
 			if (candidate < 0) {
-				return null;
+				return;
 			}
 
 			try {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-					TransactionsIterable support = this.dataset.getSupport(candidate);
-
-					// System.out.println("extending "+Arrays.toString(this.pattern)+
-					// " with "+
-					// candidate+" ("+this.counters.getReverseRenaming()[candidate]+")");
-
-					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), candidate,
-							this.dataset.getIgnoredItems(), this.counters.maxFrequent);
-
-					int greatest = Integer.MIN_VALUE;
-					for (int i = 0; i < candidateCounts.closure.length; i++) {
-						if (candidateCounts.closure[i] > greatest) {
-							greatest = candidateCounts.closure[i];
-						}
-					}
-
-					if (greatest > candidate) {
-						throw new WrongFirstParentException(candidate, greatest);
-					}
-
-					// instanciateDataset may choose to compress renaming - if
-					// not, at least it's set for now.
-					candidateCounts.reuseRenaming(this.counters.reverseRenaming);
-
-					return new ExplorationStep(this, candidate, candidateCounts, support);
+					int support = this.counters.supportCounts[candidate];
+					PatternPlaceholder tmp = collector.preCollect(support, this.pattern, 
+							this.counters.reverseRenaming[candidate]);
+					this.upcomingExtensions.add(tmp);
 				}
 			} catch (WrongFirstParentException e) {
 				addFailedFPTest(e.extension, e.firstParent);
+			}
+		}
+	}
+	
+	private ExplorationStep instantiateNextStep(PerItemTopKCollector collector) {
+		while (true) {
+			try {
+				PatternPlaceholder holder = this.upcomingExtensions.remove(0);
+				
+				if (holder.isStillInTopKs()) {
+					final int candidate = holder.extension;
+					TransactionsIterable support = this.dataset.getSupport(candidate);
+
+					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+							candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
+
+					// all candidates have been FP-tested by the preliminary pass
+					
+					// the upcoming instanciateDataset may choose to compress renaming - if
+					// not, at least it's set for now.
+					candidateCounts.reuseRenaming(this.counters.reverseRenaming);
+
+					ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, support);
+					
+					// now let's collect the right pattern
+					holder.setPattern(next.pattern);
+					int insertionsCounter = 0;
+					for (int item: candidateCounts.closure) {
+						if (collector.insertPatternInTop(holder, this.counters.reverseRenaming[item])) {
+							insertionsCounter++;
+						}
+					}
+					if (insertionsCounter > 0) {
+						holder.incrementRefCount(insertionsCounter);
+					}
+					
+					return next;
+				}
+				
+			} catch (IndexOutOfBoundsException e) {
+				return null;
 			}
 		}
 	}

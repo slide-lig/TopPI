@@ -74,7 +74,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			nbRefs++;
 		}
 		
-		placeholder.setRefCount(nbRefs);
+		placeholder.incrementRefCount(nbRefs);
 		return placeholder;
 	}
 	
@@ -88,7 +88,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	/**
 	 * @return true if the insertion actually happened
 	 */
-	private boolean insertPatternInTop(PatternWithFreq entry, int item) {
+	public boolean insertPatternInTop(PatternWithFreq entry, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 		
 		if (itemTopK != null) {
@@ -359,8 +359,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.pattern = p;
 		}
 		
-		void setRefCount(int nbRefs) {
-			this.refCount.set(nbRefs);
+		public void incrementRefCount(int delta) {
+			this.refCount.addAndGet(delta);
 		}
 		
 		@Override
