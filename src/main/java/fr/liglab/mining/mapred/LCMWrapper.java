@@ -15,8 +15,6 @@ import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
-import fr.liglab.mining.io.PatternSortCollector;
-import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
 /**
@@ -95,13 +93,7 @@ public final class LCMWrapper {
 		
 		initState.appendSelector(chain);
 		
-		PatternsCollector collector = topKcoll;
-
-		if (conf.getBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, false)) {
-			collector = new PatternSortCollector(collector);
-		}
-		
-		TopLCM miner = new TopLCM(collector, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
+		TopLCM miner = new TopLCM(topKcoll, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();
@@ -109,7 +101,7 @@ public final class LCMWrapper {
 		chrono = (System.currentTimeMillis() - chrono) / 1000;
 		
 		context.progress();
-		long nbPatterns = collector.close();
+		long nbPatterns = topKcoll.close();
 		
 		if (sideOutputs != null) {
 			context.progress();

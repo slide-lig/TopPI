@@ -22,7 +22,6 @@ import org.apache.hadoop.util.GenericOptionsParser;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
-import fr.liglab.mining.io.MultiThreadedFileCollector;
 import fr.liglab.mining.io.NullCollector;
 import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
@@ -42,11 +41,11 @@ public class TopLCM {
 	private ProgressWatcherThread progressWatch;
 	protected static long chrono;
 
-	private final PatternsCollector collector;
+	private final PerItemTopKCollector collector;
 
 	private final long[] globalCounters;
 	
-	public TopLCM(PatternsCollector patternsCollector, int nbThreads) {
+	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
@@ -268,18 +267,16 @@ public class TopLCM {
 				"b",
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
-		options.addOption("c", true,
-				"(only for standalone) How many sockets will share a copy of the data (triggers thread affinity), defaults to all sockets share, no copy");
-		options.addOption("g", true, "(use only with -k) Enables Hadoop and gives the number of groups in which the search space will be splitted");
+		options.addOption("g", true, "Enables Hadoop and gives the number of groups in which the search space will be splitted");
 		options.addOption("h", false, "Show help");
-		options.addOption("i", false, "(use only with -k) Outputs a single pattern for each frequent item. Given support is item's support count and pattern's items are " +
+		options.addOption("i", false, "Outputs a single pattern for each frequent item. Given support is item's support count and pattern's items are " +
 				"the item itself, its patterns count (max=K), its patterns' supports sum and its lowest pattern support.");
-		options.addOption("k", true, "Restrict to top-k-per-item mining");
+		options.addOption("k", true, "The K to top-k-per-item mining");
 		options.addOption("m", false, "(only for standalone) Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
-		options.addOption("r", true, "(use only with -k) path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
+		options.addOption("r", true, "path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
-		options.addOption("u", false, "(only for standalone, with -k) output unique patterns only");
+		options.addOption("u", false, "(only for standalone) output unique patterns only");
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false, "Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
 		
@@ -289,6 +286,9 @@ public class TopLCM {
 
 			if (cmd.getArgs().length < 2 || cmd.getArgs().length > 3 || cmd.hasOption('h')) {
 				printMan(options);
+			} else if (!cmd.hasOption('k')) {
+				System.err.println("-k parameter is mandatory");
+				System.exit(1);
 			} else if (cmd.hasOption('g')) {
 				hadoop(cmd, hadoopCmd.getConfiguration());
 			} else {
@@ -323,12 +323,6 @@ public class TopLCM {
 		if (!cmd.hasOption('k')) {
 			ExplorationStep.LCM_STYLE = true;
 		}
-
-		int nbSocketsShareCopy = 0;
-		if (cmd.hasOption('c')) {
-			nbSocketsShareCopy = Integer.parseInt(cmd.getOptionValue('c'));
-			TopLCMAffinity.bindMainThread();
-		}
 		
 		if (cmd.hasOption('m')) {
 			memoryWatch = new MemoryPeakWatcherThread();
@@ -352,14 +346,9 @@ public class TopLCM {
 			nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
 		}
 		
-		PatternsCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
+		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
 
-		TopLCM miner;
-		if (nbSocketsShareCopy == 0) {
-			miner = new TopLCM(collector, nbThreads);
-		} else {
-			miner = new TopLCMAffinity(collector, nbThreads, nbSocketsShareCopy);
-		}
+		TopLCM miner = new TopLCM(collector, nbThreads);
 
 		chrono = System.currentTimeMillis();
 		miner.lcm(initState);
@@ -383,9 +372,10 @@ public class TopLCM {
 	 * Parse command-line arguments to instanciate the right collector
 	 * @param nbThreads 
 	 */
-	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath, 
+	private static PerItemTopKCollector instanciateCollector(CommandLine cmd, String outputPath, 
 			ExplorationStep initState, int nbThreads) {
 
+		PerItemTopKCollector topKcoll = null;
 		PatternsCollector collector = null;
 
 		if (cmd.hasOption('b')) { // BENCHMARK MODE !
@@ -393,11 +383,7 @@ public class TopLCM {
 		} else {
 			if (outputPath != null) {
 				try {
-					if (cmd.hasOption('k')) {
-						collector = new FileCollector(outputPath);
-					} else {
-						collector = new MultiThreadedFileCollector(outputPath, nbThreads);
-					}
+					collector = new FileCollector(outputPath);
 				} catch (IOException e) {
 					e.printStackTrace(System.err);
 					System.err.println("Aborting mining.");
@@ -412,27 +398,24 @@ public class TopLCM {
 			}
 		}
 		
-		if (cmd.hasOption('k')) {
-			int k = Integer.parseInt(cmd.getOptionValue('k'));
-			
-			FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
-					initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
-			
-			PerItemTopKCollector topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents,
-					extensions);
-			
-			topKcoll.setInfoMode(cmd.hasOption('i'));
-			topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
-			
-			if (cmd.hasOption('r')){
-				topKcoll.readPerItemKFrom(cmd.getOptionValue('r'));
-			}
-
-			initState.appendSelector(topKcoll.asSelector());
-			collector = topKcoll;
+		int k = Integer.parseInt(cmd.getOptionValue('k'));
+		
+		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
+				initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
+		
+		topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents,
+				extensions);
+		
+		topKcoll.setInfoMode(cmd.hasOption('i'));
+		topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
+		
+		if (cmd.hasOption('r')){
+			topKcoll.readPerItemKFrom(cmd.getOptionValue('r'));
 		}
 
-		return collector;
+		initState.appendSelector(topKcoll.asSelector());
+
+		return topKcoll;
 	}
 
 	public static void hadoop(CommandLine cmd, Configuration conf) throws Exception {
@@ -449,7 +432,8 @@ public class TopLCM {
 		conf.setInt(TopLCMoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
 		
 		if (cmd.hasOption('s')) {
-			conf.setBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, true);
+			System.err.println("Hadoop version does not support itemset sorting");
+			System.exit(1);
 		}
 		if (cmd.hasOption('v')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_VERBOSE, true);

@@ -38,7 +38,6 @@ public class TopLCMoverHadoop {
 	//////////////////// OPTIONS ////////////////////
 	public static final String KEY_VERBOSE       = "toplcm.verbose";
 	public static final String KEY_ULTRA_VERBOSE = "toplcm.verbose.ultra";
-	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
 	public static final String KEY_METHOD        = "toplcm.method"; // 2 implies builder=DistCache
