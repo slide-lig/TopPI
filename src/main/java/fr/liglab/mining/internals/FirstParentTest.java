@@ -15,7 +15,7 @@ final class FirstParentTest extends Selector {
 
 	@Override
 	protected TopLCMCounters getCountersKey() {
-		return TopLCMCounters.FirstParentTestRejections;
+		return null; // YEP! this selector throws an exception so this method should never be called
 	}
 
 	FirstParentTest() {
@@ -75,7 +75,7 @@ final class FirstParentTest extends Selector {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.FirstParentTestRejections
+					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.PreFPTestsRejections
 							.ordinal()]++;
 					throw new WrongFirstParentException(extension, i);
 				}
