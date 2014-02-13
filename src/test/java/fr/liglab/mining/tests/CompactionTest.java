@@ -20,10 +20,7 @@ public class CompactionTest {
 		TransactionsIterable support = init.dataset.getSupport(1);
 		Counters candidateCounts = new Counters(2, support.iterator(), 
 				1, null, 5);
-		System.out.println(Arrays.toString(init.counters.getReverseRenaming()));
 		int[] renaming = candidateCounts.compressRenaming(init.counters.getReverseRenaming());
-		
-		System.out.println(Arrays.toString(renaming));
 		
 	}
 

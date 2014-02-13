@@ -29,6 +29,7 @@ public class Dataset implements Cloneable {
 	protected final TidList tidLists;
 
 	protected Dataset(TransactionsList transactions, TidList occurrences) {
+		// DO NOT COUNT NbDatasets here
 		this.transactions = transactions;
 		this.tidLists = occurrences;
 	}
@@ -51,7 +52,12 @@ public class Dataset implements Cloneable {
 	 *            MAX_VALUE when using predictive pptest.
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
-
+		try {
+			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbDatasets.ordinal()]++;
+		} catch (ClassCastException e) {
+			// the initial dataset is not instanciated ina  TopLCMThread...
+		}
+		
 		int maxTransId;
 
 		// if (UByteIndexedTransactionsList.compatible(counters)) {

@@ -185,7 +185,7 @@ public class TopLCM {
 	 * to TopLCMCounters.counters
 	 */
 	public enum TopLCMCounters {
-		ExplorationStepInstances, ExplorationStepCatchedWrongFirstParents, FirstParentTestRejections, TopKRejections, TransactionsCompressions
+		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters
 	}
 
 	public class TopLCMThread extends Thread {
@@ -226,12 +226,7 @@ public class TopLCM {
 					// iterator is finished, remove it from the stack
 					if (extended == null) {
 						this.lock.writeLock().lock();
-
 						this.stackedJobs.remove(this.stackedJobs.size() - 1);
-						this.counters[TopLCMCounters.ExplorationStepInstances.ordinal()]++;
-						this.counters[TopLCMCounters.ExplorationStepCatchedWrongFirstParents.ordinal()] += sj
-								.getCatchedWrongFirstParentCount();
-
 						this.lock.writeLock().unlock();
 					} else {
 						this.stackState(extended);

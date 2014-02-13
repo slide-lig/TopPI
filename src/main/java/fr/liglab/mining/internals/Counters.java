@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -141,7 +143,13 @@ public final class Counters implements Cloneable {
 	 */
 	public Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension, int[] ignoredItems,
 			final int maxItem) {
-
+		
+		try {
+			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbCounters.ordinal()]++;
+		} catch (ClassCastException e) {
+			// coz sometimes we're in a unit test...
+		}
+		
 		this.renaming = null;
 		this.minSupport = minimumSupport;
 		this.supportCounts = new int[maxItem + 1];
@@ -232,6 +240,8 @@ public final class Counters implements Cloneable {
 	 * @param transactions
 	 */
 	Counters(int minimumSupport, Iterator<TransactionReader> transactions) {
+		// no nbCounters because this one is not in a PLCMThread
+		
 		this.minSupport = minimumSupport;
 
 		TIntIntHashMap supportsMap = new TIntIntHashMap();
