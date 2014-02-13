@@ -61,8 +61,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 	
-	public final PatternPlaceholder preCollect(final int support, final int[] parentPattern, final int extension) {
-		PatternPlaceholder placeholder = new PatternPlaceholder(support, extension);
+	public final PatternWithFreq preCollect(final int support, final int[] parentPattern, final int extension) {
+		PatternWithFreq placeholder = new PatternWithFreq(support, extension);
 		int nbRefs = 0;
 		for (final int item : parentPattern) {
 			if (insertPatternInTop(placeholder, item)) {
@@ -79,10 +79,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 	
 	public final void collect(final int support, final int[] pattern) {
-		PatternWithFreq entry = new PatternWithFreq(support, pattern);
-		for (final int item : pattern) {
-			insertPatternInTop(entry, item);
-		}
+		throw new IllegalArgumentException("Thou shall preCollect() and setPattern()");
 	}
 	
 	/**
@@ -296,38 +293,56 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return sb.toString();
 	}
 
-	public static class PatternWithFreq {
+	public static final class PatternWithFreq {
 		protected final int supportCount;
 		protected int[] pattern;
+		public final int extension;
+		private final AtomicInteger refCount = new AtomicInteger();
 
-		public PatternWithFreq(final int supportCount, final int[] pattern) {
+		public PatternWithFreq(final int supportCount, final int extension) {
 			super();
+			this.extension = extension;
 			this.supportCount = supportCount;
-			this.pattern = pattern;
 		}
 
-		void onEjection() {}
-
-		public final int getSupportCount() {
+		public int getSupportCount() {
 			return this.supportCount;
 		}
 
-		public final int[] getPattern() {
+		public int[] getPattern() {
 			return this.pattern;
 		}
-
+		
+		/**
+		 * to be called upon validation
+		 */
+		public void setPattern(int[] p) {
+			this.pattern = p;
+		}
+		
+		public void incrementRefCount(int delta) {
+			this.refCount.addAndGet(delta);
+		}
+		
+		void onEjection() {
+			this.refCount.decrementAndGet();
+		}
+		
+		public boolean isStillInTopKs() {
+			return this.refCount.get() == 0;
+		}
 		@Override
-		public final String toString() {
+		public String toString() {
 			return "[supportCount=" + this.supportCount + ", pattern=" + Arrays.toString(this.pattern) + "]";
 		}
 
 		@Override
-		public final int hashCode() {
+		public int hashCode() {
 			return Arrays.hashCode(this.pattern);
 		}
 
 		@Override
-		public final boolean equals(Object obj) {
+		public boolean equals(Object obj) {
 			if (this == obj)
 				return true;
 			if (obj == null)
@@ -343,36 +358,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 	
-	public static class PatternPlaceholder extends PatternWithFreq {
-		public final int extension;
-		private final AtomicInteger refCount = new AtomicInteger();
-		
-		PatternPlaceholder(final int supportCount, final int extension) {
-			super(supportCount, null);
-			this.extension = extension;
-		}
-		
-		/**
-		 * to be called upon validation
-		 */
-		public void setPattern(int[] p) {
-			this.pattern = p;
-		}
-		
-		public void incrementRefCount(int delta) {
-			this.refCount.addAndGet(delta);
-		}
-		
-		@Override
-		void onEjection() {
-			this.refCount.decrementAndGet();
-		}
-		
-		public boolean isStillInTopKs() {
-			return this.refCount.get() == 0;
-		}
-	}
-
 	public Selector asSelector() {
 		return new ExplorationLimiter(null);
 	}

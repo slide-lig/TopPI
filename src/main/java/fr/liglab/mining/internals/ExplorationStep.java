@@ -5,16 +5,15 @@ import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.io.PerItemTopKCollector;
-import fr.liglab.mining.io.PerItemTopKCollector.PatternPlaceholder;
+import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -75,7 +74,7 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	private final TIntIntHashMap failedFPTests;
 	
-	private final List<PatternPlaceholder> upcomingExtensions = Collections.synchronizedList(new LinkedList<PatternPlaceholder>());
+	private final Queue<PatternWithFreq> upcomingExtensions = new ConcurrentLinkedQueue<PatternWithFreq>();
 	private boolean preliminaryEnumerationTodo = true;
 
 	/**
@@ -204,7 +203,7 @@ public final class ExplorationStep implements Cloneable {
 			try {
 				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
 					int support = this.counters.supportCounts[candidate];
-					PatternPlaceholder tmp = collector.preCollect(support, this.pattern, 
+					PatternWithFreq tmp = collector.preCollect(support, this.pattern, 
 							this.counters.reverseRenaming[candidate]);
 					this.upcomingExtensions.add(tmp);
 				}
@@ -216,41 +215,40 @@ public final class ExplorationStep implements Cloneable {
 	
 	private ExplorationStep instantiateNextStep(PerItemTopKCollector collector) {
 		while (true) {
-			try {
-				PatternPlaceholder holder = this.upcomingExtensions.remove(0);
+			PatternWithFreq holder = this.upcomingExtensions.poll();
+			
+			if (holder == null) {
+				return null;
+			}
+			
+			if (holder.isStillInTopKs()) {
+				final int candidate = holder.extension;
+				TransactionsIterable support = this.dataset.getSupport(candidate);
+
+				Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+						candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
+
+				// all candidates have been FP-tested by the preliminary pass
 				
-				if (holder.isStillInTopKs()) {
-					final int candidate = holder.extension;
-					TransactionsIterable support = this.dataset.getSupport(candidate);
+				// the upcoming instanciateDataset may choose to compress renaming - if
+				// not, at least it's set for now.
+				candidateCounts.reuseRenaming(this.counters.reverseRenaming);
 
-					Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
-							candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
-
-					// all candidates have been FP-tested by the preliminary pass
-					
-					// the upcoming instanciateDataset may choose to compress renaming - if
-					// not, at least it's set for now.
-					candidateCounts.reuseRenaming(this.counters.reverseRenaming);
-
-					ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, support);
-					
-					// now let's collect the right pattern
-					holder.setPattern(next.pattern);
-					int insertionsCounter = 0;
-					for (int item: candidateCounts.closure) {
-						if (collector.insertPatternInTop(holder, this.counters.reverseRenaming[item])) {
-							insertionsCounter++;
-						}
+				ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, support);
+				
+				// now let's collect the right pattern
+				holder.setPattern(next.pattern);
+				int insertionsCounter = 0;
+				for (int item: candidateCounts.closure) {
+					if (collector.insertPatternInTop(holder, this.counters.reverseRenaming[item])) {
+						insertionsCounter++;
 					}
-					if (insertionsCounter > 0) {
-						holder.incrementRefCount(insertionsCounter);
-					}
-					
-					return next;
+				}
+				if (insertionsCounter > 0) {
+					holder.incrementRefCount(insertionsCounter);
 				}
 				
-			} catch (IndexOutOfBoundsException e) {
-				return null;
+				return next;
 			}
 		}
 	}
