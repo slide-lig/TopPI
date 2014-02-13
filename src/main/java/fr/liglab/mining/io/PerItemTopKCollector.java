@@ -329,7 +329,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 		
 		public boolean isStillInTopKs() {
-			return this.refCount.get() == 0;
+			return this.refCount.get() > 0;
 		}
 		@Override
 		public String toString() {
