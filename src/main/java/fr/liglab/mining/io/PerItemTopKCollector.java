@@ -61,8 +61,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 	
-	public final PatternWithFreq preCollect(final int support, final int[] parentPattern, final int extension) {
-		PatternWithFreq placeholder = new PatternWithFreq(support, extension);
+	public final PatternWithFreq preCollect(final int support, final int[] parentPattern, 
+			final int extensionInternalID, final int extensionOriginalID) {
+		PatternWithFreq placeholder = new PatternWithFreq(support, extensionInternalID);
 		int nbRefs = 0;
 		for (final int item : parentPattern) {
 			if (insertPatternInTop(placeholder, item)) {
@@ -70,7 +71,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 		}
 		
-		if (insertPatternInTop(placeholder, extension)) {
+		if (insertPatternInTop(placeholder, extensionOriginalID)) {
 			nbRefs++;
 		}
 		
