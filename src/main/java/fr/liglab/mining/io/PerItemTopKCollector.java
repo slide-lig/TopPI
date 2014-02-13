@@ -1,5 +1,6 @@
 package fr.liglab.mining.io;
 
+import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
@@ -296,7 +297,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public static final class PatternWithFreq {
 		protected final int supportCount;
-		protected int[] pattern;
+		protected int[] pattern = null;
 		public final int extension;
 		private final AtomicInteger refCount = new AtomicInteger();
 
@@ -326,6 +327,12 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 		
 		void onEjection() {
+			if (this.pattern == null) {
+				((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders.ordinal()]++;
+			} else {
+				((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPatterns.ordinal()]++;
+			}
+			
 			this.refCount.decrementAndGet();
 		}
 		
