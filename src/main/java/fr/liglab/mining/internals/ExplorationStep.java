@@ -193,22 +193,24 @@ public final class ExplorationStep implements Cloneable {
 	}
 	
 	private void preliminaryExploration(PerItemTopKCollector collector) {
-		while (true) {
-			int candidate = this.candidates.next();
+		if (this.candidates != null) {
+			while (true) {
+				int candidate = this.candidates.next();
 
-			if (candidate < 0) {
-				return;
-			}
-
-			try {
-				if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-					int support = this.counters.supportCounts[candidate];
-					PatternWithFreq tmp = collector.preCollect(support, this.pattern, 
-							this.counters.reverseRenaming[candidate]);
-					this.upcomingExtensions.add(tmp);
+				if (candidate < 0) {
+					return;
 				}
-			} catch (WrongFirstParentException e) {
-				addFailedFPTest(e.extension, e.firstParent);
+
+				try {
+					if (this.selectChain == null || this.selectChain.select(candidate, this)) {
+						int support = this.counters.supportCounts[candidate];
+						PatternWithFreq tmp = collector.preCollect(support, this.pattern, candidate,
+								this.counters.reverseRenaming[candidate]);
+						this.upcomingExtensions.add(tmp);
+					}
+				} catch (WrongFirstParentException e) {
+					addFailedFPTest(e.extension, e.firstParent);
+				}
 			}
 		}
 	}
