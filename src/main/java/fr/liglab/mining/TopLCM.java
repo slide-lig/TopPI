@@ -187,7 +187,7 @@ public class TopLCM {
 	 * to TopLCMCounters.counters
 	 */
 	public enum TopLCMCounters {
-		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters
+		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters, PatternsTraversed
 	}
 
 	public class TopLCMThread extends Thread {
@@ -246,6 +246,8 @@ public class TopLCM {
 		}
 
 		private void lcm(ExplorationStep state) {
+			this.counters[TopLCMCounters.PatternsTraversed.ordinal()]++;
+			
 			collect(state.counters.transactionsCount, state.pattern);
 
 			this.lock.writeLock().lock();
