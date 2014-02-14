@@ -9,7 +9,7 @@ import fr.liglab.mining.TopLCM.TopLCMCounters;
  */
 public abstract class Selector {
 
-	private final Selector next;
+	final Selector next;
 
 	/**
 	 * @param extension in state's local base

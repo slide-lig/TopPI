@@ -74,6 +74,11 @@ public final class Counters implements Cloneable {
 	 * reverseRenaming (or none for the initial dataset)
 	 */
 	final int[] closure;
+	
+	/**
+	 * closure of parent's pattern UNION extension - using original item IDs
+	 */
+	public final int[] pattern;
 
 	/**
 	 * Counts how many items have a support count in [minSupport; 100% [
@@ -140,9 +145,11 @@ public final class Counters implements Cloneable {
 	 *            counter either
 	 * @param maxItem
 	 *            biggest index among items to be found in "transactions"
+	 * @param reuseReverseRenaming 
+	 * @param parentPattern
 	 */
 	public Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension, int[] ignoredItems,
-			final int maxItem) {
+			final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
 		
 		try {
 			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbCounters.ordinal()]++;
@@ -221,6 +228,11 @@ public final class Counters implements Cloneable {
 		}
 		
 		this.closure = closureBuilder.get();
+		this.reverseRenaming = reuseReverseRenaming;
+
+		this.pattern = ItemsetsFactory
+				.extendRename(this.closure, extension, parentPattern, this.reverseRenaming);
+		
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
 		this.maxFrequent = biggestItemID;
@@ -287,6 +299,7 @@ public final class Counters implements Cloneable {
 		}
 
 		this.closure = closureBuilder.get();
+		this.pattern = this.closure;
 		this.nbFrequents = renamingHeap.size();
 		this.maxFrequent = this.nbFrequents - 1;
 		this.maxCandidate = this.maxFrequent + 1;
@@ -321,7 +334,7 @@ public final class Counters implements Cloneable {
 
 	private Counters(int minSupport, int transactionsCount, int distinctTransactionsCount,
 			int distinctTransactionLengthSum, int[] supportCounts,
-			int[] distinctTransactionsCounts, int[] closure, int nbFrequents, int maxFrequent, int[] reverseRenaming,
+			int[] distinctTransactionsCounts, int[] closure, int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming,
 			int[] renaming, boolean compactedArrays, int maxCandidate) {
 		super();
 		this.minSupport = minSupport;
@@ -331,6 +344,7 @@ public final class Counters implements Cloneable {
 		this.supportCounts = supportCounts;
 		this.distinctTransactionsCounts = distinctTransactionsCounts;
 		this.closure = closure;
+		this.pattern = pattern;
 		this.nbFrequents = nbFrequents;
 		this.maxFrequent = maxFrequent;
 		this.reverseRenaming = reverseRenaming;
@@ -344,9 +358,9 @@ public final class Counters implements Cloneable {
 		return new Counters(minSupport, transactionsCount, distinctTransactionsCount, distinctTransactionLengthSum,
 				Arrays.copyOf(supportCounts, supportCounts.length), Arrays.copyOf(
 						distinctTransactionsCounts, distinctTransactionsCounts.length), Arrays.copyOf(closure,
-						closure.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
-						reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), compactedArrays,
-				maxCandidate);
+						closure.length), Arrays.copyOf(pattern, pattern.length), nbFrequents, maxFrequent, 
+						Arrays.copyOf(reverseRenaming, reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), 
+						compactedArrays, maxCandidate);
 	}
 
 	/**
@@ -369,10 +383,6 @@ public final class Counters implements Cloneable {
 	 */
 	public int[] getReverseRenaming() {
 		return this.reverseRenaming;
-	}
-
-	void reuseRenaming(int[] olderReverseRenaming) {
-		this.reverseRenaming = olderReverseRenaming;
 	}
 
 	/**

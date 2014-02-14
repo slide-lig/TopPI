@@ -8,7 +8,6 @@ import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
-import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
@@ -48,10 +47,6 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	public static boolean LCM_STYLE = false;
 
-	/**
-	 * closure of parent's pattern UNION extension - using original item IDs
-	 */
-	public final int[] pattern;
 
 	/**
 	 * Extension item that led to this recursion step. Already included in
@@ -95,8 +90,6 @@ public final class ExplorationStep implements Cloneable {
 		this.counters = new Counters(minimumSupport, reader);
 		reader.close(this.counters.renaming);
 
-		this.pattern = this.counters.closure;
-
 		this.dataset = new Dataset(this.counters, reader);
 
 		this.candidates = this.counters.getExtensionsIterator();
@@ -109,17 +102,16 @@ public final class ExplorationStep implements Cloneable {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
-		this.counters = new Counters(minimumSupport, reader, maxItem+1, null, maxItem+1);
+		this.counters = new Counters(minimumSupport, reader, maxItem+1, null, maxItem+1, reverseGlobalRenaming, new int[] {});
 		
 		int[] renaming = this.counters.compressRenaming(reverseGlobalRenaming);
 		reader.close(renaming);
 		
 		this.dataset = new Dataset(this.counters, reader);
 		
-		this.pattern = this.counters.closure;
-		if (this.pattern.length > 0) {
-			for (int i = 0; i < this.pattern.length; i++) {
-				this.pattern[i] = reverseGlobalRenaming[this.pattern[i]];
+		if (this.counters.pattern.length > 0) {
+			for (int i = 0; i < this.counters.pattern.length; i++) {
+				this.counters.pattern[i] = reverseGlobalRenaming[this.counters.pattern[i]];
 			}
 		}
 		
@@ -140,7 +132,7 @@ public final class ExplorationStep implements Cloneable {
 		this.selectChain = null;
 		
 		this.counters = new Counters(minimumSupport, transactions.iterator(), 
-				maxItem+1, null, maxItem+1);
+				maxItem+1, null, maxItem+1, reverseRenaming, new int[] {});
 		
 		Iterator<TransactionReader> trans = transactions.iterator();
 		
@@ -153,10 +145,9 @@ public final class ExplorationStep implements Cloneable {
 		// once in dataset.transactions, one in dataset.tidLists (both are OK) and 
 		// worse, once again in transactions.cached
 		
-		this.pattern = this.counters.closure;
-		if (this.pattern.length > 0) {
-			for (int i = 0; i < this.pattern.length; i++) {
-				this.pattern[i] = reverseRenaming[this.pattern[i]];
+		if (this.counters.pattern.length > 0) {
+			for (int i = 0; i < this.counters.pattern.length; i++) {
+				this.counters.pattern[i] = reverseRenaming[this.counters.pattern[i]];
 			}
 		}
 		
@@ -164,10 +155,9 @@ public final class ExplorationStep implements Cloneable {
 		this.failedFPTests = new TIntIntHashMap();
 	}
 
-	private ExplorationStep(int[] pattern, int core_item, Dataset dataset, Counters counters, Selector selectChain,
+	private ExplorationStep(int core_item, Dataset dataset, Counters counters, Selector selectChain,
 			FrequentsIterator candidates, TIntIntHashMap failedFPTests) {
 		super();
-		this.pattern = pattern;
 		this.core_item = core_item;
 		this.dataset = dataset;
 		this.counters = counters;
@@ -206,7 +196,7 @@ public final class ExplorationStep implements Cloneable {
 				try {
 					if (this.selectChain == null || this.selectChain.select(candidate, this)) {
 						int support = this.counters.supportCounts[candidate];
-						PatternWithFreq tmp = collector.preCollect(support, this.pattern, candidate,
+						PatternWithFreq tmp = collector.preCollect(support, this.counters.pattern, candidate,
 								this.counters.reverseRenaming[candidate]);
 						this.upcomingExtensions.add(tmp);
 					}
@@ -230,18 +220,13 @@ public final class ExplorationStep implements Cloneable {
 				TransactionsIterable support = this.dataset.getSupport(candidate);
 
 				Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
-						candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent);
-
-				// all candidates have been FP-tested by the preliminary pass
+						candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent, 
+						this.counters.reverseRenaming, this.counters.pattern);
 				
-				// the upcoming instanciateDataset may choose to compress renaming - if
-				// not, at least it's set for now.
-				candidateCounts.reuseRenaming(this.counters.reverseRenaming);
-
 				ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, support);
 				
 				// now let's collect the right pattern
-				holder.setPattern(next.pattern);
+				holder.setPattern(next.counters.pattern);
 				int insertionsCounter = 0;
 				for (int item: candidateCounts.closure) {
 					if (collector.insertPatternInTop(holder, this.counters.reverseRenaming[item])) {
@@ -276,15 +261,12 @@ public final class ExplorationStep implements Cloneable {
 		int[] reverseRenaming = parent.counters.reverseRenaming;
 
 		if (verbose) {
-			if (parent.pattern.length == 0 || ultraVerbose) {
+			if (parent.counters.pattern.length == 0 || ultraVerbose) {
 				System.err.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"pattern\":%3$s,\"extension_internal\":%4$d,\"extension\":%5$d}\n",
-						Calendar.getInstance(), Thread.currentThread().getId(), Arrays.toString(parent.pattern),
+						Calendar.getInstance(), Thread.currentThread().getId(), Arrays.toString(parent.counters.pattern),
 						extension, reverseRenaming[extension]);
 			}
 		}
-
-		this.pattern = ItemsetsFactory
-				.extendRename(candidateCounts.closure, extension, parent.pattern, reverseRenaming);
 
 		if (this.counters.nbFrequents == 0 || this.counters.distinctTransactionsCount == 0) {
 			this.candidates = null;
@@ -313,7 +295,7 @@ public final class ExplorationStep implements Cloneable {
 
 		try {
 			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE); // TODO the last argument is now obsolete
-			if (parent.pattern.length == 0) {
+			if (parent.counters.pattern.length == 0) {
 				dataset.compress(this.core_item); // FIXME FIXME core_item refers an UNCOMPRESSED id
 			}
 
@@ -358,7 +340,7 @@ public final class ExplorationStep implements Cloneable {
 	}
 
 	public ExplorationStep copy() {
-		return new ExplorationStep(pattern, core_item, dataset.clone(), counters.clone(), selectChain, candidates,
+		return new ExplorationStep(core_item, dataset.clone(), counters.clone(), selectChain, candidates,
 				failedFPTests);
 	}
 	

@@ -80,10 +80,22 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return placeholder;
 	}
 	
-	public final void collect(final int support, final int[] pattern) {
-		throw new IllegalArgumentException("Thou shall preCollect() and setPattern()");
+	public final PatternWithFreq preCollect(final int support, final int extensionInternalID, final int[] pattern) {
+		PatternWithFreq placeholder = new PatternWithFreq(support, extensionInternalID, pattern);
+		int nbRefs = 0;
+		for (final int item : pattern) {
+			if (insertPatternInTop(placeholder, item)) {
+				nbRefs++;
+			}
+		}
+		placeholder.incrementRefCount(nbRefs);
+		return placeholder;
 	}
 	
+	public final void collect(final int support, final int[] pattern) {
+		 throw new IllegalArgumentException("Thou shall preCollect() (and maybe setPattern() )");
+	}
+
 	/**
 	 * @return true if the insertion actually happened
 	 */
@@ -307,6 +319,13 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.supportCount = supportCount;
 		}
 
+		public PatternWithFreq(final int supportCount, final int extension, final int[] pattern) {
+			super();
+			this.extension = extension;
+			this.supportCount = supportCount;
+			this.pattern = pattern;
+		}
+
 		public int getSupportCount() {
 			return this.supportCount;
 		}
@@ -417,7 +436,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			if (!shortcut) {
 				localPreviousResult = Integer.MAX_VALUE;
 				localValidUntil = Integer.MAX_VALUE;
-				for (int i : state.pattern) {
+				for (int i : state.counters.pattern) {
 					int bound = getBound(i);
 					if (bound < extensionSupport) {
 						return true;

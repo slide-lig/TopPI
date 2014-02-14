@@ -79,8 +79,8 @@ public class TopLCM {
 	 * Initial invocation
 	 */
 	public final void lcm(final ExplorationStep initState) {
-		if (initState.pattern.length > 0) {
-			collector.collect(initState.counters.transactionsCount, initState.pattern);
+		if (initState.counters.pattern.length > 0) {
+			collector.collect(initState.counters.transactionsCount, initState.counters.pattern);
 		}
 		
 		initState.appendSelector(new FirstParentTest());
