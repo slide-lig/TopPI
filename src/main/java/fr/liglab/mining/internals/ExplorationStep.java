@@ -194,11 +194,34 @@ public final class ExplorationStep implements Cloneable {
 				}
 
 				try {
-					if (this.selectChain == null || this.selectChain.select(candidate, this)) {
-						int support = this.counters.supportCounts[candidate];
-						PatternWithFreq tmp = collector.preCollect(support, this.counters.pattern, candidate,
-								this.counters.reverseRenaming[candidate]);
-						this.upcomingExtensions.add(tmp);
+					if (this.selectChain.select(candidate, this)) {
+						if (this.dataset instanceof DatasetView) {
+							TransactionsIterable support = this.dataset.getSupport(candidate);
+
+							Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+									candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent, 
+									this.counters.reverseRenaming, this.counters.pattern);
+							
+							int greatest = Integer.MIN_VALUE;
+							for (int i = 0; i < candidateCounts.closure.length; i++) {
+								if (candidateCounts.closure[i] > greatest) {
+									greatest = candidateCounts.closure[i];
+								}
+							}
+
+							if (greatest > candidate) {
+								throw new WrongFirstParentException(candidate, greatest);
+							}
+							
+							PatternWithFreq tmp = collector.preCollect(candidateCounts.transactionsCount, candidate, candidateCounts);
+							tmp.keepForLater(candidateCounts, support);
+							this.upcomingExtensions.add(tmp);
+						} else {
+							int support = this.counters.supportCounts[candidate];
+							PatternWithFreq tmp = collector.preCollect(support, this.counters.pattern, candidate,
+									this.counters.reverseRenaming[candidate]);
+							this.upcomingExtensions.add(tmp);
+						}
 					}
 				} catch (WrongFirstParentException e) {
 					addFailedFPTest(e.extension, e.firstParent);
@@ -217,11 +240,16 @@ public final class ExplorationStep implements Cloneable {
 			
 			if (holder.isStillInTopKs()) {
 				final int candidate = holder.extension;
-				TransactionsIterable support = this.dataset.getSupport(candidate);
+				Counters candidateCounts = holder.getMemoizedCounters();
+				TransactionsIterable support = holder.getMemoizedSupport();
+				
+				if (support == null) {
+					support = this.dataset.getSupport(candidate);
 
-				Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
-						candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent, 
-						this.counters.reverseRenaming, this.counters.pattern);
+					candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+							candidate, this.dataset.getIgnoredItems(), this.counters.maxFrequent, 
+							this.counters.reverseRenaming, this.counters.pattern);
+				}
 				
 				ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, support);
 				
@@ -275,38 +303,49 @@ public final class ExplorationStep implements Cloneable {
 			this.dataset = null;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
+			this.dataset = instanciateDatasetAndPickSelectors(parent, support);
+			this.candidates = this.counters.getExtensionsIterator();
+		}
+	}
 
-			if (parent.selectChain == null) {
-				this.selectChain = null;
+	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support) {
+		final double supportRate = this.counters.distinctTransactionsCount
+				/ (double) parent.dataset.getStoredTransactionsCount();
+		
+		final int averageLen = this.counters.distinctTransactionLengthSum
+				/ this.counters.distinctTransactionsCount;
+		
+		if (averageLen < LONG_TRANSACTION_MODE_THRESHOLD && supportRate > VIEW_SUPPORT_THRESHOLD) {
+			if (parent.dataset instanceof DatasetView) {
+				this.selectChain = parent.selectChain.copy();
+			} else {
+				this.selectChain = parent.selectChain.copy(null);
+			}
+			
+			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
+		} else {
+			if (parent.dataset instanceof DatasetView) {
+				this.selectChain = parent.selectChain.copy(FirstParentTest.getTailInstance());
 			} else {
 				this.selectChain = parent.selectChain.copy();
 			}
 			
-			this.dataset = instanciateDataset(parent, support);
-			this.candidates = this.counters.getExtensionsIterator();
-
-		}
-	}
-
-	private Dataset instanciateDataset(ExplorationStep parent, TransactionsIterable support) {
-		final int[] renaming = this.counters.compressRenaming(parent.counters.getReverseRenaming());
-
-		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-		try {
-			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE); // TODO the last argument is now obsolete
-			if (parent.counters.pattern.length == 0) {
+			final int[] renaming = this.counters.compressRenaming(null);
+			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
+	
+			try {
+				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE); // TODO the last argument is now obsolete
 				dataset.compress(this.core_item); // FIXME FIXME core_item refers an UNCOMPRESSED id
+	
+				return dataset;
+			} catch (ArrayIndexOutOfBoundsException e) {
+				System.out.println("WAT core_item = "+this.core_item);
+				e.printStackTrace();
+				System.exit(1);
 			}
-
-			return dataset;
-		} catch (ArrayIndexOutOfBoundsException e) {
-			System.out.println("WAT core_item = "+this.core_item);
-			e.printStackTrace();
-			System.exit(1);
+			
+			return null;
 		}
-		
-		return null;
 	}
 
 	public int getFailedFPTest(final int item) {

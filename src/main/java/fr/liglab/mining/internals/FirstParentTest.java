@@ -12,6 +12,8 @@ import gnu.trove.iterator.TIntIterator;
  * candidate extension
  */
 public final class FirstParentTest extends Selector {
+	
+	public static final FirstParentTest tailInstance = new FirstParentTest();
 
 	@Override
 	protected TopLCMCounters getCountersKey() {
@@ -25,10 +27,18 @@ public final class FirstParentTest extends Selector {
 	FirstParentTest(Selector follower) {
 		super(follower);
 	}
+	
+	static Selector getTailInstance() {
+		return tailInstance;
+	}
 
 	@Override
 	protected Selector copy(Selector newNext) {
-		return new FirstParentTest(newNext);
+		if (newNext == null) {
+			return tailInstance;
+		} else {
+			return new FirstParentTest(newNext);
+		}
 	}
 
 	private boolean isAincludedInB(final TIntIterator aIt, final TIntIterator bIt) {

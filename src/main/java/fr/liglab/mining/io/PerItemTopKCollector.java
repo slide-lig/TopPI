@@ -2,6 +2,8 @@ package fr.liglab.mining.io;
 
 import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.internals.Counters;
+import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;
@@ -79,11 +81,12 @@ public class PerItemTopKCollector implements PatternsCollector {
 		placeholder.incrementRefCount(nbRefs);
 		return placeholder;
 	}
-	
-	public final PatternWithFreq preCollect(final int support, final int extensionInternalID, final int[] pattern) {
-		PatternWithFreq placeholder = new PatternWithFreq(support, extensionInternalID, pattern);
+
+	public PatternWithFreq preCollect(int support, int candidate, Counters counters) {
+		
+		PatternWithFreq placeholder = new PatternWithFreq(support, candidate, counters.pattern);
 		int nbRefs = 0;
-		for (final int item : pattern) {
+		for (final int item : counters.pattern) {
 			if (insertPatternInTop(placeholder, item)) {
 				nbRefs++;
 			}
@@ -312,6 +315,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 		protected int[] pattern = null;
 		public final int extension;
 		private final AtomicInteger refCount = new AtomicInteger();
+		private Counters memoizedCounters = null;
+		private TransactionsIterable memoizedSupport = null;
 
 		public PatternWithFreq(final int supportCount, final int extension) {
 			super();
@@ -324,6 +329,24 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.extension = extension;
 			this.supportCount = supportCount;
 			this.pattern = pattern;
+		}
+		
+		public void keepForLater(Counters counters, TransactionsIterable support) {
+			this.memoizedCounters = counters;
+			this.memoizedSupport  = support;
+		}
+		
+		public void forgetMomoized() {
+			this.memoizedCounters = null;
+			this.memoizedSupport  = null;
+		}
+		
+		public Counters getMemoizedCounters() {
+			return this.memoizedCounters;
+		}
+		
+		public TransactionsIterable getMemoizedSupport() {
+			return this.memoizedSupport;
 		}
 
 		public int getSupportCount() {
@@ -346,13 +369,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 		
 		void onEjection() {
-			if (this.pattern == null) {
-				((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders.ordinal()]++;
-			} else {
-				((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPatterns.ordinal()]++;
+			int refs = this.refCount.decrementAndGet();
+			if (refs == 0) {
+				if (this.pattern == null) {
+					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders.ordinal()]++;
+				} else {
+					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPatterns.ordinal()]++;
+				}
+				this.memoizedCounters = null;
+				this.memoizedSupport = null;
 			}
-			
-			this.refCount.decrementAndGet();
 		}
 		
 		public boolean isStillInTopKs() {
