@@ -490,52 +490,47 @@ public final class Counters implements Cloneable {
 		public ExtensionsIterator(final int to, int breadthSize) {
 			this.index = 0;
 			this.max = to;
-			this.breadthSize = breadthSize;
+			this.breadthSize = Math.min(breadthSize, to);
 		}
 
 		public synchronized MiningTask next(ExplorationStep expStep) {
-			if (index == this.max) {
-				PatternWithFreq p = this.upcomingExtensions.poll();
-				if (p == null) {
-					return null;
-				} else {
-					return expStep.new DepthExplorationPrepared(p);
-				}
-			} else if (this.index < this.breadthSize) {
-				this.index++;
+			if (this.index < this.breadthSize) {
 				if (compactedArrays) {
+					this.index++;
 					return expStep.new BreadthExploration(this.index - 1, this);
 				} else {
-					// VINCENT: I HAVE NO IDEA WHAT THIS COMES FROM
-					if (supportCounts[this.index - 1] > 0) {
-						return expStep.new BreadthExploration(this.index - 1, this);
-					} else {
-						PatternWithFreq p = this.upcomingExtensions.poll();
-						if (p == null) {
-							return null;
-						} else {
-							return expStep.new DepthExplorationPrepared(p);
+					while (this.index < this.breadthSize) {
+						if (supportCounts[this.index] > 0) {
+							this.index++;
+							return expStep.new BreadthExploration(this.index - 1, this);
 						}
+						this.index++;
 					}
-				}
-			} else {
-				PatternWithFreq p = this.upcomingExtensions.poll();
-				if (p == null) {
-					this.index++;
-					if (compactedArrays) {
-						return expStep.new DepthExplorationFromScratch(this.index - 1);
-					} else {
-						// VINCENT: I HAVE NO IDEA WHAT THIS COMES FROM
-						if (supportCounts[this.index - 1] > 0) {
-							return expStep.new DepthExplorationFromScratch(this.index - 1);
-						} else {
-							return null;
-						}
-					}
-				} else {
-					return expStep.new DepthExplorationPrepared(p);
 				}
 			}
+			
+			PatternWithFreq p = this.upcomingExtensions.poll();
+			
+			if (p != null) {
+				return expStep.new DepthExplorationPrepared(p);
+			}
+			
+			if (this.index < this.max) {
+				if (compactedArrays) {
+					this.index++;
+					return expStep.new DepthExplorationFromScratch(this.index - 1);
+				} else {
+					while (this.index < this.max) {
+						if (supportCounts[this.index] > 0) {
+							this.index++;
+							return expStep.new DepthExplorationFromScratch(this.index - 1);
+						}
+						this.index++;
+					}
+				}
+			}
+			
+			return null;
 		}
 
 		@Override

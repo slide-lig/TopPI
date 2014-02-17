@@ -364,8 +364,7 @@ public final class ExplorationStep implements Cloneable {
 							throw new WrongFirstParentException(candidate, greatest);
 						}
 
-						PatternWithFreq tmp = collector.preCollect(candidateCounts.transactionsCount, candidate,
-								candidateCounts);
+						PatternWithFreq tmp = collector.preCollect(candidate,candidateCounts);
 						tmp.keepForLater(candidateCounts, support);
 						iterator.pushFutureWork(tmp);
 					} else {
@@ -403,23 +402,21 @@ public final class ExplorationStep implements Cloneable {
 
 					candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
 							dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
-				}
-
-				ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
-
-				// now let's collect the right pattern
-				holder.setPattern(next.counters.pattern);
-				int insertionsCounter = 0;
-				for (int item : candidateCounts.closure) {
-					if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
-						insertionsCounter++;
+					
+					// now let's collect the right pattern
+					holder.setPattern(candidateCounts.pattern);
+					int insertionsCounter = 0;
+					for (int item : candidateCounts.closure) {
+						if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
+							insertionsCounter++;
+						}
+					}
+					if (insertionsCounter > 0) {
+						holder.incrementRefCount(insertionsCounter);
 					}
 				}
-				if (insertionsCounter > 0) {
-					holder.incrementRefCount(insertionsCounter);
-				}
 
-				return next;
+				return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
 			} else {
 				return fake;
 			}

@@ -83,11 +83,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return placeholder;
 	}
 
-	public PatternWithFreq preCollect(int support, int candidate, Counters counters) {
-
-		PatternWithFreq placeholder = new PatternWithFreq(support, candidate, counters.pattern);
+	public PatternWithFreq preCollect(int candidate, Counters c) {
+		
+		PatternWithFreq placeholder = new PatternWithFreq(c.transactionsCount, candidate, c.pattern);
 		int nbRefs = 0;
-		for (final int item : counters.pattern) {
+		for (final int item : c.pattern) {
 			if (insertPatternInTop(placeholder, item)) {
 				nbRefs++;
 			}
