@@ -70,7 +70,7 @@ public class TopLCM {
 
 	void initializeAndStartThreads(final ExplorationStep initState) {
 		for (TopLCMThread t : this.threads) {
-			t.init(initState);
+			t.stackState(initState);
 			t.start();
 		}
 	}
@@ -171,7 +171,7 @@ public class TopLCM {
 			ExplorationStep next = sj.next(this.collector);
 
 			if (next != null) {
-				thief.init(sj);
+				thief.stackState(sj);
 				victim.lock.readLock().unlock();
 				return next;
 			}
@@ -200,12 +200,6 @@ public class TopLCM {
 			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
 			this.counters = new long[TopLCMCounters.values().length];
-		}
-
-		void init(ExplorationStep initState) {
-			this.lock.writeLock().lock();
-			this.stackedJobs.add(initState);
-			this.lock.writeLock().unlock();
 		}
 
 		@Override
