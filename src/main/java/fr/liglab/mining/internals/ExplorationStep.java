@@ -439,7 +439,19 @@ public final class ExplorationStep implements Cloneable {
 
 					Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
 							dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
-
+					if (dataset instanceof DatasetView) {
+						int greatest = Integer.MIN_VALUE;
+						for (int i = 0; i < candidateCounts.closure.length; i++) {
+							if (candidateCounts.closure[i] > greatest) {
+								greatest = candidateCounts.closure[i];
+							}
+						}
+	
+						if (greatest > candidate) {
+							throw new WrongFirstParentException(candidate, greatest);
+						}
+					}
+					
 					ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
 							support);
 
