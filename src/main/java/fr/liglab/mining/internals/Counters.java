@@ -3,10 +3,14 @@ package fr.liglab.mining.internals;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.PriorityQueue;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.mining.TopLCM;
 import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.internals.ExplorationStep.MiningTask;
+import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -74,7 +78,7 @@ public final class Counters implements Cloneable {
 	 * reverseRenaming (or none for the initial dataset)
 	 */
 	final int[] closure;
-	
+
 	/**
 	 * closure of parent's pattern UNION extension - using original item IDs
 	 */
@@ -91,18 +95,21 @@ public final class Counters implements Cloneable {
 	protected int maxFrequent;
 
 	/**
-	 * This array allows another class to output the discovered closure using original items' IDs.
+	 * This array allows another class to output the discovered closure using
+	 * original items' IDs.
 	 * 
-	 * After instanciation this field *must* be set by one of these methods
-	 * - reuseRenaming, the initial dataset's constructor (which also sets "renaming")
-	 * - compressRenaming, useful when recompacting dataset in recursions
+	 * After instanciation this field *must* be set by one of these methods -
+	 * reuseRenaming, the initial dataset's constructor (which also sets
+	 * "renaming") - compressRenaming, useful when recompacting dataset in
+	 * recursions
 	 */
 	protected int[] reverseRenaming;
 
 	/**
 	 * This field will be null EXCEPT if you're using the initial dataset's
 	 * constructor (in which case it computes its absolute renaming by the way)
-	 * OR if you called compressRenaming (in which case getRenaming will give back the same value)
+	 * OR if you called compressRenaming (in which case getRenaming will give
+	 * back the same value)
 	 * 
 	 * It gives, for each original item ID, its new identifier. If it's negative
 	 * it means the item should be filtered.
@@ -119,14 +126,17 @@ public final class Counters implements Cloneable {
 	 * Exclusive index of the first item >= core_item in current base
 	 */
 	protected int maxCandidate;
-	
+
 	/**
-	 * We use our own map, although it will contain a single item most of the time, because 
-	 * ThreadLocal causes (huge) memory leaks when used as a non-static field.
+	 * We use our own map, although it will contain a single item most of the
+	 * time, because ThreadLocal causes (huge) memory leaks when used as a
+	 * non-static field.
+	 * 
 	 * @see getLocalFrequentsIterator
 	 */
 	private static final ThreadLocal<FrequentIterator> localFrequentsIterator = new ThreadLocal<FrequentIterator>() {
-		@Override protected FrequentIterator initialValue() {
+		@Override
+		protected FrequentIterator initialValue() {
 			return new FrequentIterator();
 		}
 	};
@@ -145,18 +155,18 @@ public final class Counters implements Cloneable {
 	 *            counter either
 	 * @param maxItem
 	 *            biggest index among items to be found in "transactions"
-	 * @param reuseReverseRenaming 
+	 * @param reuseReverseRenaming
 	 * @param parentPattern
 	 */
 	public Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension, int[] ignoredItems,
 			final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
-		
+
 		try {
 			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbCounters.ordinal()]++;
 		} catch (ClassCastException e) {
 			// coz sometimes we're in a unit test...
 		}
-		
+
 		this.renaming = null;
 		this.minSupport = minimumSupport;
 		this.supportCounts = new int[maxItem + 1];
@@ -226,13 +236,12 @@ public final class Counters implements Cloneable {
 				remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
 			}
 		}
-		
+
 		this.closure = closureBuilder.get();
 		this.reverseRenaming = reuseReverseRenaming;
 
-		this.pattern = ItemsetsFactory
-				.extendRename(this.closure, extension, parentPattern, this.reverseRenaming);
-		
+		this.pattern = ItemsetsFactory.extendRename(this.closure, extension, parentPattern, this.reverseRenaming);
+
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
 		this.maxFrequent = biggestItemID;
@@ -253,7 +262,7 @@ public final class Counters implements Cloneable {
 	 */
 	Counters(int minimumSupport, Iterator<TransactionReader> transactions) {
 		// no nbCounters because this one is not in a PLCMThread
-		
+
 		this.minSupport = minimumSupport;
 
 		TIntIntHashMap supportsMap = new TIntIntHashMap();
@@ -333,9 +342,9 @@ public final class Counters implements Cloneable {
 	}
 
 	private Counters(int minSupport, int transactionsCount, int distinctTransactionsCount,
-			int distinctTransactionLengthSum, int[] supportCounts,
-			int[] distinctTransactionsCounts, int[] closure, int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming,
-			int[] renaming, boolean compactedArrays, int maxCandidate) {
+			int distinctTransactionLengthSum, int[] supportCounts, int[] distinctTransactionsCounts, int[] closure,
+			int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming, int[] renaming,
+			boolean compactedArrays, int maxCandidate) {
 		super();
 		this.minSupport = minSupport;
 		this.transactionsCount = transactionsCount;
@@ -356,11 +365,11 @@ public final class Counters implements Cloneable {
 	@Override
 	protected Counters clone() {
 		return new Counters(minSupport, transactionsCount, distinctTransactionsCount, distinctTransactionLengthSum,
-				Arrays.copyOf(supportCounts, supportCounts.length), Arrays.copyOf(
-						distinctTransactionsCounts, distinctTransactionsCounts.length), Arrays.copyOf(closure,
-						closure.length), Arrays.copyOf(pattern, pattern.length), nbFrequents, maxFrequent, 
-						Arrays.copyOf(reverseRenaming, reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), 
-						compactedArrays, maxCandidate);
+				Arrays.copyOf(supportCounts, supportCounts.length), Arrays.copyOf(distinctTransactionsCounts,
+						distinctTransactionsCounts.length), Arrays.copyOf(closure, closure.length), Arrays.copyOf(
+						pattern, pattern.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
+						reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), compactedArrays,
+				maxCandidate);
 	}
 
 	/**
@@ -377,9 +386,10 @@ public final class Counters implements Cloneable {
 	public int[] getRenaming() {
 		return renaming;
 	}
-	
+
 	/**
-	 * @return a translation from internal item indexes to dataset's original indexes
+	 * @return a translation from internal item indexes to dataset's original
+	 *         indexes
 	 */
 	public int[] getReverseRenaming() {
 		return this.reverseRenaming;
@@ -398,7 +408,7 @@ public final class Counters implements Cloneable {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
-		
+
 		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		this.reverseRenaming = new int[this.nbFrequents];
 
@@ -431,7 +441,7 @@ public final class Counters implements Cloneable {
 		this.compactedArrays = true;
 
 		this.renaming = renaming;
-		
+
 		return renaming;
 	}
 
@@ -444,8 +454,12 @@ public final class Counters implements Cloneable {
 	 * 
 	 * @return a thread-safe iterator over frequent items (in ascending order)
 	 */
-	public FrequentsIterator getExtensionsIterator() {
-		return new ExtensionsIterator(this.maxCandidate);
+	public MiningTasksIterator getExtensionsIterator(int breadth) {
+		return new ExtensionsIterator(this.maxCandidate, breadth);
+	}
+
+	public FrequentsIterator getExtensionsIdIterator() {
+		return new ExtensionsIdIterator(this.maxCandidate);
 	}
 
 	/**
@@ -463,7 +477,84 @@ public final class Counters implements Cloneable {
 	 * Thread-safe iterator over frequent items (ie. those having a support
 	 * count in [minSup, 100%[)
 	 */
-	protected class ExtensionsIterator implements FrequentsIterator {
+	protected class ExtensionsIterator implements MiningTasksIterator {
+		private int index;
+		private final int max;
+		private final int breadthSize;
+		private final Queue<PatternWithFreq> upcomingExtensions = new ConcurrentLinkedQueue<PatternWithFreq>();
+
+		/**
+		 * will provide an iterator on frequent items (in increasing order) in
+		 * [0,to[
+		 */
+		public ExtensionsIterator(final int to, int breadthSize) {
+			this.index = 0;
+			this.max = to;
+			this.breadthSize = breadthSize;
+		}
+
+		public synchronized MiningTask next(ExplorationStep expStep) {
+			if (index == this.max) {
+				PatternWithFreq p = this.upcomingExtensions.poll();
+				if (p == null) {
+					return null;
+				} else {
+					return expStep.new DepthExplorationPrepared(p);
+				}
+			} else if (this.index < this.breadthSize) {
+				this.index++;
+				if (compactedArrays) {
+					return expStep.new BreadthExploration(this.index - 1, this);
+				} else {
+					// VINCENT: I HAVE NO IDEA WHAT THIS COMES FROM
+					if (supportCounts[this.index - 1] > 0) {
+						return expStep.new BreadthExploration(this.index - 1, this);
+					} else {
+						PatternWithFreq p = this.upcomingExtensions.poll();
+						if (p == null) {
+							return null;
+						} else {
+							return expStep.new DepthExplorationPrepared(p);
+						}
+					}
+				}
+			} else {
+				PatternWithFreq p = this.upcomingExtensions.poll();
+				if (p == null) {
+					this.index++;
+					if (compactedArrays) {
+						return expStep.new DepthExplorationFromScratch(this.index - 1);
+					} else {
+						// VINCENT: I HAVE NO IDEA WHAT THIS COMES FROM
+						if (supportCounts[this.index - 1] > 0) {
+							return expStep.new DepthExplorationFromScratch(this.index - 1);
+						} else {
+							return null;
+						}
+					}
+				} else {
+					return expStep.new DepthExplorationPrepared(p);
+				}
+			}
+		}
+
+		@Override
+		public void pushFutureWork(PatternWithFreq p) {
+			this.upcomingExtensions.add(p);
+		}
+
+		@Override
+		public int peek() {
+			return this.index;
+		}
+
+		@Override
+		public int last() {
+			return this.max;
+		}
+	}
+
+	protected class ExtensionsIdIterator implements FrequentsIterator {
 		private final AtomicInteger index;
 		private final int max;
 
@@ -471,7 +562,7 @@ public final class Counters implements Cloneable {
 		 * will provide an iterator on frequent items (in increasing order) in
 		 * [0,to[
 		 */
-		public ExtensionsIterator(final int to) {
+		public ExtensionsIdIterator(final int to) {
 			this.index = new AtomicInteger(0);
 			this.max = to;
 		}
@@ -517,12 +608,12 @@ public final class Counters implements Cloneable {
 		private int index;
 		private int max;
 		private int[] supportsFilter;
-		
+
 		FrequentIterator() {
 			this.max = 0;
 			this.index = 0;
 		}
-		
+
 		public void recycle(final int from, final int to, final Counters instance) {
 			this.max = to;
 			this.index = from;

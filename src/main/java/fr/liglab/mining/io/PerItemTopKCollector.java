@@ -26,29 +26,30 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 
  * Thread-safe and initialized with known frequent items.
  * 
- * Note the collector will only consider items provided at instantiation ; any other 
- * will be silently ignored. This is useful when mining by groups.
+ * Note the collector will only consider items provided at instantiation ; any
+ * other will be silently ignored. This is useful when mining by groups.
  */
 public class PerItemTopKCollector implements PatternsCollector {
 
 	private final PatternsCollector decorated;
 	protected final int k;
 	protected final TIntObjectMap<PatternWithFreq[]> topK;
-	
+
 	/**
-	 * When set to true, instead of outputting each item's top-k-patterns the program will only 
-	 * give a single (fake) pattern per frequent item : the item itself, its patterns count (max=K), 
-	 * its patterns' supports sum and its lowest pattern support. 
-	 * Given support will be item's support count.
+	 * When set to true, instead of outputting each item's top-k-patterns the
+	 * program will only give a single (fake) pattern per frequent item : the
+	 * item itself, its patterns count (max=K), its patterns' supports sum and
+	 * its lowest pattern support. Given support will be item's support count.
 	 */
 	protected boolean infoMode;
-	
+
 	protected boolean outputUniqueOnly;
-	
+
 	/**
-	 * when provided (through readPerItemKFrom() ) the collector, before closing and outputting 
-	 * collected patterns, will read the given file and restrict each item's topK to the given value.
-	 * file format is simple ASCII (as input files) and should give, per line : ITEM_ID NB_PATTERNS_TO_KEEP
+	 * when provided (through readPerItemKFrom() ) the collector, before closing
+	 * and outputting collected patterns, will read the given file and restrict
+	 * each item's topK to the given value. file format is simple ASCII (as
+	 * input files) and should give, per line : ITEM_ID NB_PATTERNS_TO_KEEP
 	 */
 	protected String pathToPerItemK = null;
 
@@ -63,8 +64,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.topK.put(item, new PatternWithFreq[k]);
 		}
 	}
-	
-	public final PatternWithFreq preCollect(final int support, final int[] parentPattern, 
+
+	public final PatternWithFreq preCollect(final int support, final int[] parentPattern,
 			final int extensionInternalID, final int extensionOriginalID) {
 		PatternWithFreq placeholder = new PatternWithFreq(support, extensionInternalID);
 		int nbRefs = 0;
@@ -73,17 +74,17 @@ public class PerItemTopKCollector implements PatternsCollector {
 				nbRefs++;
 			}
 		}
-		
+
 		if (insertPatternInTop(placeholder, extensionOriginalID)) {
 			nbRefs++;
 		}
-		
+
 		placeholder.incrementRefCount(nbRefs);
 		return placeholder;
 	}
 
 	public PatternWithFreq preCollect(int support, int candidate, Counters counters) {
-		
+
 		PatternWithFreq placeholder = new PatternWithFreq(support, candidate, counters.pattern);
 		int nbRefs = 0;
 		for (final int item : counters.pattern) {
@@ -94,9 +95,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 		placeholder.incrementRefCount(nbRefs);
 		return placeholder;
 	}
-	
+
 	public final void collect(final int support, final int[] pattern) {
-		 throw new IllegalArgumentException("Thou shall preCollect() (and maybe setPattern() )");
+		PatternWithFreq placeholder = new PatternWithFreq(support, -1, pattern);
+		int nbRefs = 0;
+		for (final int item : pattern) {
+			if (insertPatternInTop(placeholder, item)) {
+				nbRefs++;
+			}
+		}
+		placeholder.incrementRefCount(nbRefs);
 	}
 
 	/**
@@ -104,16 +112,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 */
 	public boolean insertPatternInTop(PatternWithFreq entry, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
-		
+
 		if (itemTopK != null) {
 			synchronized (itemTopK) {
 				return updateTop(entry, itemTopK);
 			}
 		}
-		
+
 		return false;
 	}
-	
+
 	/**
 	 * @return true if the insertion actually happened
 	 */
@@ -156,11 +164,12 @@ public class PerItemTopKCollector implements PatternsCollector {
 					break;
 				}
 			}
-			
-			// no, there is no double locking behind this: two threads may be ejecting the same 
+
+			// no, there is no double locking behind this: two threads may be
+			// ejecting the same
 			// pattern from two distinct topKlists
 			itemTopK[this.k - 1].onEjection();
-			
+
 			// make room for the new pattern, evicting the one at the end
 			for (int i = this.k - 1; i > newPosition; i--) {
 				itemTopK[i] = itemTopK[i - 1];
@@ -177,7 +186,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		if (this.pathToPerItemK != null) {
 			this.applyPerItemKRestriction();
 		}
-		
+
 		if (this.infoMode) {
 			this.collectItemStats();
 		} else if (this.outputUniqueOnly) {
@@ -185,18 +194,18 @@ public class PerItemTopKCollector implements PatternsCollector {
 		} else {
 			this.outputAll();
 		}
-		
+
 		return this.decorated.close();
 	}
 
 	private void applyPerItemKRestriction() {
 		FileReader reader = new FileReader(this.pathToPerItemK);
-		
-		while(reader.hasNext()) {
+
+		while (reader.hasNext()) {
 			TransactionReader line = reader.next();
 			int itemID = line.next();
 			int maxPatterns = line.next();
-			
+
 			if (maxPatterns < this.k) {
 				PatternWithFreq[] patternWithFreqs = this.topK.get(itemID);
 				for (int i = maxPatterns; i < patternWithFreqs.length && patternWithFreqs[i] != null; i++) {
@@ -208,7 +217,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	private void outputUniquePatterns() {
 		final Set<PatternWithFreq> dedup = new HashSet<PatternWithFreq>();
-		
+
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
@@ -239,30 +248,32 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 */
 	protected void collectItemStats() {
 		TIntObjectIterator<PatternWithFreq[]> iterator = this.topK.iterator();
-		
+
 		while (iterator.hasNext()) {
 			iterator.advance();
-			
+
 			int item = iterator.key();
 			PatternWithFreq[] itemTopK = iterator.value();
-			
+
 			int nbPatterns = 0;
 			int supportSum = 0;
 			while (nbPatterns < this.k && itemTopK[nbPatterns] != null) {
 				supportSum += itemTopK[nbPatterns].getSupportCount();
 				nbPatterns++;
 			}
-			
-			int lowestSupport = itemTopK[nbPatterns-1].getSupportCount();
-			
+
+			int lowestSupport = itemTopK[nbPatterns - 1].getSupportCount();
+
 			if (itemTopK[0] != null) {
-				this.decorated.collect(itemTopK[0].getSupportCount(), new int[] {item, nbPatterns, supportSum, lowestSupport});
+				this.decorated.collect(itemTopK[0].getSupportCount(), new int[] { item, nbPatterns, supportSum,
+						lowestSupport });
 			}
 		}
 	}
-	
+
 	/**
-	 * @return MAX_VALUE if item is unknown, -1 if item's top-K isn't full, or item's K-th itemset's support count
+	 * @return MAX_VALUE if item is unknown, -1 if item's top-K isn't full, or
+	 *         item's K-th itemset's support count
 	 */
 	protected int getBound(final int item) {
 		final PatternWithFreq[] itemTopK = this.topK.get(item);
@@ -330,21 +341,21 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.supportCount = supportCount;
 			this.pattern = pattern;
 		}
-		
+
 		public void keepForLater(Counters counters, TransactionsIterable support) {
 			this.memoizedCounters = counters;
-			this.memoizedSupport  = support;
+			this.memoizedSupport = support;
 		}
-		
+
 		public void forgetMomoized() {
 			this.memoizedCounters = null;
-			this.memoizedSupport  = null;
+			this.memoizedSupport = null;
 		}
-		
+
 		public Counters getMemoizedCounters() {
 			return this.memoizedCounters;
 		}
-		
+
 		public TransactionsIterable getMemoizedSupport() {
 			return this.memoizedSupport;
 		}
@@ -356,23 +367,24 @@ public class PerItemTopKCollector implements PatternsCollector {
 		public int[] getPattern() {
 			return this.pattern;
 		}
-		
+
 		/**
 		 * to be called upon validation
 		 */
 		public void setPattern(int[] p) {
 			this.pattern = p;
 		}
-		
+
 		public void incrementRefCount(int delta) {
 			this.refCount.addAndGet(delta);
 		}
-		
+
 		void onEjection() {
 			int refs = this.refCount.decrementAndGet();
 			if (refs == 0) {
 				if (this.pattern == null) {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders.ordinal()]++;
+					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders
+							.ordinal()]++;
 				} else {
 					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPatterns.ordinal()]++;
 				}
@@ -380,10 +392,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 				this.memoizedSupport = null;
 			}
 		}
-		
+
 		public boolean isStillInTopKs() {
 			return this.refCount.get() > 0;
 		}
+
 		@Override
 		public String toString() {
 			return "[supportCount=" + this.supportCount + ", pattern=" + Arrays.toString(this.pattern) + "]";
@@ -410,7 +423,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			return true;
 		}
 	}
-	
+
 	public Selector asSelector() {
 		return new ExplorationLimiter(null);
 	}
@@ -520,5 +533,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	public void readPerItemKFrom(String path) {
 		this.pathToPerItemK = path;
+	}
+
+	public int getK() {
+		return this.k;
 	}
 }
