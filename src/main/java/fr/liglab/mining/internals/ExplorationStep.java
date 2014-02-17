@@ -24,9 +24,8 @@ public final class ExplorationStep implements Cloneable {
 
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toplcm.threshold.view";
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toplcm.threshold.long";
-	public final static String KEY_BREADTH_SIZE = "toplcm.threshold.breadth";
 
-	static int BREADTH_SIZE = Integer.parseInt(System.getProperty(KEY_BREADTH_SIZE, "1"));
+	public static int BREADTH_SIZE = 0;
 
 	/**
 	 * @see longTransactionsMode

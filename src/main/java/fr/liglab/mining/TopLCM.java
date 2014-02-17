@@ -277,6 +277,7 @@ public class TopLCM {
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false,
 				"Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
+		options.addOption("w", true, "Width of the breadth-first exploration - defaults to 0");
 
 		try {
 			GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
@@ -336,6 +337,10 @@ public class TopLCM {
 			ExplorationStep.ultraVerbose = true;
 		} else if (cmd.hasOption('v')) {
 			ExplorationStep.verbose = true;
+		}
+		
+		if (cmd.hasOption('w')) {
+			ExplorationStep.BREADTH_SIZE = Integer.parseInt(cmd.getOptionValue('w'));
 		}
 
 		int nbThreads = Runtime.getRuntime().availableProcessors();
@@ -397,7 +402,7 @@ public class TopLCM {
 		}
 
 		int k = Integer.parseInt(cmd.getOptionValue('k'));
-
+		
 		// breadth is 0 because we're at the root, so there is no point in
 		// having some
 		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
