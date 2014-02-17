@@ -264,13 +264,8 @@ public final class ExplorationStep implements Cloneable {
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			try {
-				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE); // TODO
-																							// the
-																							// last
-																							// argument
-																							// is
-																							// now
-																							// obsolete
+				// FIXME the last argument is now obsolete
+				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE);
 				dataset.compress(this.core_item); // FIXME FIXME core_item
 													// refers an UNCOMPRESSED id
 
