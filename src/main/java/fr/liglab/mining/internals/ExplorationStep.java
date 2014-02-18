@@ -308,7 +308,7 @@ public final class ExplorationStep implements Cloneable {
 			final int tidsLimit = this.predictiveFPTestMode ? Integer.MAX_VALUE : this.counters.getMaxCandidate()+1;
 			try {
 				Dataset dataset = new Dataset(this.counters, filtered, tidsLimit);
-				if (LCM_STYLE) {
+				if (parent.core_item == Integer.MAX_VALUE) {
 					dataset.compress(this.core_item);
 				}
 
