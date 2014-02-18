@@ -413,6 +413,8 @@ public final class ExplorationStep implements Cloneable {
 					if (insertionsCounter > 0) {
 						holder.incrementRefCount(insertionsCounter);
 					}
+				} else {
+					holder.forgetMomoized();
 				}
 
 				return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
