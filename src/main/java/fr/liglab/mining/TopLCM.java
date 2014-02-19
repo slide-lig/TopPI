@@ -83,8 +83,6 @@ public class TopLCM {
 			collector.collect(initState.counters.transactionsCount, initState.counters.pattern);
 		}
 
-		initState.appendSelector(new FirstParentTest());
-
 		this.initializeAndStartThreads(initState);
 
 		this.progressWatch.setInitState(initState);

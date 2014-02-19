@@ -245,18 +245,13 @@ public final class ExplorationStep implements Cloneable {
 		final int averageLen = this.counters.distinctTransactionLengthSum / this.counters.distinctTransactionsCount;
 
 		if (averageLen < LONG_TRANSACTION_MODE_THRESHOLD && supportRate > VIEW_SUPPORT_THRESHOLD) {
-			if (parent.dataset instanceof DatasetView) {
-				this.selectChain = parent.selectChain.copy();
-			} else {
-				this.selectChain = parent.selectChain.copy(null);
-			}
-
+			this.selectChain = parent.selectChain.copy(null);
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
-			if (parent.dataset instanceof DatasetView) {
+			if (averageLen > LONG_TRANSACTION_MODE_THRESHOLD) {
 				this.selectChain = parent.selectChain.copy(FirstParentTest.getTailInstance());
 			} else {
-				this.selectChain = parent.selectChain.copy();
+				this.selectChain = parent.selectChain.copy(null);
 			}
 
 			final int[] renaming = this.counters.compressRenaming(null);
@@ -347,7 +342,8 @@ public final class ExplorationStep implements Cloneable {
 		@Override
 		public ExplorationStep execute(PerItemTopKCollector collector) {
 			try {
-				if (selectChain.select(candidate, ExplorationStep.this)) {
+				if (selectChain.select(candidate, ExplorationStep.this) && 
+						FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
 					if (dataset instanceof DatasetView) {
 						TransactionsIterable support = dataset.getSupport(candidate);
 
