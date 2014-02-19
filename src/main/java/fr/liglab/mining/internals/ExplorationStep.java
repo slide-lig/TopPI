@@ -265,8 +265,11 @@ public final class ExplorationStep implements Cloneable {
 			try {
 				// FIXME the last argument is now obsolete
 				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE);
-				dataset.compress(this.core_item); // FIXME FIXME core_item
+				
+				if (parent.core_item == Integer.MAX_VALUE) {
+					dataset.compress(this.core_item); // FIXME FIXME core_item
 													// refers an UNCOMPRESSED id
+				}
 
 				return dataset;
 			} catch (ArrayIndexOutOfBoundsException e) {
