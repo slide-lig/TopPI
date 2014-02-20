@@ -2,6 +2,7 @@ package fr.liglab.mining;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -335,7 +336,7 @@ public class TopLCM {
 		} else if (cmd.hasOption('v')) {
 			ExplorationStep.verbose = true;
 		}
-		
+
 		if (cmd.hasOption('w')) {
 			ExplorationStep.BREADTH_SIZE = Integer.parseInt(cmd.getOptionValue('w'));
 		}
@@ -399,7 +400,7 @@ public class TopLCM {
 		}
 
 		int k = Integer.parseInt(cmd.getOptionValue('k'));
-		
+
 		// breadth is 0 because we're at the root, so there is no point in
 		// having some
 		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
