@@ -2,9 +2,9 @@ package fr.liglab.mining.internals;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.mining.TopLCM;
@@ -480,8 +480,8 @@ public final class Counters implements Cloneable {
 	protected class ExtensionsIterator implements MiningTasksIterator {
 		private int index;
 		private final int max;
-		private final int breadthSize;
-		private final Queue<PatternWithFreq> upcomingExtensions = new ConcurrentLinkedQueue<PatternWithFreq>();
+		private int breadthSizeLeft;
+		private Queue<PatternWithFreq> upcomingExtensions = null;
 
 		/**
 		 * will provide an iterator on frequent items (in increasing order) in
@@ -490,51 +490,70 @@ public final class Counters implements Cloneable {
 		public ExtensionsIterator(final int to, int breadthSize) {
 			this.index = 0;
 			this.max = to;
-			this.breadthSize = Math.min(breadthSize, to);
+			this.breadthSizeLeft = Math.min(breadthSize, to);
 		}
 
 		public synchronized MiningTask next(ExplorationStep expStep) {
-			if (this.index < this.breadthSize) {
-				if (compactedArrays) {
+			if (compactedArrays) {
+				if (this.index < this.max && this.breadthSizeLeft > 0) {
+					// expand breadth
+					this.breadthSizeLeft--;
+					MiningTask res = expStep.new BreadthExploration(this.index, this);
 					this.index++;
-					return expStep.new BreadthExploration(this.index - 1, this);
-				} else {
-					while (this.index < this.breadthSize) {
+					return res;
+				} else if (this.upcomingExtensions != null) {
+					// go back to breadth part and go depth
+					PatternWithFreq p = this.upcomingExtensions.poll();
+					if (this.upcomingExtensions.isEmpty()) {
+						this.upcomingExtensions = null;
+					}
+					return expStep.new DepthExplorationPrepared(p);
+				} else if (this.index < this.max) {
+					// go depth
+					MiningTask res = expStep.new DepthExplorationFromScratch(this.index);
+					this.index++;
+					return res;
+				}
+			} else {
+				if (this.breadthSizeLeft > 0) {
+					while (this.index < this.max) {
+						// expand breadth
 						if (supportCounts[this.index] > 0) {
+							this.breadthSizeLeft--;
+							MiningTask res = expStep.new BreadthExploration(this.index, this);
 							this.index++;
-							return expStep.new BreadthExploration(this.index - 1, this);
+							return res;
 						}
 						this.index++;
 					}
 				}
-			}
-			
-			PatternWithFreq p = this.upcomingExtensions.poll();
-			
-			if (p != null) {
-				return expStep.new DepthExplorationPrepared(p);
-			}
-			
-			if (this.index < this.max) {
-				if (compactedArrays) {
-					this.index++;
-					return expStep.new DepthExplorationFromScratch(this.index - 1);
+				if (this.upcomingExtensions != null) {
+					// go back to breadth part and go depth
+					PatternWithFreq p = this.upcomingExtensions.poll();
+					if (this.upcomingExtensions.isEmpty()) {
+						this.upcomingExtensions = null;
+					}
+					return expStep.new DepthExplorationPrepared(p);
 				} else {
+					// go depth
 					while (this.index < this.max) {
 						if (supportCounts[this.index] > 0) {
+							MiningTask res = expStep.new DepthExplorationFromScratch(this.index);
 							this.index++;
-							return expStep.new DepthExplorationFromScratch(this.index - 1);
+							return res;
 						}
 						this.index++;
 					}
 				}
 			}
-			
 			return null;
 		}
 
 		@Override
-		public void pushFutureWork(PatternWithFreq p) {
+		public synchronized void pushFutureWork(PatternWithFreq p) {
+			if (this.upcomingExtensions == null) {
+				this.upcomingExtensions = new LinkedList<PatternWithFreq>();
+			}
 			this.upcomingExtensions.add(p);
 		}
 
