@@ -342,8 +342,7 @@ public final class ExplorationStep implements Cloneable {
 		@Override
 		public ExplorationStep execute(PerItemTopKCollector collector) {
 			try {
-				if (selectChain.select(candidate, ExplorationStep.this) && 
-						FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
+				if (selectChain.select(candidate, ExplorationStep.this)) {
 					if (dataset instanceof DatasetView) {
 						TransactionsIterable support = dataset.getSupport(candidate);
 
@@ -365,7 +364,7 @@ public final class ExplorationStep implements Cloneable {
 						PatternWithFreq tmp = collector.preCollect(candidate,candidateCounts);
 						tmp.keepForLater(candidateCounts, support);
 						iterator.pushFutureWork(tmp);
-					} else {
+					} else if (FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
 						int support = counters.supportCounts[candidate];
 						PatternWithFreq tmp = collector.preCollect(support, counters.pattern, candidate,
 								counters.reverseRenaming[candidate]);
