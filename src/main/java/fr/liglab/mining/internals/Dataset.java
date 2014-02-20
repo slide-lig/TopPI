@@ -108,7 +108,11 @@ public class Dataset implements Cloneable {
 	}
 
 	public void compress(int coreItem) {
-		((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
+		try {
+			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
+		} catch (ClassCastException e) {
+		}
+		
 		this.transactions.compress(coreItem);
 	}
 

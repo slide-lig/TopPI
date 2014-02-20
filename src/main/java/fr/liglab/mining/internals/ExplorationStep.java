@@ -173,6 +173,42 @@ public final class ExplorationStep implements Cloneable {
 		this.candidates = candidates;
 		this.failedFPTests = failedFPTests;
 	}
+	
+	/**
+	 * for a normal LCM use you should use .next() instead
+	 * @param item internal ID
+	 * @return the projected step, or null in case of failed first-parent test
+	 */
+	public ExplorationStep project(int candidate) {
+		try {
+			if (selectChain == null || selectChain.select(candidate, ExplorationStep.this)) {
+				TransactionsIterable support = dataset.getSupport(candidate);
+
+				Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
+						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
+				
+				int greatest = Integer.MIN_VALUE;
+				for (int i = 0; i < candidateCounts.closure.length; i++) {
+					if (candidateCounts.closure[i] > greatest) {
+						greatest = candidateCounts.closure[i];
+					}
+				}
+
+				if (greatest > candidate) {
+					throw new WrongFirstParentException(candidate, greatest);
+				}
+				
+				ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
+						support);
+
+				return next;
+			}
+		} catch (WrongFirstParentException e) {
+			addFailedFPTest(e.extension, e.firstParent);
+		}
+		
+		return null;
+	}
 
 	/**
 	 * Finds an extension for current pattern in current dataset and returns the
@@ -245,13 +281,13 @@ public final class ExplorationStep implements Cloneable {
 		final int averageLen = this.counters.distinctTransactionLengthSum / this.counters.distinctTransactionsCount;
 
 		if (averageLen < LONG_TRANSACTION_MODE_THRESHOLD && supportRate > VIEW_SUPPORT_THRESHOLD) {
-			this.selectChain = parent.selectChain.copy(null);
+			copySelectChain(parent.selectChain, null);
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
 			if (averageLen > LONG_TRANSACTION_MODE_THRESHOLD) {
-				this.selectChain = parent.selectChain.copy(FirstParentTest.getTailInstance());
+				copySelectChain(parent.selectChain, FirstParentTest.getTailInstance());
 			} else {
-				this.selectChain = parent.selectChain.copy(null);
+				copySelectChain(parent.selectChain, null);
 			}
 
 			final int[] renaming = this.counters.compressRenaming(null);
@@ -274,6 +310,14 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			return null;
+		}
+	}
+	
+	private void copySelectChain(Selector chain, Selector follower) {
+		if (chain == null) {
+			this.selectChain = follower;
+		} else {
+			this.selectChain = chain.copy(follower);
 		}
 	}
 

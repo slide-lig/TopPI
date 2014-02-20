@@ -41,7 +41,7 @@ public class TopLCM {
 	private ProgressWatcherThread progressWatch;
 	protected static long chrono;
 
-	private final PerItemTopKCollector collector;
+	PerItemTopKCollector collector;
 
 	private final long[] globalCounters;
 
@@ -73,7 +73,7 @@ public class TopLCM {
 			t.start();
 		}
 	}
-
+	
 	/**
 	 * Initial invocation
 	 */

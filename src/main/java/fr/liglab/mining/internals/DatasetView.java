@@ -39,7 +39,11 @@ class DatasetView extends Dataset {
 	DatasetView(final Dataset parent, final Counters counts, TransactionsIterable viewed, int ignoredItem) {
 		super(parent.transactions, parent.tidLists);
 		
-		((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbDatasetViews.ordinal()]++;
+		try {
+			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbDatasetViews.ordinal()]++;
+		} catch (ClassCastException e) {
+			
+		}
 		
 		this.tids = viewed.tids;
 		this.ignoreItems = ItemsetsFactory.extend(counts.closure, ignoredItem, parent.getIgnoredItems());

@@ -231,7 +231,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	protected void outputAll() {
+	public void outputAll() {
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
