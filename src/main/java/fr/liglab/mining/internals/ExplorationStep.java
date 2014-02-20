@@ -395,7 +395,21 @@ public final class ExplorationStep implements Cloneable {
 			Counters candidateCounts = holder.getMemoizedCounters();
 			TransactionsIterable support = holder.getMemoizedSupport();
 			holder.forgetMomoized();
+			boolean useful = false;
 			if (support == null) {
+				if (!holder.isStillInTopKs()) {
+					try {
+						useful = selectChain.allowExploration(candidate, ExplorationStep.this);
+					} catch (WrongFirstParentException e) {
+						System.err.println("no failed fp test is suppose to take place here");
+						System.exit(1);
+						e.printStackTrace();
+					}
+					if (!useful) {
+						return fake;
+					}
+				}
+
 				support = dataset.getSupport(candidate);
 
 				candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
@@ -414,7 +428,7 @@ public final class ExplorationStep implements Cloneable {
 				}
 			}
 			try {
-				if (selectChain.allowExploration(candidate, ExplorationStep.this)) {
+				if (useful || selectChain.allowExploration(candidate, ExplorationStep.this)) {
 					return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
 				}
 			} catch (WrongFirstParentException e) {
