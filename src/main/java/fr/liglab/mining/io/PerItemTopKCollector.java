@@ -84,7 +84,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public PatternWithFreq preCollect(int candidate, Counters c) {
-		
+
 		PatternWithFreq placeholder = new PatternWithFreq(c.transactionsCount, candidate, c.pattern);
 		int nbRefs = 0;
 		for (final int item : c.pattern) {
@@ -232,6 +232,18 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	protected void outputAll() {
+		for (final int item : this.topK.keys()) {
+			final PatternWithFreq[] itemTopK = this.topK.get(item);
+			int nbPatterns = 0;
+			for (int i = 0; i < itemTopK.length; i++) {
+				if (itemTopK[i] == null) {
+					break;
+				} else {
+					nbPatterns++;
+				}
+			}
+			System.out.println(item + "\t" + nbPatterns);
+		}
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
