@@ -59,8 +59,10 @@ public final class Counters implements Cloneable {
 	 * if renaming happened, in which case such items no longer exists.
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
+	 * 
+	 * TODO private+accessor
 	 */
-	public final int[] supportCounts;
+	public int[] supportCounts;
 
 	/**
 	 * For each item having a support count in [minSupport; 100% [ , gives how
@@ -68,8 +70,10 @@ public final class Counters implements Cloneable {
 	 * if all transactions have a weight equal to 1
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
+	 * 
+	 * TODO private+accessor
 	 */
-	public final int[] distinctTransactionsCounts;
+	public int[] distinctTransactionsCounts;
 
 	/**
 	 * Items found to have a support count equal to transactionsCount (using IDs
@@ -167,6 +171,7 @@ public final class Counters implements Cloneable {
 			// coz sometimes we're in a unit test...
 		}
 
+		this.reverseRenaming = reuseReverseRenaming;
 		this.renaming = null;
 		this.minSupport = minimumSupport;
 		this.supportCounts = new int[maxItem + 1];
@@ -238,9 +243,15 @@ public final class Counters implements Cloneable {
 		}
 
 		this.closure = closureBuilder.get();
-		this.reverseRenaming = reuseReverseRenaming;
 
-		this.pattern = ItemsetsFactory.extendRename(this.closure, extension, parentPattern, this.reverseRenaming);
+		if (parentPattern.length == 0 && extension >= this.reverseRenaming.length) {
+			this.pattern = Arrays.copyOf(this.closure, this.closure.length);
+			for (int i = 0; i < this.pattern.length; i++) {
+				this.pattern[i] = this.reverseRenaming[this.pattern[i]];
+			}
+		} else {
+			this.pattern = ItemsetsFactory.extendRename(this.closure, extension, parentPattern, this.reverseRenaming);
+		}
 
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
@@ -442,6 +453,96 @@ public final class Counters implements Cloneable {
 
 		this.renaming = renaming;
 
+		return renaming;
+	}
+	
+	public static int[] sort(int[] ref, int max, int len) {
+		int[] reverse = new int[len];
+		max = Math.min(max, ref.length);
+		for (int i = 0; i < max; i++) {
+			if (ref[i] > 0) {
+				reverse[i] = i;
+			} else {
+				reverse[i] = -i-1;
+			}
+			
+			int j = i;
+			for(; j>0 && ref[j-1] < ref[j]; j--){
+				final int t = ref[j-1];
+				ref[j-1] = ref[j];
+				ref[j] = t;
+				
+				final int r = reverse[j-1];
+				reverse[j-1] = reverse[j];
+				reverse[j] = r;
+			}
+		}
+		for (int i = max; i < reverse.length; i++) {
+			if (ref[i] > 0) {
+				reverse[i] = i;
+			} else {
+				reverse[i] = -i-1;
+			}
+		}
+		return reverse;
+	}
+
+	/**
+	 * Will compress an older renaming, by removing infrequent items. Contained
+	 * arrays (except closure) will refer new item IDs
+	 * 
+	 * @param olderReverseRenaming
+	 *            reverseRenaming from the dataset that fed this Counter
+	 * @param items below this parameter will be renamed by decreasing frequency
+	 * @return the translation from the old renaming to the compressed one
+	 *         (gives -1 for removed items)
+	 */
+	public int[] compressRenaming(int[] olderReverseRenaming, int rebaseBelow) {
+		if (olderReverseRenaming == null) {
+			olderReverseRenaming = this.reverseRenaming;
+		}
+
+		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
+		int[] reverseFromCompressed = sort(this.supportCounts, rebaseBelow, renaming.length);
+		for (int i = 0; i < reverseFromCompressed.length; i++) {
+			int pos = reverseFromCompressed[i];
+			if (pos<0) {
+				renaming[-pos-1] = -1;
+			} else {
+				renaming[pos] = i;
+			}
+		}
+		
+		this.reverseRenaming = new int[this.nbFrequents];
+
+		int[] oldDTC = this.distinctTransactionsCounts;
+		this.distinctTransactionsCounts = new int[this.nbFrequents];
+		
+		int[] oldSC = this.supportCounts;
+		this.supportCounts = new int[this.nbFrequents];
+		
+		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
+
+		for (int item = 0; item < oldSC.length; item++) {
+			final int newItemID = renaming[item];
+			if (newItemID >= 0) {
+				this.reverseRenaming[newItemID] = olderReverseRenaming[item];
+				this.distinctTransactionsCounts[newItemID] = oldDTC[item];
+				this.supportCounts[newItemID] = oldSC[item];
+
+				if (item < rebaseBelow && newItemID > greatestBelowMaxCandidate) {
+					greatestBelowMaxCandidate = newItemID;
+				}
+				
+				if (newItemID > this.maxFrequent) {
+					this.maxFrequent = newItemID;
+				}
+			}
+		}
+
+		this.maxCandidate = greatestBelowMaxCandidate + 1;
+		this.compactedArrays = true;
+		this.renaming = renaming;
 		return renaming;
 	}
 

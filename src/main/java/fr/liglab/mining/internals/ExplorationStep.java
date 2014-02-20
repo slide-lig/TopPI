@@ -70,7 +70,7 @@ public final class ExplorationStep implements Cloneable {
 	 * are non-first-parent items associated to their actual first parent.
 	 */
 	private final TIntIntHashMap failedFPTests;
-
+	
 	// only used to make a fake one
 	private ExplorationStep() {
 		this.failedFPTests = null;
@@ -79,7 +79,7 @@ public final class ExplorationStep implements Cloneable {
 		this.core_item = Integer.MIN_VALUE;
 		this.candidates = null;
 	}
-
+	
 	/**
 	 * Start exploration on a dataset contained in a file.
 	 * 
@@ -173,42 +173,6 @@ public final class ExplorationStep implements Cloneable {
 		this.candidates = candidates;
 		this.failedFPTests = failedFPTests;
 	}
-	
-	/**
-	 * for a normal LCM use you should use .next() instead
-	 * @param item internal ID
-	 * @return the projected step, or null in case of failed first-parent test
-	 */
-	public ExplorationStep project(int candidate) {
-		try {
-			if (selectChain == null || selectChain.select(candidate, ExplorationStep.this)) {
-				TransactionsIterable support = dataset.getSupport(candidate);
-
-				Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
-				
-				int greatest = Integer.MIN_VALUE;
-				for (int i = 0; i < candidateCounts.closure.length; i++) {
-					if (candidateCounts.closure[i] > greatest) {
-						greatest = candidateCounts.closure[i];
-					}
-				}
-
-				if (greatest > candidate) {
-					throw new WrongFirstParentException(candidate, greatest);
-				}
-				
-				ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
-						support);
-
-				return next;
-			}
-		} catch (WrongFirstParentException e) {
-			addFailedFPTest(e.extension, e.firstParent);
-		}
-		
-		return null;
-	}
 
 	/**
 	 * Finds an extension for current pattern in current dataset and returns the
@@ -235,6 +199,34 @@ public final class ExplorationStep implements Cloneable {
 	}
 
 	/**
+	 * for a normal LCM use you should use .next() instead
+	 * @param item internal ID
+	 * @return the projected step, or null in case of failed first-parent test
+	 */
+	public ExplorationStep project(int candidate) {
+		TransactionsIterable support = this.dataset.getSupport(candidate);
+		
+		Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
+				this.counters.maxFrequent + 1, null, this.counters.maxFrequent + 1,
+				this.counters.getReverseRenaming(), new int[] {});
+		//Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator());
+		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), Integer.MAX_VALUE);
+		
+		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
+		
+		return new ExplorationStep(candidateCounts,filtered);
+	}
+
+	private ExplorationStep(Counters candidateCounts, Iterator<TransactionReader> support) {
+		this.failedFPTests = new TIntIntHashMap();
+		this.counters = candidateCounts;
+		this.core_item = Integer.MAX_VALUE;
+		this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+		this.dataset = new Dataset(candidateCounts, support);
+		this.selectChain = null;
+	}
+
+	/**
 	 * Instantiate state for a valid extension.
 	 * 
 	 * @param parent
@@ -248,7 +240,15 @@ public final class ExplorationStep implements Cloneable {
 	@SuppressWarnings("boxing")
 	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
 			TransactionsIterable support) {
+		this(parent, extension, candidateCounts, support, Integer.MIN_VALUE);
+	}
 
+	/** 
+	 * @param reorderBelow if greater Integer.MIN_VALUE, lower items may be reordered 
+	 */
+	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
+				TransactionsIterable support, int reorderBelow) {
+			
 		this.core_item = extension;
 		this.counters = candidateCounts;
 		int[] reverseRenaming = parent.counters.reverseRenaming;
@@ -269,12 +269,12 @@ public final class ExplorationStep implements Cloneable {
 			this.dataset = null;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
-			this.dataset = instanciateDatasetAndPickSelectors(parent, support);
+			this.dataset = instanciateDatasetAndPickSelectors(parent, support, reorderBelow);
 			this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
 		}
 	}
 
-	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support) {
+	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support, int reorderBelow) {
 		final double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
@@ -290,14 +290,19 @@ public final class ExplorationStep implements Cloneable {
 				copySelectChain(parent.selectChain, null);
 			}
 
-			final int[] renaming = this.counters.compressRenaming(null);
+			final int[] renaming;
+			if (reorderBelow == Integer.MIN_VALUE) {
+				renaming = this.counters.compressRenaming(null);
+			} else {
+				renaming = this.counters.compressRenaming(null, reorderBelow);
+			}
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			try {
 				// FIXME the last argument is now obsolete
 				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE);
 				
-				if (parent.core_item == Integer.MAX_VALUE) {
+				if (parent.core_item == Integer.MAX_VALUE && this.core_item < Integer.MAX_VALUE) {
 					dataset.compress(this.core_item); // FIXME FIXME core_item
 													// refers an UNCOMPRESSED id
 				}
