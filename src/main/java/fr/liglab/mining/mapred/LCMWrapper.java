@@ -68,7 +68,7 @@ public final class LCMWrapper {
 		Grouper grouper = new Grouper(nbGroups, maxId);
 		FrequentsIterator collected;
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) == 1) {
 			// collect all
 			collected = initState.counters.getExtensionsIdIterator();
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
@@ -87,7 +87,7 @@ public final class LCMWrapper {
 		
 		Selector chain = topKcoll.asSelector();
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) > 0) { // start group
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) > 0) { // start group
 			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
 			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState));
 		}

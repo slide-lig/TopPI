@@ -27,7 +27,7 @@ public class MiningReducer extends
 		Configuration conf = context.getConfiguration();
 		this.reverseRebasing = DistCache.readReverseRebasing(conf);
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 2) {
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) == 2) {
 			if (conf.get(LCMWrapper.KEY_BOUNDS_PATH) != null) {
 				this.sideOutputs = new MultipleOutputs<IntWritable, SupportAndTransactionWritable>(context);
 			}
