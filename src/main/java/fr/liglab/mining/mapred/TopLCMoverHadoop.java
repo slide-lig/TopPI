@@ -44,6 +44,7 @@ public class TopLCMoverHadoop {
 	public static final String KEY_SINGLE_GROUP  = "toplcm.only.group";
 	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder"; // DistCache or hdfs,
 	public static final String KEY_NB_THREADS    = "toplcm.reducer.threads"; // threads per reducer task - defaults to 1
+	public static final String KEY_BREADTH_WIDTH = "toplcm.lcm.breadth.width"; // defaults to 0, ie. no breadth-first exploration
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
@@ -79,7 +80,7 @@ public class TopLCMoverHadoop {
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
 			
-			switch (this.conf.getInt(KEY_METHOD, 0)) {
+			switch (this.conf.getInt(KEY_METHOD, 2)) {
 			case 1:
 				// Algo 1: restrict starters to group's items, collect all item's top-Ks, aggregate
 				if (mineSinglePass(rawPatternsPath) && aggregate(topKperItemPath, rawPatternsPath)){

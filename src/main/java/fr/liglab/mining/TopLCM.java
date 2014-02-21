@@ -2,7 +2,6 @@ package fr.liglab.mining;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -442,6 +441,9 @@ public class TopLCM {
 		}
 		if (cmd.hasOption('V')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, true);
+		}
+		if (cmd.hasOption('w')) {
+			conf.setInt(TopLCMoverHadoop.KEY_BREADTH_WIDTH, Integer.parseInt(cmd.getOptionValue('w')));
 		}
 
 		TopLCMoverHadoop driver = new TopLCMoverHadoop(conf);

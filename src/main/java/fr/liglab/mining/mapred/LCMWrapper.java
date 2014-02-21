@@ -52,6 +52,7 @@ public final class LCMWrapper {
 
 		ExplorationStep.verbose = conf.getBoolean(TopLCMoverHadoop.KEY_VERBOSE, false);
 		ExplorationStep.ultraVerbose = conf.getBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, false);
+		ExplorationStep.BREADTH_SIZE = conf.getInt(TopLCMoverHadoop.KEY_BREADTH_WIDTH, 0);
 		
 		final int k        = conf.getInt(TopLCMoverHadoop.KEY_K, 1);
 		final int minsup   = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 1000);
