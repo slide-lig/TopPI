@@ -304,7 +304,8 @@ public final class ExplorationStep implements Cloneable {
 				
 				if (parent.core_item == Integer.MAX_VALUE && this.core_item < Integer.MAX_VALUE) {
 					dataset.compress(this.core_item); // FIXME FIXME core_item
-													// refers an UNCOMPRESSED id
+														// refers an
+														// UNCOMPRESSED id
 				}
 
 				return dataset;
@@ -410,7 +411,7 @@ public final class ExplorationStep implements Cloneable {
 							throw new WrongFirstParentException(candidate, greatest);
 						}
 
-						PatternWithFreq tmp = collector.preCollect(candidate,candidateCounts);
+						PatternWithFreq tmp = collector.preCollect(candidate, candidateCounts);
 						tmp.keepForLater(candidateCounts, support);
 						iterator.pushFutureWork(tmp);
 					} else if (FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
@@ -438,36 +439,53 @@ public final class ExplorationStep implements Cloneable {
 		// handle still in topk before
 		@Override
 		public ExplorationStep execute(PerItemTopKCollector collector) {
-			if (holder.isStillInTopKs()) {
-				final int candidate = holder.extension;
-				Counters candidateCounts = holder.getMemoizedCounters();
-				TransactionsIterable support = holder.getMemoizedSupport();
 
-				if (support == null) {
-					support = dataset.getSupport(candidate);
-
-					candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-							dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
-					
-					// now let's collect the right pattern
-					holder.setPattern(candidateCounts.pattern);
-					int insertionsCounter = 0;
-					for (int item : candidateCounts.closure) {
-						if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
-							insertionsCounter++;
-						}
+			final int candidate = holder.extension;
+			Counters candidateCounts = holder.getMemoizedCounters();
+			TransactionsIterable support = holder.getMemoizedSupport();
+			holder.forgetMomoized();
+			boolean useful = false;
+			if (support == null) {
+				if (!holder.isStillInTopKs()) {
+					try {
+						useful = selectChain.allowExploration(candidate, ExplorationStep.this);
+					} catch (WrongFirstParentException e) {
+						System.err.println("no failed fp test is suppose to take place here");
+						System.exit(1);
+						e.printStackTrace();
 					}
-					if (insertionsCounter > 0) {
-						holder.incrementRefCount(insertionsCounter);
+					if (!useful) {
+						return fake;
 					}
-				} else {
-					holder.forgetMomoized();
 				}
 
-				return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
-			} else {
-				return fake;
+				support = dataset.getSupport(candidate);
+
+				candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
+						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
+
+				// now let's collect the right pattern
+				holder.setPattern(candidateCounts.pattern);
+				int insertionsCounter = 0;
+				for (int item : candidateCounts.closure) {
+					if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
+						insertionsCounter++;
+					}
+				}
+				if (insertionsCounter > 0) {
+					holder.incrementRefCount(insertionsCounter);
+				}
 			}
+			try {
+				if (useful || selectChain.allowExploration(candidate, ExplorationStep.this)) {
+					return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
+				}
+			} catch (WrongFirstParentException e) {
+				e.printStackTrace();
+				System.err.println("no failed fp test is suppose to take place here");
+				System.exit(1);
+			}
+			return fake;
 		}
 	}
 
@@ -497,7 +515,7 @@ public final class ExplorationStep implements Cloneable {
 					if (greatest > candidate) {
 						throw new WrongFirstParentException(candidate, greatest);
 					}
-					
+
 					ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
 							support);
 
