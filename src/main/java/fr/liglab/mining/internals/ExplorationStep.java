@@ -281,13 +281,13 @@ public final class ExplorationStep implements Cloneable {
 		final int averageLen = this.counters.distinctTransactionLengthSum / this.counters.distinctTransactionsCount;
 
 		if (averageLen < LONG_TRANSACTION_MODE_THRESHOLD && supportRate > VIEW_SUPPORT_THRESHOLD) {
-			copySelectChain(parent.selectChain, null);
+			copySelectChainWithoutFPT(parent.selectChain);
 			return new DatasetView(parent.dataset, this.counters, support, this.core_item);
 		} else {
 			if (averageLen > LONG_TRANSACTION_MODE_THRESHOLD) {
-				copySelectChain(parent.selectChain, FirstParentTest.getTailInstance());
+				copySelectChainWithFPT(parent.selectChain);
 			} else {
-				copySelectChain(parent.selectChain, null);
+				copySelectChainWithoutFPT(parent.selectChain);
 			}
 
 			final int[] renaming;
@@ -318,12 +318,26 @@ public final class ExplorationStep implements Cloneable {
 			return null;
 		}
 	}
-	
-	private void copySelectChain(Selector chain, Selector follower) {
+
+	private void copySelectChainWithFPT(Selector chain) {
 		if (chain == null) {
-			this.selectChain = follower;
+			this.selectChain = FirstParentTest.getTailInstance();
+		} else if (chain.contains(FirstParentTest.class)){
+			this.selectChain = chain.copy();
 		} else {
-			this.selectChain = chain.copy(follower);
+			this.selectChain = chain.append(FirstParentTest.getTailInstance());
+		}
+	}
+
+	private void copySelectChainWithoutFPT(Selector chain) {
+		if (chain == null) {
+			this.selectChain = null;
+		} else if (chain.contains(FirstParentTest.class)){
+			///// FIXME: this is not really correct
+			///// that selectChain stuff is not adapated
+			this.selectChain = chain.copy(null);
+		} else {
+			this.selectChain = chain.copy();
 		}
 	}
 

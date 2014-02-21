@@ -101,4 +101,16 @@ public abstract class Selector {
 			this.extension = exploredExtension;
 		}
 	}
+
+	public boolean contains(Class<? extends Selector> cla) {
+		if (cla.isInstance(this)) {
+			return true;
+		} else {
+			if (this.next == null) {
+				return false;
+			} else {
+				return this.next.contains(cla);
+			}
+		}
+	}
 }
