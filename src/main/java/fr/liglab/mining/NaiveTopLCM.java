@@ -47,7 +47,14 @@ public class NaiveTopLCM {
 	
 	void go() {
 		for (NaiveTopLCMThread thread : this.threads) {
-			thread.run();
+			thread.start();
+		}
+		for (NaiveTopLCMThread t : this.threads) {
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 	
