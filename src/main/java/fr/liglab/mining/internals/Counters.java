@@ -457,34 +457,42 @@ public final class Counters implements Cloneable {
 		return renaming;
 	}
 	
-	public static int[] sort(int[] ref, int max, int len) {
-		int[] reverse = new int[len];
+	public static int[] sort(int[] ref, int max) {
+		int[] reverse = new int[ref.length];
 		max = Math.min(max, ref.length);
+		int up = 0;
 		for (int i = 0; i < max; i++) {
 			if (ref[i] > 0) {
-				reverse[i] = i;
-			} else {
-				reverse[i] = -i-1;
-			}
-			
-			int j = i;
-			for(; j>0 && ref[j-1] < ref[j]; j--){
-				final int t = ref[j-1];
-				ref[j-1] = ref[j];
-				ref[j] = t;
+				reverse[up] = i;
+				ref[up] = ref[i];
 				
-				final int r = reverse[j-1];
-				reverse[j-1] = reverse[j];
-				reverse[j] = r;
+				for(int j = up; j>0 && ref[j-1] < ref[j]; j--){
+					final int t = ref[j-1];
+					ref[j-1] = ref[j];
+					ref[j] = t;
+					
+					final int r = reverse[j-1];
+					reverse[j-1] = reverse[j];
+					reverse[j] = r;
+				}
+				up++;
 			}
 		}
-		for (int i = max; i < reverse.length; i++) {
+		
+		for (int i = max; i < ref.length; i++) {
 			if (ref[i] > 0) {
-				reverse[i] = i;
-			} else {
-				reverse[i] = -i-1;
+				reverse[up] = i;
+				ref[up] = ref[i];
+				up++;
 			}
 		}
+		
+		while (up < reverse.length) {
+			ref[up] = -1;
+			reverse[up] = -1;
+			up++;
+		}
+		
 		return reverse;
 	}
 
@@ -505,13 +513,12 @@ public final class Counters implements Cloneable {
 		}
 
 		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
-		int[] reverseFromCompressed = sort(this.supportCounts, rebaseBelow, renaming.length);
+		Arrays.fill(renaming, -1);
+		int[] reverseFromCompressed = sort(this.supportCounts, rebaseBelow);
 		
 		for (int i = 0; i < reverseFromCompressed.length; i++) {
 			int pos = reverseFromCompressed[i];
-			if (pos<0) {
-				renaming[-pos-1] = -1;
-			} else {
+			if (pos>=0) {
 				renaming[pos] = i;
 			}
 		}
@@ -544,17 +551,13 @@ public final class Counters implements Cloneable {
 		int[] oldDTC = this.distinctTransactionsCounts;
 		this.distinctTransactionsCounts = new int[this.nbFrequents];
 		
-		int[] oldSC = this.supportCounts;
-		this.supportCounts = new int[this.nbFrequents];
-		
 		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
 
-		for (int item = 0; item < oldSC.length; item++) {
+		for (int item = 0; item < oldDTC.length; item++) {
 			final int newItemID = renaming[item];
 			if (newItemID >= 0) {
 				this.reverseRenaming[newItemID] = olderReverseRenaming[item];
 				this.distinctTransactionsCounts[newItemID] = oldDTC[item];
-				this.supportCounts[newItemID] = oldSC[item];
 
 				if (item < rebaseBelow && newItemID > greatestBelowMaxCandidate) {
 					greatestBelowMaxCandidate = newItemID;

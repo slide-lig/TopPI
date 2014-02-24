@@ -241,7 +241,7 @@ public final class ExplorationStep implements Cloneable {
 	@SuppressWarnings("boxing")
 	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
 			TransactionsIterable support) {
-		this(parent, extension, candidateCounts, support, Integer.MIN_VALUE);
+		this(parent, extension, candidateCounts, support, extension);
 	}
 
 	/** 
