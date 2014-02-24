@@ -90,8 +90,9 @@ public final class Counters implements Cloneable {
 
 	/**
 	 * Counts how many items have a support count in [minSupport; 100% [
+	 * TODO protected+accessor
 	 */
-	public final int nbFrequents;
+	public int nbFrequents;
 
 	/**
 	 * Biggest item ID having a support count in [minSupport; 100% [
@@ -494,22 +495,47 @@ public final class Counters implements Cloneable {
 	 * @param olderReverseRenaming
 	 *            reverseRenaming from the dataset that fed this Counter
 	 * @param items below this parameter will be renamed by decreasing frequency
+	 * @param if set below Integer.MAX_VALUE, we'll only keep the top-k distincts highest-support items.
 	 * @return the translation from the old renaming to the compressed one
 	 *         (gives -1 for removed items)
 	 */
-	public int[] compressRenaming(int[] olderReverseRenaming, int rebaseBelow) {
+	public int[] compressRenaming(int[] olderReverseRenaming, int rebaseBelow, int topK) {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
 
 		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		int[] reverseFromCompressed = sort(this.supportCounts, rebaseBelow, renaming.length);
+		
 		for (int i = 0; i < reverseFromCompressed.length; i++) {
 			int pos = reverseFromCompressed[i];
 			if (pos<0) {
 				renaming[-pos-1] = -1;
 			} else {
 				renaming[pos] = i;
+			}
+		}
+		
+		if (topK < Integer.MAX_VALUE) {
+			this.nbFrequents = 0;
+			int distinctValues = 0;
+			int previousSupport = Integer.MAX_VALUE;
+			int i=0;
+			for (; i < reverseFromCompressed.length && distinctValues < topK; i++) {
+				final int item = reverseFromCompressed[i];
+				if (item>=0) {
+					if (this.supportCounts[item] < previousSupport) {
+						distinctValues++;
+						previousSupport = this.supportCounts[item];
+					}
+					this.nbFrequents++;
+				}
+			}
+			for (; i < reverseFromCompressed.length; i++) {
+				final int item = reverseFromCompressed[i];
+				if (item>=0) {
+					renaming[item]=-1;
+				}
 			}
 		}
 		

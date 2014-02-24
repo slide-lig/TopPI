@@ -203,14 +203,15 @@ public final class ExplorationStep implements Cloneable {
 	 * @param item internal ID
 	 * @return the projected step, or null in case of failed first-parent test
 	 */
-	public ExplorationStep project(int candidate) {
+	public ExplorationStep project(int candidate, int k) {
 		TransactionsIterable support = this.dataset.getSupport(candidate);
 		
 		Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(), 
 				this.counters.maxFrequent + 1, null, this.counters.maxFrequent + 1,
 				this.counters.getReverseRenaming(), new int[] {});
 		//Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator());
-		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), Integer.MAX_VALUE);
+		
+		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), Integer.MAX_VALUE, k);
 		
 		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 		
@@ -294,7 +295,7 @@ public final class ExplorationStep implements Cloneable {
 			if (reorderBelow == Integer.MIN_VALUE) {
 				renaming = this.counters.compressRenaming(null);
 			} else {
-				renaming = this.counters.compressRenaming(null, reorderBelow);
+				renaming = this.counters.compressRenaming(null, reorderBelow, Integer.MAX_VALUE);
 			}
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 

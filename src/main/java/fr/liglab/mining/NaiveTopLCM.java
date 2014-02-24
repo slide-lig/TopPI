@@ -77,7 +77,7 @@ public class NaiveTopLCM {
 				this.wrapped = new TopLCM(null, 1);
 				this.wrapped.collector = new PerItemTopKCollector(collector, this.k, 1, this.items);
 				
-				ExplorationStep projected = initState.project(item);
+				ExplorationStep projected = initState.project(item, this.k);
 				if (projected != null) {
 					projected.appendSelector(this.wrapped.collector.asSelector());
 					this.wrapped.lcm(projected);
