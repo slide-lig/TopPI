@@ -24,6 +24,7 @@ import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.io.StdOutCollector;
 import fr.liglab.mining.util.MemoryPeakWatcherThread;
+import fr.liglab.mining.util.ProgressWatcherThread;
 
 public class NaiveTopLCM {
 	final List<NaiveTopLCMThread> threads;
@@ -31,12 +32,15 @@ public class NaiveTopLCM {
 	final PatternsCollector collector;
 	final ReentrantLock collectorLock = new ReentrantLock();
 	final ExplorationStep initState;
+	private ProgressWatcherThread progressWatch;
 	
 	public NaiveTopLCM(int k, PatternsCollector collector, ExplorationStep initState, int nbThreads) {
 		this.starters = initState.counters.getExtensionsIdIterator();
 		this.threads = new ArrayList<NaiveTopLCMThread>(nbThreads);
 		this.collector = collector;
 		this.initState = initState;
+		this.progressWatch = new ProgressWatcherThread();
+		this.progressWatch.setInitState(initState);
 		
 		int[] reverseRenaming = initState.counters.getReverseRenaming();
 		
@@ -46,6 +50,7 @@ public class NaiveTopLCM {
 	}
 	
 	void go() {
+		this.progressWatch.start();
 		for (NaiveTopLCMThread thread : this.threads) {
 			thread.start();
 		}
@@ -56,6 +61,7 @@ public class NaiveTopLCM {
 				throw new RuntimeException(e);
 			}
 		}
+		this.progressWatch.interrupt();
 	}
 	
 	private final class NaiveTopLCMThread extends Thread {

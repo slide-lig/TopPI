@@ -44,8 +44,12 @@ public class TopLCM {
 	PerItemTopKCollector collector;
 
 	private final long[] globalCounters;
-
+	
 	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
+		this(patternsCollector, nbThreads, true);
+	}
+
+	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads, boolean launchProgressWatch) {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
@@ -53,12 +57,14 @@ public class TopLCM {
 		this.threads = new ArrayList<TopLCMThread>(nbThreads);
 		this.createThreads(nbThreads);
 		this.globalCounters = new long[TopLCMCounters.values().length];
-		this.progressWatch = new ProgressWatcherThread();
+		this.progressWatch = launchProgressWatch ? new ProgressWatcherThread() : null;
 	}
 
 	@SuppressWarnings("rawtypes")
 	public void setHadoopContext(Context context) {
-		this.progressWatch.setHadoopContext(context);
+		if (this.progressWatch != null) {
+			this.progressWatch.setHadoopContext(context);
+		}
 	}
 
 	void createThreads(int nbThreads) {
@@ -83,9 +89,11 @@ public class TopLCM {
 		}
 
 		this.initializeAndStartThreads(initState);
-
-		this.progressWatch.setInitState(initState);
-		this.progressWatch.start();
+		
+		if (this.progressWatch != null) {
+			this.progressWatch.setInitState(initState);
+			this.progressWatch.start();
+		}
 
 		for (TopLCMThread t : this.threads) {
 			try {
@@ -98,7 +106,9 @@ public class TopLCM {
 			}
 		}
 
-		this.progressWatch.interrupt();
+		if (this.progressWatch != null) {
+			this.progressWatch.interrupt();
+		}
 	}
 
 	public Map<TopLCMCounters, Long> getCounters() {
