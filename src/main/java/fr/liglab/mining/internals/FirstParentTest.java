@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
@@ -85,8 +85,7 @@ public final class FirstParentTest extends Selector {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.PreFPTestsRejections
-							.ordinal()]++;
+					CountersHandler.increment(TopLCMCounters.PreFPTestsRejections);
 					throw new WrongFirstParentException(extension, i);
 				}
 			}

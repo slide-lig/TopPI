@@ -2,12 +2,12 @@ package fr.liglab.mining.internals;
 
 import java.util.Iterator;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList;
-import fr.liglab.mining.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList.TIntIterable;
+import fr.liglab.mining.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.transactions.IntIndexedTransactionsList;
 import fr.liglab.mining.internals.transactions.ReusableTransactionIterator;
 import fr.liglab.mining.internals.transactions.TransactionsList;
@@ -52,11 +52,7 @@ public class Dataset implements Cloneable {
 	 *            MAX_VALUE when using predictive pptest.
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
-		try {
-			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbDatasets.ordinal()]++;
-		} catch (ClassCastException e) {
-			// the initial dataset is not instanciated ina  TopLCMThread...
-		}
+		CountersHandler.increment(TopLCMCounters.NbDatasets);
 		
 		int maxTransId;
 
@@ -108,11 +104,6 @@ public class Dataset implements Cloneable {
 	}
 
 	public void compress(int coreItem) {
-		try {
-			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
-		} catch (ClassCastException e) {
-		}
-		
 		this.transactions.compress(coreItem);
 	}
 

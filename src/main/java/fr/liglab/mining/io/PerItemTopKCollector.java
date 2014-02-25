@@ -1,7 +1,7 @@
 package fr.liglab.mining.io;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.Counters;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.ExplorationStep;
@@ -382,14 +382,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 		void onEjection() {
 			int refs = this.refCount.decrementAndGet();
 			if (refs == 0) {
-				if (this.pattern == null) {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPlaceholders
-							.ordinal()]++;
-				} else {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.EjectedPatterns.ordinal()]++;
-				}
-				this.memoizedCounters = null;
-				this.memoizedSupport = null;
+				CountersHandler.increment((this.pattern == null) ? 
+						TopLCMCounters.EjectedPlaceholders : TopLCMCounters.EjectedPatterns);
+				this.forgetMomoized();
 			}
 		}
 

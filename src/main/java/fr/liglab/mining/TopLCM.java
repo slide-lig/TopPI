@@ -6,6 +6,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -19,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
@@ -46,7 +51,7 @@ public class TopLCM {
 	private final long[] globalCounters;
 	
 	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
-		this(patternsCollector, nbThreads, true);
+		this(patternsCollector, nbThreads, false);
 	}
 
 	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads, boolean launchProgressWatch) {
@@ -55,7 +60,11 @@ public class TopLCM {
 		}
 		this.collector = patternsCollector;
 		this.threads = new ArrayList<TopLCMThread>(nbThreads);
-		this.createThreads(nbThreads);
+		
+		for (int i = 0; i < nbThreads; i++) {
+			this.threads.add(new TopLCMThread());
+		}
+		
 		this.globalCounters = new long[TopLCMCounters.values().length];
 		this.progressWatch = launchProgressWatch ? new ProgressWatcherThread() : null;
 	}
@@ -67,42 +76,49 @@ public class TopLCM {
 		}
 	}
 
-	void createThreads(int nbThreads) {
-		for (int i = 0; i < nbThreads; i++) {
-			this.threads.add(new TopLCMThread(i));
-		}
-	}
-
-	void initializeAndStartThreads(final ExplorationStep initState) {
-		for (TopLCMThread t : this.threads) {
-			t.stackState(initState);
-			t.start();
-		}
-	}
-	
 	/**
-	 * Initial invocation
+	 * Initial invocation for common folks
 	 */
 	public final void lcm(final ExplorationStep initState) {
+		ExecutorService pool = Executors.newFixedThreadPool(this.threads.size());
+		this.lcm(initState, pool);
+		pool.shutdown();
+	}
+	
+
+	/**
+	 * Initial invocation for the hard to schedule
+	 */
+	public final void lcm(final ExplorationStep initState, ExecutorService pool) {
 		if (initState.counters.pattern.length > 0) {
 			collector.collect(initState.counters.transactionsCount, initState.counters.pattern);
 		}
+		
+		List<Future<?>> running = new ArrayList<Future<?>>(this.threads.size());
 
-		this.initializeAndStartThreads(initState);
+		for (TopLCMThread t : this.threads) {
+			t.stackState(initState);
+			running.add(pool.submit(t));
+		}
 		
 		if (this.progressWatch != null) {
 			this.progressWatch.setInitState(initState);
 			this.progressWatch.start();
 		}
 
-		for (TopLCMThread t : this.threads) {
+		for (Future<?> t : running) {
 			try {
-				t.join();
-				for (int i = 0; i < t.counters.length; i++) {
-					this.globalCounters[i] += t.counters[i];
-				}
+				t.get();
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
+			} catch (ExecutionException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		
+		for (TopLCMThread t : this.threads) {
+			for (int i = 0; i < t.counters.length; i++) {
+				this.globalCounters[i] += t.counters[i];
 			}
 		}
 
@@ -187,31 +203,14 @@ public class TopLCM {
 		return null;
 	}
 
-	/**
-	 * Some classes in EnumerationStep may declare counters here. see references
-	 * to TopLCMCounters.counters
-	 */
-	public enum TopLCMCounters {
-		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters, PatternsTraversed, EjectedPlaceholders, EjectedPatterns
-	}
-
-	public class TopLCMThread extends Thread {
-		public final long[] counters;
+	public class TopLCMThread implements Runnable {
+		private long[] counters = null;
 		final ReadWriteLock lock;
 		final List<ExplorationStep> stackedJobs;
-		protected final int id;
 
-		public TopLCMThread(final int id) {
-			super("TopLCMThread" + id);
+		public TopLCMThread() {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
-			this.id = id;
 			this.lock = new ReentrantReadWriteLock();
-			this.counters = new long[TopLCMCounters.values().length];
-		}
-
-		@Override
-		public long getId() {
-			return id;
 		}
 
 		@Override
@@ -244,14 +243,22 @@ public class TopLCM {
 					}
 				}
 			}
+			this.counters = CountersHandler.getAll();
 		}
 
 		private void stackState(ExplorationStep state) {
-			this.counters[TopLCMCounters.PatternsTraversed.ordinal()]++;
+			CountersHandler.increment(TopLCMCounters.PatternsTraversed);
 
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();
+		}
+		
+		/**
+		 * null until run() completed
+		 */
+		long[] getCounters() {
+			return this.counters;
 		}
 	}
 
@@ -357,7 +364,7 @@ public class TopLCM {
 
 		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
 
-		TopLCM miner = new TopLCM(collector, nbThreads);
+		TopLCM miner = new TopLCM(collector, nbThreads, true);
 
 		chrono = System.currentTimeMillis();
 		miner.lcm(initState);

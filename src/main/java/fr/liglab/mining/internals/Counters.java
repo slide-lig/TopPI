@@ -7,8 +7,8 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep.MiningTask;
 import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.mining.util.ItemAndSupport;
@@ -166,12 +166,8 @@ public final class Counters implements Cloneable {
 	public Counters(int minimumSupport, Iterator<TransactionReader> transactions, int extension, int[] ignoredItems,
 			final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
 
-		try {
-			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbCounters.ordinal()]++;
-		} catch (ClassCastException e) {
-			// coz sometimes we're in a unit test...
-		}
-
+		CountersHandler.increment(TopLCMCounters.NbCounters);
+		
 		this.reverseRenaming = reuseReverseRenaming;
 		this.renaming = null;
 		this.minSupport = minimumSupport;
