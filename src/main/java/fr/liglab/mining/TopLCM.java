@@ -48,7 +48,7 @@ public class TopLCM {
 
 	PerItemTopKCollector collector;
 
-	private final long[] globalCounters;
+	final long[] globalCounters;
 	
 	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
 		this(patternsCollector, nbThreads, false);

@@ -1,5 +1,6 @@
 package fr.liglab.mining;
 
+
 public final class CountersHandler {
 	/**
 	 * Some classes in EnumerationStep may declare counters here. see references

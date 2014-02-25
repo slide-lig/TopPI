@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.cli.CommandLine;
@@ -15,6 +17,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.io.FileCollector;
@@ -28,15 +31,20 @@ import fr.liglab.mining.util.ProgressWatcherThread;
 
 public class NaiveTopLCM {
 	final List<NaiveTopLCMThread> threads;
+	final ExecutorService pool;
+	
 	final FrequentsIterator starters;
 	final PatternsCollector collector;
 	final ReentrantLock collectorLock = new ReentrantLock();
 	final ExplorationStep initState;
 	private ProgressWatcherThread progressWatch;
 	
+	final long[] counters = new long[TopLCMCounters.values().length];
+	
 	public NaiveTopLCM(int k, PatternsCollector collector, ExplorationStep initState, int nbThreads) {
 		this.starters = initState.counters.getExtensionsIdIterator();
 		this.threads = new ArrayList<NaiveTopLCMThread>(nbThreads);
+		this.pool = Executors.newFixedThreadPool(nbThreads);
 		this.collector = collector;
 		this.initState = initState;
 		this.progressWatch = new ProgressWatcherThread();
@@ -49,7 +57,7 @@ public class NaiveTopLCM {
 		}
 	}
 	
-	void go() {
+	Map<String, Long> go() {
 		this.progressWatch.start();
 		for (NaiveTopLCMThread thread : this.threads) {
 			thread.start();
@@ -57,24 +65,39 @@ public class NaiveTopLCM {
 		for (NaiveTopLCMThread t : this.threads) {
 			try {
 				t.join();
+				
+				for (int i = 0; i < t.wrapped.globalCounters.length; i++) {
+					this.counters[i] += t.wrapped.globalCounters[i];
+				}
+				
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
 		}
 		this.progressWatch.interrupt();
+		this.pool.shutdown();
+		
+		HashMap<String, Long> map = new HashMap<String, Long>();
+		TopLCMCounters[] counters = TopLCMCounters.values();
+		for (int i = 0; i < this.counters.length; i++) {
+			map.put(counters[i].toString(), this.counters[i]);
+		}
+
+		return map;
 	}
 	
 	private final class NaiveTopLCMThread extends Thread {
 		protected final int id;
 		protected final FakeIterator items;
 		protected final int k;
-		protected TopLCM wrapped;
+		protected final TopLCM wrapped;
 		
 		public NaiveTopLCMThread(final int id, int k, int[] reverseRenaming) {
 			super("NaiveTopLCMThread" + id);
 			this.id = id;
 			this.k = k;
 			this.items = new FakeIterator(0, reverseRenaming);
+			this.wrapped = new TopLCM(null, 1);
 		}
 		
 		@Override
@@ -86,14 +109,11 @@ public class NaiveTopLCM {
 		public void run() {
 			for (int item = starters.next(); item >= 0; item = starters.next()) {
 				this.items.setItem(item);
-
-				this.wrapped = new TopLCM(null, 1);
 				this.wrapped.collector = new PerItemTopKCollector(collector, this.k, 1, this.items);
-				
 				ExplorationStep projected = initState.project(item, this.k);
 				if (projected != null) {
 					projected.appendSelector(this.wrapped.collector.asSelector());
-					this.wrapped.lcm(projected);
+					this.wrapped.lcm(projected, pool);
 					
 					collectorLock.lock();
 					try {
@@ -202,22 +222,21 @@ public class NaiveTopLCM {
 		chrono = System.currentTimeMillis();
 		
 		NaiveTopLCM miner = new NaiveTopLCM(k, collector, initState, nbThreads);
-		miner.go();
+		Map<String, Long> counters = miner.go();
 		
 		chrono = System.currentTimeMillis() - chrono;
-
-		Map<String, Long> additionalCounters = new HashMap<String, Long>();
-		additionalCounters.put("miningTime", chrono);
-		additionalCounters.put("outputtedPatterns", collector.close());
-		additionalCounters.put("loadingTime", loadingTime);
-		additionalCounters.put("avgPatternLength", (long) collector.getAveragePatternLength());
+		
+		counters.put("miningTime", chrono);
+		counters.put("outputtedPatterns", collector.close());
+		counters.put("loadingTime", loadingTime);
+		counters.put("avgPatternLength", (long) collector.getAveragePatternLength());
 
 		if (memoryWatch != null) {
 			memoryWatch.interrupt();
-			additionalCounters.put("maxUsedMemory", memoryWatch.getMaxUsedMemory());
+			counters.put("maxUsedMemory", memoryWatch.getMaxUsedMemory());
 		}
 
-		System.err.println(additionalCounters.toString());
+		System.err.println(counters.toString());
 	}
 	
 	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath) {
