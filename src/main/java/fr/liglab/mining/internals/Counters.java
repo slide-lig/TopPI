@@ -538,8 +538,7 @@ public final class Counters implements Cloneable {
 		}
 		this.maxCandidate = greatestBelowMaxCandidate + 1;
 		this.maxFrequent = newItemID - 1;
-
-
+		
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
 		
@@ -553,13 +552,13 @@ public final class Counters implements Cloneable {
 					prev = this.supportCounts[i];
 				}
 			}
-			int futurMaxCandidate = i;
+			this.maxCandidate = i;
+			this.maxFrequent = i-1;
 			for (; i < this.maxCandidate; i++) {
 				this.supportCounts[i] = 0;
 				this.distinctTransactionsCounts[i] = 0;
 				this.reverseRenaming[i] = -1;
 			}
-			this.maxCandidate = futurMaxCandidate;
 		}
 
 		this.renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
@@ -569,7 +568,7 @@ public final class Counters implements Cloneable {
 		// reverseRenaming: NewBase (index) -> OriginalBase (value)
 		// renaming: PreviousDatasetBase (index) -> NewBase (value)
 
-		for (int i = 0; i < this.reverseRenaming.length; i++) {
+		for (int i = 0; i <= this.maxFrequent; i++) {
 			this.renaming[this.reverseRenaming[i]] = i;
 			this.reverseRenaming[i] = olderReverseRenaming[this.reverseRenaming[i]];
 		}
