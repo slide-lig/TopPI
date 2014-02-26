@@ -465,7 +465,7 @@ public final class Counters implements Cloneable {
 			int insertInf = start;
 			int insertSup = end - 2;
 			for (int i = start; i <= insertSup;) {
-				if (this.supportCounts[i] < pivotVal || this.supportCounts[i] == pivotVal && i < pivotPos) {
+				if (this.supportCounts[i] > pivotVal || this.supportCounts[i] == pivotVal && i < pivotPos) {
 					insertInf++;
 					i++;
 				} else {
@@ -534,10 +534,10 @@ public final class Counters implements Cloneable {
 		}
 		this.maxCandidate = greatestBelowMaxCandidate + 1;
 		this.maxFrequent = newItemID - 1;
-		
+
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
-		
+
 		// if we only keep the k highest distinct extension supports
 		if (this.maxCandidate > topK) {
 			int prev = -1;
@@ -549,7 +549,7 @@ public final class Counters implements Cloneable {
 				}
 			}
 			this.maxCandidate = i;
-			this.maxFrequent = i-1;
+			this.maxFrequent = i - 1;
 			for (; i < this.maxCandidate; i++) {
 				this.supportCounts[i] = 0;
 				this.distinctTransactionsCounts[i] = 0;
