@@ -469,7 +469,7 @@ public final class Counters implements Cloneable {
 			int insertInf = start;
 			int insertSup = end - 2;
 			for (int i = start; i <= insertSup;) {
-				if (this.supportCounts[i] <= pivotVal) {
+				if (this.supportCounts[i] < pivotVal || this.supportCounts[i] == pivotVal && i < pivotPos) {
 					insertInf++;
 					i++;
 				} else {
@@ -510,7 +510,7 @@ public final class Counters implements Cloneable {
 	 * @return the translation from the old renaming to the compressed one
 	 *         (gives -1 for removed items)
 	 */
-	public int[] compressRenaming(int[] olderReverseRenaming, int reorderBelow, int topK) {
+	public int[] compressRenaming(int[] olderReverseRenaming, int topK) {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
@@ -533,34 +533,34 @@ public final class Counters implements Cloneable {
 				if (item < this.maxCandidate) {
 					greatestBelowMaxCandidate = newItemID;
 				}
-
 				newItemID++;
 			}
 		}
 		this.maxCandidate = greatestBelowMaxCandidate + 1;
 		this.maxFrequent = newItemID - 1;
 
+
+		// now, sort up to the pivot
+		this.quickSortOnSup(0, this.maxCandidate);
+		
 		// if we only keep the k highest distinct extension supports
 		if (this.maxCandidate > topK) {
 			int prev = -1;
 			int i = 0;
-			for (; topK >= 0 && i < this.supportCounts.length; i++) {
+			for (; topK >= 0 && i < this.maxCandidate; i++) {
 				if (this.supportCounts[i] != prev) {
 					topK--;
 					prev = this.supportCounts[i];
 				}
 			}
 			int futurMaxCandidate = i;
-			for (; i < maxCandidate; i++) {
+			for (; i < this.maxCandidate; i++) {
 				this.supportCounts[i] = 0;
 				this.distinctTransactionsCounts[i] = 0;
 				this.reverseRenaming[i] = -1;
 			}
 			this.maxCandidate = futurMaxCandidate;
 		}
-
-		// now, sort up to the pivot
-		this.quickSortOnSup(0, this.maxCandidate);
 
 		this.renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		Arrays.fill(renaming, -1);

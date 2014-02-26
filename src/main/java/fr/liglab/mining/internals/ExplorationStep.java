@@ -211,7 +211,7 @@ public final class ExplorationStep implements Cloneable {
 				this.counters.getReverseRenaming(), new int[] {});
 		//Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator());
 		
-		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), Integer.MAX_VALUE, k);
+		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), k);
 		
 		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 		
@@ -241,14 +241,14 @@ public final class ExplorationStep implements Cloneable {
 	@SuppressWarnings("boxing")
 	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
 			TransactionsIterable support) {
-		this(parent, extension, candidateCounts, support, extension);
+		this(parent, extension, candidateCounts, support, true);
 	}
 
 	/** 
 	 * @param reorderBelow if greater Integer.MIN_VALUE, lower items may be reordered 
 	 */
 	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
-				TransactionsIterable support, int reorderBelow) {
+				TransactionsIterable support, boolean reorder) {
 			
 		this.core_item = extension;
 		this.counters = candidateCounts;
@@ -270,12 +270,12 @@ public final class ExplorationStep implements Cloneable {
 			this.dataset = null;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
-			this.dataset = instanciateDatasetAndPickSelectors(parent, support, reorderBelow);
+			this.dataset = instanciateDatasetAndPickSelectors(parent, support, reorder);
 			this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
 		}
 	}
 
-	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support, int reorderBelow) {
+	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support, boolean reorder) {
 		final double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
@@ -292,10 +292,10 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			final int[] renaming;
-			if (reorderBelow == Integer.MIN_VALUE) {
+			if (!reorder) {
 				renaming = this.counters.compressRenaming(null);
 			} else {
-				renaming = this.counters.compressRenaming(null, reorderBelow, Integer.MAX_VALUE);
+				renaming = this.counters.compressRenaming(null, Integer.MAX_VALUE);
 			}
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
