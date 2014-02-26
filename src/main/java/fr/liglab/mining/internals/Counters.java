@@ -2,15 +2,11 @@ package fr.liglab.mining.internals;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
-import fr.liglab.mining.internals.ExplorationStep.MiningTask;
-import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -587,8 +583,8 @@ public final class Counters implements Cloneable {
 	 * 
 	 * @return a thread-safe iterator over frequent items (in ascending order)
 	 */
-	public MiningTasksIterator getExtensionsIterator(int breadth) {
-		return new ExtensionsIterator(this.maxCandidate, breadth);
+	public FrequentsIterator getExtensionsIterator() {
+		return new ExtensionsIterator(this.maxCandidate);
 	}
 
 	public FrequentsIterator getExtensionsIdIterator() {
@@ -610,89 +606,47 @@ public final class Counters implements Cloneable {
 	 * Thread-safe iterator over frequent items (ie. those having a support
 	 * count in [minSup, 100%[)
 	 */
-	protected class ExtensionsIterator implements MiningTasksIterator {
-		private int index;
+	protected class ExtensionsIterator implements FrequentsIterator {
+		private final AtomicInteger index;
 		private final int max;
-		private int breadthSizeLeft;
-		private Queue<PatternWithFreq> upcomingExtensions = null;
 
 		/**
 		 * will provide an iterator on frequent items (in increasing order) in
 		 * [0,to[
 		 */
-		public ExtensionsIterator(final int to, int breadthSize) {
-			this.index = 0;
+		public ExtensionsIterator(final int to) {
+			this.index = new AtomicInteger(0);
 			this.max = to;
-			this.breadthSizeLeft = Math.min(breadthSize, to);
 		}
 
-		public synchronized MiningTask next(ExplorationStep expStep) {
+		/**
+		 * @return -1 if iterator is finished
+		 */
+		public int next() {
 			if (compactedArrays) {
-				if (this.index < this.max && this.breadthSizeLeft > 0) {
-					// expand breadth
-					this.breadthSizeLeft--;
-					MiningTask res = expStep.new BreadthExploration(this.index, this);
-					this.index++;
-					return res;
-				} else if (this.upcomingExtensions != null) {
-					// go back to breadth part and go depth
-					PatternWithFreq p = this.upcomingExtensions.poll();
-					if (this.upcomingExtensions.isEmpty()) {
-						this.upcomingExtensions = null;
-					}
-					return expStep.new DepthExplorationPrepared(p);
-				} else if (this.index < this.max) {
-					// go depth
-					MiningTask res = expStep.new DepthExplorationFromScratch(this.index);
-					this.index++;
-					return res;
+				final int nextIndex = this.index.getAndIncrement();
+				if (nextIndex < this.max) {
+					return nextIndex;
+				} else {
+					return -1;
 				}
 			} else {
-				if (this.breadthSizeLeft > 0) {
-					while (this.index < this.max) {
-						// expand breadth
-						if (supportCounts[this.index] > 0) {
-							this.breadthSizeLeft--;
-							MiningTask res = expStep.new BreadthExploration(this.index, this);
-							this.index++;
-							return res;
+				while (true) {
+					final int nextIndex = this.index.getAndIncrement();
+					if (nextIndex < this.max) {
+						if (supportCounts[nextIndex] > 0) {
+							return nextIndex;
 						}
-						this.index++;
-					}
-				}
-				if (this.upcomingExtensions != null) {
-					// go back to breadth part and go depth
-					PatternWithFreq p = this.upcomingExtensions.poll();
-					if (this.upcomingExtensions.isEmpty()) {
-						this.upcomingExtensions = null;
-					}
-					return expStep.new DepthExplorationPrepared(p);
-				} else {
-					// go depth
-					while (this.index < this.max) {
-						if (supportCounts[this.index] > 0) {
-							MiningTask res = expStep.new DepthExplorationFromScratch(this.index);
-							this.index++;
-							return res;
-						}
-						this.index++;
+					} else {
+						return -1;
 					}
 				}
 			}
-			return null;
-		}
-
-		@Override
-		public synchronized void pushFutureWork(PatternWithFreq p) {
-			if (this.upcomingExtensions == null) {
-				this.upcomingExtensions = new LinkedList<PatternWithFreq>();
-			}
-			this.upcomingExtensions.add(p);
 		}
 
 		@Override
 		public int peek() {
-			return this.index;
+			return this.index.get();
 		}
 
 		@Override

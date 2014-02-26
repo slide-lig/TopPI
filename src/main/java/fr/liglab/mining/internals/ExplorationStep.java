@@ -1,5 +1,10 @@
 package fr.liglab.mining.internals;
 
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
@@ -9,10 +14,6 @@ import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import gnu.trove.map.hash.TIntIntHashMap;
-
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Iterator;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.
@@ -26,6 +27,7 @@ public final class ExplorationStep implements Cloneable {
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toplcm.threshold.long";
 
 	public static int BREADTH_SIZE = 0;
+	private boolean breadthTodo = BREADTH_SIZE > 0;
 
 	/**
 	 * @see longTransactionsMode
@@ -63,7 +65,9 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	protected Selector selectChain;
 
-	protected final MiningTasksIterator candidates;
+	protected final FrequentsIterator candidates;
+	
+	private final ConcurrentLinkedQueue<PatternWithFreq> preparedExtensions = new ConcurrentLinkedQueue<PatternWithFreq>();
 
 	/**
 	 * When an extension fails first-parent test, it ends up in this map. Keys
@@ -98,7 +102,7 @@ public final class ExplorationStep implements Cloneable {
 
 		this.dataset = new Dataset(this.counters, reader);
 
-		this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+		this.candidates = this.counters.getExtensionsIterator();
 
 		this.failedFPTests = new TIntIntHashMap();
 	}
@@ -121,7 +125,7 @@ public final class ExplorationStep implements Cloneable {
 			}
 		}
 
-		this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
 	}
 
@@ -159,12 +163,12 @@ public final class ExplorationStep implements Cloneable {
 			}
 		}
 
-		this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
 	}
 
 	private ExplorationStep(int core_item, Dataset dataset, Counters counters, Selector selectChain,
-			MiningTasksIterator candidates, TIntIntHashMap failedFPTests) {
+			FrequentsIterator candidates, TIntIntHashMap failedFPTests) {
 		super();
 		this.core_item = core_item;
 		this.dataset = dataset;
@@ -182,18 +186,42 @@ public final class ExplorationStep implements Cloneable {
 	 * perform the preliminary breadth-first exploration
 	 */
 	public ExplorationStep next(PerItemTopKCollector collector) {
+		if (this.candidates == null) {
+			return null;
+		}
+		
 		while (true) {
-			if (this.candidates == null) {
-				return null;
-			}
-			MiningTask task = this.candidates.next(this);
-			if (task != null) {
-				ExplorationStep res = task.execute(collector);
-				if (res != fake) {
-					return res;
+			ExplorationStep res;
+			
+			if (this.breadthTodo) {
+				int candidate = this.candidates.next();
+				
+				if (candidate < 0) {
+					this.breadthTodo = false;
+					res = fake;
+				} else {
+					if (candidate >= BREADTH_SIZE) {
+						this.breadthTodo = false;
+					}
+					res = this.doBreadthExploration(candidate, collector);
 				}
 			} else {
-				return null;
+				PatternWithFreq prepared = this.preparedExtensions.poll();
+				if (prepared != null) {
+					res = this.doDepthExplorationPrepared(prepared, collector);
+				} else {
+					int candidate = this.candidates.next();
+					
+					if (candidate < 0) {
+						return null;
+					} else {
+						res = this.doDepthExplorationFromScratch(candidate, collector);
+					}
+				}
+			}
+			
+			if (res != fake) {
+				return res;
 			}
 		}
 	}
@@ -222,7 +250,7 @@ public final class ExplorationStep implements Cloneable {
 		this.failedFPTests = new TIntIntHashMap();
 		this.counters = candidateCounts;
 		this.core_item = Integer.MAX_VALUE;
-		this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+		this.candidates = this.counters.getExtensionsIterator();
 		this.dataset = new Dataset(candidateCounts, support);
 		this.selectChain = null;
 	}
@@ -271,7 +299,7 @@ public final class ExplorationStep implements Cloneable {
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
 			this.dataset = instanciateDatasetAndPickSelectors(parent, support, reorder);
-			this.candidates = this.counters.getExtensionsIterator(BREADTH_SIZE);
+			this.candidates = this.counters.getExtensionsIterator();
 		}
 	}
 
@@ -390,137 +418,17 @@ public final class ExplorationStep implements Cloneable {
 		}
 	}
 
-	protected interface MiningTask {
-		ExplorationStep execute(PerItemTopKCollector collector);
 
-	}
-
-	protected class BreadthExploration implements MiningTask {
-		private int candidate;
-		private final MiningTasksIterator iterator;
-
-		public BreadthExploration(int candidate, MiningTasksIterator iterator) {
-			super();
-			this.candidate = candidate;
-			this.iterator = iterator;
-		}
-
-		@Override
-		public ExplorationStep execute(PerItemTopKCollector collector) {
-			try {
-				if (selectChain.select(candidate, ExplorationStep.this)) {
-					if (dataset instanceof DatasetView) {
-						TransactionsIterable support = dataset.getSupport(candidate);
-
-						Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-								dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming,
-								counters.pattern);
-
-						int greatest = Integer.MIN_VALUE;
-						for (int i = 0; i < candidateCounts.closure.length; i++) {
-							if (candidateCounts.closure[i] > greatest) {
-								greatest = candidateCounts.closure[i];
-							}
-						}
-
-						if (greatest > candidate) {
-							throw new WrongFirstParentException(candidate, greatest);
-						}
-
-						PatternWithFreq tmp = collector.preCollect(candidate, candidateCounts);
-						tmp.keepForLater(candidateCounts, support);
-						iterator.pushFutureWork(tmp);
-					} else if (FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
-						int support = counters.supportCounts[candidate];
-						PatternWithFreq tmp = collector.preCollect(support, counters.pattern, candidate,
-								counters.reverseRenaming[candidate]);
-						iterator.pushFutureWork(tmp);
-					}
-				}
-			} catch (WrongFirstParentException e) {
-				addFailedFPTest(e.extension, e.firstParent);
-			}
-			return fake;
-		}
-	}
-
-	protected class DepthExplorationPrepared implements MiningTask {
-		private final PatternWithFreq holder;
-
-		public DepthExplorationPrepared(PatternWithFreq holder) {
-			super();
-			this.holder = holder;
-		}
-
-		// handle still in topk before
-		@Override
-		public ExplorationStep execute(PerItemTopKCollector collector) {
-
-			final int candidate = holder.extension;
-			Counters candidateCounts = holder.getMemoizedCounters();
-			TransactionsIterable support = holder.getMemoizedSupport();
-			holder.forgetMomoized();
-			boolean useful = false;
-			if (support == null) {
-				if (!holder.isStillInTopKs()) {
-					try {
-						useful = selectChain.allowExploration(candidate, ExplorationStep.this);
-					} catch (WrongFirstParentException e) {
-						System.err.println("no failed fp test is suppose to take place here");
-						System.exit(1);
-						e.printStackTrace();
-					}
-					if (!useful) {
-						return fake;
-					}
-				}
-
-				support = dataset.getSupport(candidate);
-
-				candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
-
-				// now let's collect the right pattern
-				holder.setPattern(candidateCounts.pattern);
-				int insertionsCounter = 0;
-				for (int item : candidateCounts.closure) {
-					if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
-						insertionsCounter++;
-					}
-				}
-				if (insertionsCounter > 0) {
-					holder.incrementRefCount(insertionsCounter);
-				}
-			}
-			try {
-				if (useful || selectChain.allowExploration(candidate, ExplorationStep.this)) {
-					return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
-				}
-			} catch (WrongFirstParentException e) {
-				e.printStackTrace();
-				System.err.println("no failed fp test is suppose to take place here");
-				System.exit(1);
-			}
-			return fake;
-		}
-	}
-
-	protected class DepthExplorationFromScratch implements MiningTask {
-
-		private int candidate;
-
-		public DepthExplorationFromScratch(int candidate) {
-			this.candidate = candidate;
-		}
-
-		@Override
-		public ExplorationStep execute(PerItemTopKCollector collector) {
-			try {
-				if (selectChain.select(candidate, ExplorationStep.this)) {
+	protected ExplorationStep doBreadthExploration(int candidate, PerItemTopKCollector collector) {
+		try {
+			if (selectChain.select(candidate, ExplorationStep.this)) {
+				if (dataset instanceof DatasetView) {
 					TransactionsIterable support = dataset.getSupport(candidate);
 
 					Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-							dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
+							dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming,
+							counters.pattern);
+
 					int greatest = Integer.MIN_VALUE;
 					for (int i = 0; i < candidateCounts.closure.length; i++) {
 						if (candidateCounts.closure[i] > greatest) {
@@ -532,17 +440,100 @@ public final class ExplorationStep implements Cloneable {
 						throw new WrongFirstParentException(candidate, greatest);
 					}
 
-					ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
-							support);
-
-					collector.collect(candidateCounts.transactionsCount, next.counters.pattern);
-
-					return next;
+					PatternWithFreq tmp = collector.preCollect(candidate, candidateCounts);
+					tmp.keepForLater(candidateCounts, support);
+					this.preparedExtensions.add(tmp);
+				} else if (FirstParentTest.getTailInstance().select(candidate, ExplorationStep.this)) {
+					int support = counters.supportCounts[candidate];
+					PatternWithFreq tmp = collector.preCollect(support, counters.pattern, candidate,
+							counters.reverseRenaming[candidate]);
+					this.preparedExtensions.add(tmp);
 				}
-			} catch (WrongFirstParentException e) {
-				addFailedFPTest(e.extension, e.firstParent);
 			}
-			return fake;
+		} catch (WrongFirstParentException e) {
+			addFailedFPTest(e.extension, e.firstParent);
 		}
+		return fake;
+	}
+
+	protected ExplorationStep doDepthExplorationPrepared(PatternWithFreq holder, PerItemTopKCollector collector) {
+		final int candidate = holder.extension;
+		Counters candidateCounts = holder.getMemoizedCounters();
+		TransactionsIterable support = holder.getMemoizedSupport();
+		holder.forgetMomoized();
+		boolean useful = false;
+		if (support == null) {
+			if (!holder.isStillInTopKs()) {
+				try {
+					useful = this.selectChain.allowExploration(candidate, ExplorationStep.this);
+				} catch (WrongFirstParentException e) {
+					System.err.println("no failed fp test is suppose to take place here");
+					System.exit(1);
+					e.printStackTrace();
+				}
+				if (!useful) {
+					return fake;
+				}
+			}
+
+			support = this.dataset.getSupport(candidate);
+			
+			final Counters c = this.counters;
+			candidateCounts = new Counters(c.minSupport, support.iterator(), candidate,
+					this.dataset.getIgnoredItems(), c.maxFrequent, c.reverseRenaming, c.pattern);
+
+			// now let's collect the right pattern
+			holder.setPattern(candidateCounts.pattern);
+			int insertionsCounter = 0;
+			for (int item : candidateCounts.closure) {
+				if (collector.insertPatternInTop(holder, counters.reverseRenaming[item])) {
+					insertionsCounter++;
+				}
+			}
+			if (insertionsCounter > 0) {
+				holder.incrementRefCount(insertionsCounter);
+			}
+		}
+		try {
+			if (useful || this.selectChain.allowExploration(candidate, ExplorationStep.this)) {
+				return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
+			}
+		} catch (WrongFirstParentException e) {
+			e.printStackTrace();
+			System.err.println("no failed fp test is suppose to take place here");
+			System.exit(1);
+		}
+		return fake;
+	}
+
+	protected ExplorationStep doDepthExplorationFromScratch(int candidate, PerItemTopKCollector collector) {
+		try {
+			if (selectChain.select(candidate, ExplorationStep.this)) {
+				TransactionsIterable support = dataset.getSupport(candidate);
+
+				Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
+						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
+				int greatest = Integer.MIN_VALUE;
+				for (int i = 0; i < candidateCounts.closure.length; i++) {
+					if (candidateCounts.closure[i] > greatest) {
+						greatest = candidateCounts.closure[i];
+					}
+				}
+
+				if (greatest > candidate) {
+					throw new WrongFirstParentException(candidate, greatest);
+				}
+
+				ExplorationStep next = new ExplorationStep(ExplorationStep.this, candidate, candidateCounts,
+						support);
+
+				collector.collect(candidateCounts.transactionsCount, next.counters.pattern);
+
+				return next;
+			}
+		} catch (WrongFirstParentException e) {
+			addFailedFPTest(e.extension, e.firstParent);
+		}
+		return fake;
 	}
 }
