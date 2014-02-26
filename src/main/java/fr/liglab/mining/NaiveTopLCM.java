@@ -2,9 +2,11 @@ package fr.liglab.mining;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
@@ -49,6 +51,7 @@ public class NaiveTopLCM {
 		this.initState = initState;
 		this.progressWatch = new ProgressWatcherThread();
 		this.progressWatch.setInitState(initState);
+		Arrays.fill(this.counters, 0);
 		
 		int[] reverseRenaming = initState.counters.getReverseRenaming();
 		
@@ -57,7 +60,7 @@ public class NaiveTopLCM {
 		}
 	}
 	
-	Map<String, Long> go() {
+	void go() {
 		this.progressWatch.start();
 		for (NaiveTopLCMThread thread : this.threads) {
 			thread.start();
@@ -76,14 +79,39 @@ public class NaiveTopLCM {
 		}
 		this.progressWatch.interrupt();
 		this.pool.shutdown();
+	}
+	
+	public String toString(Map<String, Long> additionalCounters) {
+		StringBuilder builder = new StringBuilder();
+
+		builder.append("{\"name\":\"NaiveTopLCM\", \"threads\":");
+		builder.append(this.threads.size());
+
+		TopLCMCounters[] names = TopLCMCounters.values();
 		
-		HashMap<String, Long> map = new HashMap<String, Long>();
-		TopLCMCounters[] counters = TopLCMCounters.values();
 		for (int i = 0; i < this.counters.length; i++) {
-			map.put(counters[i].toString(), this.counters[i]);
+			builder.append(", \"");
+			builder.append(names[i].toString());
+			builder.append("\":");
+			builder.append(this.counters[i]);
 		}
 
-		return map;
+		if (additionalCounters != null) {
+			for (Entry<String, Long> entry : additionalCounters.entrySet()) {
+				builder.append(", \"");
+				builder.append(entry.getKey());
+				builder.append("\":");
+				builder.append(entry.getValue());
+			}
+		}
+
+		builder.append('}');
+
+		return builder.toString();
+	}
+
+	public String toString() {
+		return this.toString(null);
 	}
 	
 	private final class NaiveTopLCMThread extends Thread {
@@ -222,10 +250,10 @@ public class NaiveTopLCM {
 		chrono = System.currentTimeMillis();
 		
 		NaiveTopLCM miner = new NaiveTopLCM(k, collector, initState, nbThreads);
-		Map<String, Long> counters = miner.go();
-		
+		miner.go();
 		chrono = System.currentTimeMillis() - chrono;
-		
+
+		HashMap<String, Long> counters = new HashMap<String, Long>();
 		counters.put("miningTime", chrono);
 		counters.put("outputtedPatterns", collector.close());
 		counters.put("loadingTime", loadingTime);
@@ -235,8 +263,8 @@ public class NaiveTopLCM {
 			memoryWatch.interrupt();
 			counters.put("maxUsedMemory", memoryWatch.getMaxUsedMemory());
 		}
-
-		System.err.println(counters.toString());
+		
+		System.err.println(miner.toString(counters));
 	}
 	
 	private static PatternsCollector instanciateCollector(CommandLine cmd, String outputPath) {
