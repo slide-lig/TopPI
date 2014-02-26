@@ -89,8 +89,8 @@ public final class Counters implements Cloneable {
 	public final int[] pattern;
 
 	/**
-	 * Counts how many items have a support count in [minSupport; 100% [
-	 * TODO protected+accessor
+	 * Counts how many items have a support count in [minSupport; 100% [ TODO
+	 * protected+accessor
 	 */
 	public int nbFrequents;
 
@@ -167,7 +167,7 @@ public final class Counters implements Cloneable {
 			final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
 
 		CountersHandler.increment(TopLCMCounters.NbCounters);
-		
+
 		this.reverseRenaming = reuseReverseRenaming;
 		this.renaming = null;
 		this.minSupport = minimumSupport;
@@ -452,44 +452,49 @@ public final class Counters implements Cloneable {
 
 		return renaming;
 	}
-	
-	public static int[] sort(int[] ref, int max) {
-		int[] reverse = new int[ref.length];
-		max = Math.min(max, ref.length);
-		int up = 0;
-		for (int i = 0; i < max; i++) {
-			if (ref[i] > 0) {
-				reverse[up] = i;
-				ref[up] = ref[i];
-				
-				for(int j = up; j>0 && ref[j-1] < ref[j]; j--){
-					final int t = ref[j-1];
-					ref[j-1] = ref[j];
-					ref[j] = t;
-					
-					final int r = reverse[j-1];
-					reverse[j-1] = reverse[j];
-					reverse[j] = r;
+
+	private void quickSortOnSup(int start, int end) {
+		if (start >= end - 1) {
+			// size 0 or 1
+			return;
+		} else if (end - start == 2) {
+			if (this.supportCounts[start] < this.supportCounts[start + 1]) {
+				this.swap(start, start + 1);
+			}
+		} else {
+			// pick pivot at the middle and put it at the end
+			int pivotPos = start + ((end - start) / 2);
+			int pivotVal = this.supportCounts[pivotPos];
+			this.swap(pivotPos, end - 1);
+			int insertInf = start;
+			int insertSup = end - 2;
+			for (int i = start; i <= insertSup;) {
+				if (this.supportCounts[i] <= pivotVal) {
+					insertInf++;
+					i++;
+				} else {
+					this.swap(i, insertSup);
+					insertSup--;
 				}
-				up++;
 			}
+			this.swap(end - 1, insertSup + 1);
+			quickSortOnSup(start, insertInf);
+			quickSortOnSup(insertSup + 2, end);
+
 		}
-		
-		for (int i = max; i < ref.length; i++) {
-			if (ref[i] > 0) {
-				reverse[up] = i;
-				ref[up] = ref[i];
-				up++;
-			}
-		}
-		
-		while (up < reverse.length) {
-			ref[up] = -1;
-			reverse[up] = -1;
-			up++;
-		}
-		
-		return reverse;
+	}
+
+	private void swap(int i, int j) {
+		int temp;
+		temp = this.supportCounts[i];
+		this.supportCounts[i] = this.supportCounts[j];
+		this.supportCounts[j] = temp;
+		temp = this.reverseRenaming[i];
+		this.reverseRenaming[i] = this.reverseRenaming[j];
+		this.reverseRenaming[j] = temp;
+		temp = this.distinctTransactionsCounts[i];
+		this.distinctTransactionsCounts[i] = this.distinctTransactionsCounts[j];
+		this.distinctTransactionsCounts[j] = temp;
 	}
 
 	/**
@@ -498,76 +503,79 @@ public final class Counters implements Cloneable {
 	 * 
 	 * @param olderReverseRenaming
 	 *            reverseRenaming from the dataset that fed this Counter
-	 * @param items below this parameter will be renamed by decreasing frequency
-	 * @param if set below Integer.MAX_VALUE, we'll only keep the top-k distincts highest-support items.
+	 * @param items
+	 *            below this parameter will be renamed by decreasing frequency
+	 * @param if set below Integer.MAX_VALUE, we'll only keep the top-k
+	 *        distincts highest-support items.
 	 * @return the translation from the old renaming to the compressed one
 	 *         (gives -1 for removed items)
 	 */
-	public int[] compressRenaming(int[] olderReverseRenaming, int rebaseBelow, int topK) {
+	public int[] compressRenaming(int[] olderReverseRenaming, int reorderBelow, int topK) {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
 
-		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
-		Arrays.fill(renaming, -1);
-		int[] reverseFromCompressed = sort(this.supportCounts, rebaseBelow);
-		
-		for (int i = 0; i < reverseFromCompressed.length; i++) {
-			int pos = reverseFromCompressed[i];
-			if (pos>=0) {
-				renaming[pos] = i;
-			}
-		}
-		
-		if (topK < Integer.MAX_VALUE) {
-			this.nbFrequents = 0;
-			int distinctValues = 0;
-			int previousSupport = Integer.MAX_VALUE;
-			int i=0;
-			for (; i < reverseFromCompressed.length && distinctValues < topK; i++) {
-				final int item = reverseFromCompressed[i];
-				if (item>=0) {
-					if (this.supportCounts[item] < previousSupport) {
-						distinctValues++;
-						previousSupport = this.supportCounts[item];
-					}
-					this.nbFrequents++;
-				}
-			}
-			for (; i < reverseFromCompressed.length; i++) {
-				final int item = reverseFromCompressed[i];
-				if (item>=0) {
-					renaming[item]=-1;
-				}
-			}
-		}
-		
 		this.reverseRenaming = new int[this.nbFrequents];
-
-		int[] oldDTC = this.distinctTransactionsCounts;
-		this.distinctTransactionsCounts = new int[this.nbFrequents];
-		
+		// first, compact
+		// we will always have newItemID <= item
+		int newItemID = 0;
 		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
 
-		for (int item = 0; item < oldDTC.length; item++) {
-			final int newItemID = renaming[item];
-			if (newItemID >= 0) {
-				this.reverseRenaming[newItemID] = olderReverseRenaming[item];
-				this.distinctTransactionsCounts[newItemID] = oldDTC[item];
-
-				if (item < rebaseBelow && newItemID > greatestBelowMaxCandidate) {
+		// after this loop we have
+		// reverseRenaming: NewBase (index) -> PreviousDatasetBase (value)
+		// supportCounts: NewBase (index) -> Support (value)
+		// distinctTransactionCount: NewBase (index) -> Count (value)
+		for (int item = 0; item < this.supportCounts.length; item++) {
+			if (this.supportCounts[item] > 0) {
+				this.reverseRenaming[newItemID] = item;
+				this.supportCounts[newItemID] = this.supportCounts[item];
+				this.distinctTransactionsCounts[newItemID] = this.distinctTransactionsCounts[item];
+				if (item < this.maxCandidate) {
 					greatestBelowMaxCandidate = newItemID;
 				}
-				
-				if (newItemID > this.maxFrequent) {
-					this.maxFrequent = newItemID;
-				}
+
+				newItemID++;
 			}
 		}
-
 		this.maxCandidate = greatestBelowMaxCandidate + 1;
+		this.maxFrequent = newItemID - 1;
+
+		// if we only keep the k highest distinct extension supports
+		if (this.maxCandidate > topK) {
+			int prev = -1;
+			int i = 0;
+			for (; topK >= 0 && i < this.supportCounts.length; i++) {
+				if (this.supportCounts[i] != prev) {
+					topK--;
+					prev = this.supportCounts[i];
+				}
+			}
+			int futurMaxCandidate = i;
+			for (; i < maxCandidate; i++) {
+				this.supportCounts[i] = 0;
+				this.distinctTransactionsCounts[i] = 0;
+				this.reverseRenaming[i] = -1;
+			}
+			this.maxCandidate = futurMaxCandidate;
+		}
+
+		// now, sort up to the pivot
+		this.quickSortOnSup(0, this.maxCandidate);
+
+		this.renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
+		Arrays.fill(renaming, -1);
+
+		// after this loop we have
+		// reverseRenaming: NewBase (index) -> OriginalBase (value)
+		// renaming: PreviousDatasetBase (index) -> NewBase (value)
+
+		for (int i = 0; i < this.reverseRenaming.length; i++) {
+			this.renaming[this.reverseRenaming[i]] = i;
+			this.reverseRenaming[i] = olderReverseRenaming[this.reverseRenaming[i]];
+		}
+
 		this.compactedArrays = true;
-		this.renaming = renaming;
+
 		return renaming;
 	}
 
