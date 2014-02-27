@@ -1,9 +1,7 @@
 package fr.liglab.mining.io;
 
-import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.Counters;
-import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;
@@ -18,7 +16,6 @@ import gnu.trove.procedure.TIntObjectProcedure;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
@@ -66,45 +63,31 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public final PatternWithFreq preCollect(final int support, final int[] parentPattern,
-			final int extensionInternalID, final int extensionOriginalID) {
-		PatternWithFreq placeholder = new PatternWithFreq(support, extensionInternalID);
-		int nbRefs = 0;
+			final int extensionID) {
+		PatternWithFreq pattern = new PatternWithFreq(support);
 		for (final int item : parentPattern) {
-			if (insertPatternInTop(placeholder, item)) {
-				nbRefs++;
-			}
+			insertPatternInTop(pattern, item);
 		}
 
-		if (insertPatternInTop(placeholder, extensionOriginalID)) {
-			nbRefs++;
-		}
+		insertPatternInTop(pattern, extensionID);
 
-		placeholder.incrementRefCount(nbRefs);
-		return placeholder;
+		return pattern;
 	}
 
-	public PatternWithFreq preCollect(int candidate, Counters c) {
+	public PatternWithFreq preCollect(Counters c) {
 
-		PatternWithFreq placeholder = new PatternWithFreq(c.transactionsCount, candidate, c.pattern);
-		int nbRefs = 0;
+		PatternWithFreq pattern = new PatternWithFreq(c.transactionsCount, c.pattern);
 		for (final int item : c.pattern) {
-			if (insertPatternInTop(placeholder, item)) {
-				nbRefs++;
-			}
+			insertPatternInTop(pattern, item);
 		}
-		placeholder.incrementRefCount(nbRefs);
-		return placeholder;
+		return pattern;
 	}
 
 	public final void collect(final int support, final int[] pattern) {
-		PatternWithFreq placeholder = new PatternWithFreq(support, -1, pattern);
-		int nbRefs = 0;
+		PatternWithFreq p = new PatternWithFreq(support, pattern);
 		for (final int item : pattern) {
-			if (insertPatternInTop(placeholder, item)) {
-				nbRefs++;
-			}
+			insertPatternInTop(p, item);
 		}
-		placeholder.incrementRefCount(nbRefs);
 	}
 
 	/**
@@ -164,12 +147,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 					break;
 				}
 			}
-
-			// no, there is no double locking behind this: two threads may be
-			// ejecting the same
-			// pattern from two distinct topKlists
-			itemTopK[this.k - 1].onEjection();
-
+			
 			// make room for the new pattern, evicting the one at the end
 			for (int i = this.k - 1; i > newPosition; i--) {
 				itemTopK[i] = itemTopK[i - 1];
@@ -324,40 +302,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 	public static final class PatternWithFreq {
 		protected final int supportCount;
 		protected int[] pattern = null;
-		public final int extension;
-		private final AtomicInteger refCount = new AtomicInteger();
-		private Counters memoizedCounters = null;
-		private TransactionsIterable memoizedSupport = null;
 
-		public PatternWithFreq(final int supportCount, final int extension) {
+		public PatternWithFreq(final int supportCount) {
 			super();
-			this.extension = extension;
 			this.supportCount = supportCount;
 		}
 
-		public PatternWithFreq(final int supportCount, final int extension, final int[] pattern) {
+		public PatternWithFreq(final int supportCount, final int[] pattern) {
 			super();
-			this.extension = extension;
 			this.supportCount = supportCount;
 			this.pattern = pattern;
-		}
-
-		public void keepForLater(Counters counters, TransactionsIterable support) {
-			this.memoizedCounters = counters;
-			this.memoizedSupport = support;
-		}
-
-		public void forgetMomoized() {
-			this.memoizedCounters = null;
-			this.memoizedSupport = null;
-		}
-
-		public Counters getMemoizedCounters() {
-			return this.memoizedCounters;
-		}
-
-		public TransactionsIterable getMemoizedSupport() {
-			return this.memoizedSupport;
 		}
 
 		public int getSupportCount() {
@@ -373,23 +327,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		 */
 		public void setPattern(int[] p) {
 			this.pattern = p;
-		}
-
-		public void incrementRefCount(int delta) {
-			this.refCount.addAndGet(delta);
-		}
-
-		void onEjection() {
-			int refs = this.refCount.decrementAndGet();
-			if (refs == 0) {
-				CountersHandler.increment((this.pattern == null) ? 
-						TopLCMCounters.EjectedPlaceholders : TopLCMCounters.EjectedPatterns);
-				this.forgetMomoized();
-			}
-		}
-
-		public boolean isStillInTopKs() {
-			return this.refCount.get() > 0;
 		}
 
 		@Override

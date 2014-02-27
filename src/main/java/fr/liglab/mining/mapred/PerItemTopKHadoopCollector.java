@@ -103,7 +103,7 @@ class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 			PatternWithFreq[] top = this.topK.get(item);
 			
 			if (top != null) {
-				Arrays.fill(top, new PatternWithFreq(iterator.value(), item));
+				Arrays.fill(top, new PatternWithFreq(iterator.value()));
 			}
 		}
 	}
