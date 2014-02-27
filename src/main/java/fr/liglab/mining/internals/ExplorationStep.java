@@ -25,7 +25,7 @@ public final class ExplorationStep implements Cloneable {
 
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toplcm.threshold.view";
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toplcm.threshold.long";
-
+	
 	public static int BREADTH_SIZE = 0;
 	private boolean breadthTodo = BREADTH_SIZE > 0;
 
@@ -49,6 +49,8 @@ public final class ExplorationStep implements Cloneable {
 	public static boolean LCM_STYLE = false;
 
 	private static final ExplorationStep fake = new ExplorationStep();
+	
+	public static boolean COMPRESS_LVL1 = true;
 
 	/**
 	 * Extension item that led to this recursion step. Already included in
@@ -269,15 +271,7 @@ public final class ExplorationStep implements Cloneable {
 	@SuppressWarnings("boxing")
 	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
 			TransactionsIterable support) {
-		this(parent, extension, candidateCounts, support, true);
-	}
 
-	/** 
-	 * @param reorderBelow if greater Integer.MIN_VALUE, lower items may be reordered 
-	 */
-	protected ExplorationStep(ExplorationStep parent, int extension, Counters candidateCounts,
-				TransactionsIterable support, boolean reorder) {
-			
 		this.core_item = extension;
 		this.counters = candidateCounts;
 		int[] reverseRenaming = parent.counters.reverseRenaming;
@@ -298,12 +292,12 @@ public final class ExplorationStep implements Cloneable {
 			this.dataset = null;
 		} else {
 			this.failedFPTests = new TIntIntHashMap();
-			this.dataset = instanciateDatasetAndPickSelectors(parent, support, reorder);
+			this.dataset = instanciateDatasetAndPickSelectors(parent, support);
 			this.candidates = this.counters.getExtensionsIterator();
 		}
 	}
 
-	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support, boolean reorder) {
+	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parent, TransactionsIterable support) {
 		final double supportRate = this.counters.distinctTransactionsCount
 				/ (double) parent.dataset.getStoredTransactionsCount();
 
@@ -320,31 +314,24 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			final int[] renaming;
-			if (!reorder) {
+			boolean compress = COMPRESS_LVL1 && parent.core_item == Integer.MAX_VALUE && this.core_item < Integer.MAX_VALUE;
+			
+			if (compress) {
 				renaming = this.counters.compressRenaming(null);
 			} else {
 				renaming = this.counters.compressRenaming(null, Integer.MAX_VALUE);
 			}
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-			try {
-				// FIXME the last argument is now obsolete
-				Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE);
-				
-				if (parent.core_item == Integer.MAX_VALUE && this.core_item < Integer.MAX_VALUE) {
-					dataset.compress(this.core_item); // FIXME FIXME core_item
-														// refers an
-														// UNCOMPRESSED id
-				}
-
-				return dataset;
-			} catch (ArrayIndexOutOfBoundsException e) {
-				System.out.println("WAT core_item = " + this.core_item);
-				e.printStackTrace();
-				System.exit(1);
+			
+			// FIXME the last argument is now obsolete
+			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE);
+			
+			if (compress) {
+				// FIXME FIXME core_item refers an UNCOMPRESSED id
+				dataset.compress(this.core_item); 
 			}
 
-			return null;
+			return dataset;
 		}
 	}
 

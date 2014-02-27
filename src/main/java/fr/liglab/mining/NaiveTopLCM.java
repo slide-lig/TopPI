@@ -212,6 +212,7 @@ public class NaiveTopLCM {
 		String[] args = cmd.getArgs();
 		int minsup = Integer.parseInt(args[1]);
 		MemoryPeakWatcherThread memoryWatch = null;
+		ExplorationStep.COMPRESS_LVL1 = false;
 
 		String outputPath = null;
 		if (args.length >= 3) {
