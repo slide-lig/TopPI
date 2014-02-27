@@ -472,8 +472,21 @@ public final class ExplorationStep implements Cloneable {
 		Counters candidateCounts = holder.memoizedCounters;
 		TransactionsIterable support = holder.memoizedSupport;
 		holder.forgetMomoized();
-		
+		boolean useful = false;
 		if (support == null) {
+			if (!pattern.isStillInTopKs()) {
+				try {
+					useful = this.selectChain.allowExploration(candidate, ExplorationStep.this);
+				} catch (WrongFirstParentException e) {
+					System.err.println("no failed fp test is suppose to take place here");
+					System.exit(1);
+					e.printStackTrace();
+				}
+				if (!useful) {
+					return fake;
+				}
+			}
+
 			support = this.dataset.getSupport(candidate);
 			
 			final Counters c = this.counters;
@@ -482,12 +495,18 @@ public final class ExplorationStep implements Cloneable {
 
 			// now let's collect the right pattern
 			pattern.setPattern(candidateCounts.pattern);
+			int insertionsCounter = 0;
 			for (int item : candidateCounts.closure) {
-				collector.insertPatternInTop(pattern, counters.reverseRenaming[item]);
+				if(collector.insertPatternInTop(pattern, counters.reverseRenaming[item])){
+					insertionsCounter++;
+				}
+			}
+			if (insertionsCounter > 0) {
+				pattern.incrementRefCount(insertionsCounter);
 			}
 		}
 		try {
-			if (this.selectChain.allowExploration(candidate, ExplorationStep.this)) {
+			if (useful || this.selectChain.allowExploration(candidate, ExplorationStep.this)) {
 				return new ExplorationStep(ExplorationStep.this, candidate, candidateCounts, support);
 			}
 		} catch (WrongFirstParentException e) {
