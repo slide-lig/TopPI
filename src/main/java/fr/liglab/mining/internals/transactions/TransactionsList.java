@@ -110,6 +110,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction>,
 			if (t1.next() > prefixEnd) {
 				t1.remove();
 				while (t1.hasNext()) {
+					t1.next();
 					t1.remove();
 				}
 				t1.setTransactionSupport(t1.getTransactionSupport() + t2.getTransactionSupport());
