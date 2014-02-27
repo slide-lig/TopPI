@@ -1,5 +1,6 @@
 package fr.liglab.mining.io;
 
+import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.Counters;
 import fr.liglab.mining.internals.ExplorationStep;
@@ -132,6 +133,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 			// insert the new pattern where previously computed
 			itemTopK[newPosition] = entry;
+			entry.nbRefs++;
 			return true;
 		} else
 		// the support of the new pattern is higher than the kth previously
@@ -148,12 +150,15 @@ public class PerItemTopKCollector implements PatternsCollector {
 				}
 			}
 			
+			itemTopK[this.k - 1].onEjection();
+			
 			// make room for the new pattern, evicting the one at the end
 			for (int i = this.k - 1; i > newPosition; i--) {
 				itemTopK[i] = itemTopK[i - 1];
 			}
 			// insert the new pattern where previously computed
 			itemTopK[newPosition] = entry;
+			entry.nbRefs++;
 			return true;
 		}
 		// else not in top k for this item, do nothing
@@ -302,6 +307,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	public static final class PatternWithFreq {
 		protected final int supportCount;
 		protected int[] pattern = null;
+		protected int nbRefs = 0;
 
 		public PatternWithFreq(final int supportCount) {
 			super();
@@ -327,6 +333,22 @@ public class PerItemTopKCollector implements PatternsCollector {
 		 */
 		public void setPattern(int[] p) {
 			this.pattern = p;
+		}
+
+		public void onEjection() {
+			this.nbRefs--;
+			if (nbRefs == 0) {
+				CountersHandler.increment((this.pattern == null) ?
+						TopLCMCounters.EjectedPlaceholders : TopLCMCounters.EjectedPatterns);
+			}
+		}
+
+		public boolean isStillInTopKs() {
+			return this.nbRefs > 0;
+		}
+
+		public void incrementRefCount(int d) {
+			this.nbRefs += d;
 		}
 
 		@Override
