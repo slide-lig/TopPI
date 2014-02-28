@@ -44,7 +44,7 @@ public class NaiveTopLCM {
 	final long[] counters = new long[TopLCMCounters.values().length];
 	
 	public NaiveTopLCM(int k, PatternsCollector collector, ExplorationStep initState, int nbThreads) {
-		this.starters = initState.counters.getExtensionsIdIterator();
+		this.starters = initState.counters.getExtensionsIterator();
 		this.threads = new ArrayList<NaiveTopLCMThread>(nbThreads);
 		this.pool = Executors.newFixedThreadPool(nbThreads);
 		this.collector = collector;

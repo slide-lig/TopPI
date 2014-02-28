@@ -420,7 +420,7 @@ public class TopLCM {
 		// breadth is 0 because we're at the root, so there is no point in
 		// having some
 		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
-				initState.counters.getExtensionsIdIterator(), initState.counters.getReverseRenaming());
+				initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
 
 		topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents, extensions);
 
