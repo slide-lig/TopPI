@@ -587,10 +587,6 @@ public final class Counters implements Cloneable {
 		return new ExtensionsIterator(this.maxCandidate);
 	}
 
-	public FrequentsIterator getExtensionsIdIterator() {
-		return new ExtensionsIdIterator(this.maxCandidate);
-	}
-
 	/**
 	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
 	 * 
@@ -615,55 +611,6 @@ public final class Counters implements Cloneable {
 		 * [0,to[
 		 */
 		public ExtensionsIterator(final int to) {
-			this.index = new AtomicInteger(0);
-			this.max = to;
-		}
-
-		/**
-		 * @return -1 if iterator is finished
-		 */
-		public int next() {
-			if (compactedArrays) {
-				final int nextIndex = this.index.getAndIncrement();
-				if (nextIndex < this.max) {
-					return nextIndex;
-				} else {
-					return -1;
-				}
-			} else {
-				while (true) {
-					final int nextIndex = this.index.getAndIncrement();
-					if (nextIndex < this.max) {
-						if (supportCounts[nextIndex] > 0) {
-							return nextIndex;
-						}
-					} else {
-						return -1;
-					}
-				}
-			}
-		}
-
-		@Override
-		public int peek() {
-			return this.index.get();
-		}
-
-		@Override
-		public int last() {
-			return this.max;
-		}
-	}
-
-	protected class ExtensionsIdIterator implements FrequentsIterator {
-		private final AtomicInteger index;
-		private final int max;
-
-		/**
-		 * will provide an iterator on frequent items (in increasing order) in
-		 * [0,to[
-		 */
-		public ExtensionsIdIterator(final int to) {
 			this.index = new AtomicInteger(0);
 			this.max = to;
 		}

@@ -70,7 +70,7 @@ public final class LCMWrapper {
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) == 1) {
 			// collect all
-			collected = initState.counters.getExtensionsIdIterator();
+			collected = initState.counters.getExtensionsIterator();
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
 		} else if (conf.getBoolean(KEY_COLLECT_NON_GROUP, false)) {
 			collected = grouper.getNonGroupItems(gid);
