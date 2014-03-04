@@ -50,7 +50,7 @@ public final class ExplorationStep implements Cloneable {
 
 	private static final ExplorationStep fake = new ExplorationStep();
 	
-	public static boolean COMPRESS_LVL1 = true;
+	public static boolean COMPRESS_LVL1 = false;
 
 	/**
 	 * Extension item that led to this recursion step. Already included in
