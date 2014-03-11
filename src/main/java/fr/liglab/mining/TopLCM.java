@@ -2,6 +2,7 @@ package fr.liglab.mining;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -115,6 +116,8 @@ public class TopLCM {
 				throw new RuntimeException(e);
 			}
 		}
+		
+		Arrays.fill(this.globalCounters, 0);
 		
 		for (TopLCMThread t : this.threads) {
 			for (int i = 0; i < t.counters.length; i++) {

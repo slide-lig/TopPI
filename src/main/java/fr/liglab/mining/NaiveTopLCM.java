@@ -51,7 +51,6 @@ public class NaiveTopLCM {
 		this.initState = initState;
 		this.progressWatch = new ProgressWatcherThread();
 		this.progressWatch.setInitState(initState);
-		Arrays.fill(this.counters, 0);
 		
 		int[] reverseRenaming = initState.counters.getReverseRenaming();
 		
@@ -65,18 +64,27 @@ public class NaiveTopLCM {
 		for (NaiveTopLCMThread thread : this.threads) {
 			thread.start();
 		}
+		
+		Arrays.fill(this.counters, 0);
+		
 		for (NaiveTopLCMThread t : this.threads) {
 			try {
 				t.join();
 				
-				for (int i = 0; i < t.wrapped.globalCounters.length; i++) {
-					this.counters[i] += t.wrapped.globalCounters[i];
+				for (int i = 0; i < this.counters.length; i++) {
+					this.counters[i] += t.wrapped.globalCounters[i] + t.counters[i];
 				}
 				
 			} catch (InterruptedException e) {
 				throw new RuntimeException(e);
 			}
 		}
+		
+		long[] mainThreadsCounters = CountersHandler.getAll();
+		for (int i = 0; i < this.counters.length; i++) {
+			this.counters[i] += mainThreadsCounters[i];
+		}
+		
 		this.progressWatch.interrupt();
 		this.pool.shutdown();
 	}
@@ -119,6 +127,7 @@ public class NaiveTopLCM {
 		protected final FakeIterator items;
 		protected final int k;
 		protected final TopLCM wrapped;
+		protected long[] counters;
 		
 		public NaiveTopLCMThread(final int id, int k, int[] reverseRenaming) {
 			super("NaiveTopLCMThread" + id);
@@ -151,6 +160,7 @@ public class NaiveTopLCM {
 					}
 				}
 			}
+			this.counters = CountersHandler.getAll();
 		}
 	}
 	
