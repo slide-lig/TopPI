@@ -115,6 +115,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 		// ordering is first based on support and then on length
 		// careful! if adding a non closed we want to find other non closed even
 		// if shorter length
+		// if (item == 497 && entry.getSupportCount() == 14044) {
+		// System.out.println(entry);
+		// }
 		final int support = entry.getSupportCount();
 		int insertPos = 0;
 		int evictedPos = -1;
@@ -253,33 +256,18 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public void outputAll() {
-		for (final int k : this.topK.keys()) {
-			PatternWithFreq[] itemTopK = this.topK.get(k);
+		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
 					if (!itemTopK[i].isClosed()) {
-						System.err.println("unclosed pattern " + k + " " + itemTopK[i]);
+						System.err.println("unclosed pattern " + itemTopK[i]);
 					}
 					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 				}
 			}
 		}
-		// for (final PatternWithFreq[] itemTopK : this.topK.valueCollection())
-		// {
-		// for (int i = 0; i < itemTopK.length; i++) {
-		// if (itemTopK[i] == null) {
-		// break;
-		// } else {
-		// if (!itemTopK[i].isClosed()) {
-		// System.err.println("unclosed pattern " + itemTopK[i]);
-		// }
-		// this.decorated.collect(itemTopK[i].getSupportCount(),
-		// itemTopK[i].getPattern());
-		// }
-		// }
-		// }
 	}
 
 	/**
@@ -519,7 +507,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 				localPreviousResult = this.previousResult;
 				localValidUntil = this.validUntuil;
 			}
-
 			int[] reverseRenaming = state.counters.getReverseRenaming();
 			int[] supports = state.counters.supportCounts;
 			int extensionSupport = supports[extension];
@@ -527,7 +514,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
 
-			if (getBound(reverseRenaming[extension]) < extensionSupport) {
+			if (getBound(reverseRenaming[extension]) <= extensionSupport) {
 				return true;
 			}
 

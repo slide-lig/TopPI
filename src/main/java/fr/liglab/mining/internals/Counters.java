@@ -277,7 +277,7 @@ public final class Counters implements Cloneable {
 			} else {
 				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
 				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
-				topKcoll.collect(topKDistinctSupports[i], newPattern, false);
+				topKcoll.collect(topKDistinctSupports[i], newPattern, (i == topKDistinctSupports.length - 1));
 			}
 		}
 		if (updatedMinSupport > this.minSupport) {
@@ -316,6 +316,10 @@ public final class Counters implements Cloneable {
 			// System.out.println(Arrays.toString(this.pattern) +
 			// " not raising min support at " + this.minSupport);
 		}
+		// if (this.pattern.length == 1 && this.pattern[0] == 338) {
+		// System.out.println(Arrays.toString(this.pattern) + " support = " +
+		// this.minSupport);
+		// }
 	}
 
 	private static void updateTopK(int[] supports, int[] items, int item, int support) {

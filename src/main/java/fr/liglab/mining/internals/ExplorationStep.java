@@ -382,6 +382,11 @@ public final class ExplorationStep implements Cloneable {
 	}
 
 	protected ExplorationStep doDepthExplorationFromScratch(int candidate, PerItemTopKCollector collector) {
+		// if (this.counters.pattern.length == 1 && this.counters.pattern[0] ==
+		// 338 && this.counters.reverseRenaming[candidate] ==497) {
+		// System.err.println("extending local " + candidate + " " +
+		// this.counters.reverseRenaming[candidate]);
+		// }
 		try {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				TransactionsIterable support = dataset.getSupport(candidate);
