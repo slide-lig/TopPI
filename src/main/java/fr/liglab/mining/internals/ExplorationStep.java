@@ -7,13 +7,11 @@ import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
 import fr.liglab.mining.io.PerItemTopKCollector;
-import fr.liglab.mining.io.PerItemTopKCollector.PatternWithFreq;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Represents an LCM recursion step. Its also acts as a Dataset factory.

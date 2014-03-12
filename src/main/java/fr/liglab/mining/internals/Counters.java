@@ -255,8 +255,6 @@ public final class Counters implements Cloneable {
 	public void raiseMinimumSupport(PerItemTopKCollector topKcoll) {
 		int[] topKDistinctSupports = new int[topKcoll.getK()];
 		int[] topKCorrespondingItems = new int[topKcoll.getK()];
-		boolean[] closed = new boolean[topKcoll.getK()];
-		Arrays.fill(closed, true);
 		int updatedMinSupport = Integer.MAX_VALUE;
 		// split between extension candidates and others ?
 		// set a max because some items will never be able to raise their
@@ -265,12 +263,12 @@ public final class Counters implements Cloneable {
 			if (this.supportCounts[i] != 0) {
 				updatedMinSupport = Math.min(updatedMinSupport,
 						topKcoll.collectForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
-				updateTopK(topKDistinctSupports, topKCorrespondingItems, closed, i, this.supportCounts[i]);
+				updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i]);
 			}
 		}
 		for (int i = this.maxCandidate; i < this.supportCounts.length; i++) {
 			if (this.supportCounts[i] != 0) {
-				updateTopK(topKDistinctSupports, topKCorrespondingItems, closed, i, this.supportCounts[i]);
+				updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i]);
 			}
 		}
 		for (int i = topKDistinctSupports.length - 1; i >= 0; i--) {
@@ -279,7 +277,7 @@ public final class Counters implements Cloneable {
 			} else {
 				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
 				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
-				topKcoll.collect(topKDistinctSupports[i], newPattern, closed[i]);
+				topKcoll.collect(topKDistinctSupports[i], newPattern, false);
 			}
 		}
 		if (updatedMinSupport > this.minSupport) {
@@ -320,14 +318,12 @@ public final class Counters implements Cloneable {
 		}
 	}
 
-	private static void updateTopK(int[] supports, int[] items, boolean[] nonClosed, int item, int support) {
+	private static void updateTopK(int[] supports, int[] items, int item, int support) {
 		if (support < supports[0]) {
 			return;
 		} else {
 			int pos = Arrays.binarySearch(supports, support);
-			if (pos >= 0) {
-				nonClosed[pos] = false;
-			} else {
+			if (pos < 0) {
 				// pos = (-(insertion point) - 1)
 				// first element greater
 				// size of array if greatest
@@ -335,14 +331,11 @@ public final class Counters implements Cloneable {
 				if (insertionPoint == 1) {
 					supports[0] = support;
 					items[0] = item;
-					nonClosed[0] = true;
 				} else {
 					System.arraycopy(supports, 1, supports, 0, insertionPoint - 1);
 					System.arraycopy(items, 1, items, 0, insertionPoint - 1);
-					System.arraycopy(nonClosed, 1, nonClosed, 0, insertionPoint - 1);
 					supports[insertionPoint - 1] = support;
 					items[insertionPoint - 1] = item;
-					nonClosed[insertionPoint - 1] = true;
 				}
 			}
 		}

@@ -195,7 +195,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 				if (insertPos > evictedPos) {
 					System.arraycopy(itemTopK, evictedPos + 1, itemTopK, evictedPos, insertPos - evictedPos);
 				} else {
-					System.arraycopy(itemTopK, insertPos + 1, itemTopK, insertPos, evictedPos - insertPos);
+					System.arraycopy(itemTopK, insertPos, itemTopK, insertPos + 1, evictedPos - insertPos);
 				}
 			}
 			itemTopK[insertPos] = entry;
@@ -253,15 +253,33 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public void outputAll() {
-		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+		for (final int k : this.topK.keys()) {
+			PatternWithFreq[] itemTopK = this.topK.get(k);
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
+					if (!itemTopK[i].isClosed()) {
+						System.err.println("unclosed pattern " + k + " " + itemTopK[i]);
+					}
 					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 				}
 			}
 		}
+		// for (final PatternWithFreq[] itemTopK : this.topK.valueCollection())
+		// {
+		// for (int i = 0; i < itemTopK.length; i++) {
+		// if (itemTopK[i] == null) {
+		// break;
+		// } else {
+		// if (!itemTopK[i].isClosed()) {
+		// System.err.println("unclosed pattern " + itemTopK[i]);
+		// }
+		// this.decorated.collect(itemTopK[i].getSupportCount(),
+		// itemTopK[i].getPattern());
+		// }
+		// }
+		// }
 	}
 
 	/**
@@ -495,7 +513,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 		@Override
 		protected boolean allowExploration(int extension, ExplorationStep state) throws WrongFirstParentException {
-
 			int localPreviousItem, localPreviousResult, localValidUntil;
 			synchronized (this) {
 				localPreviousItem = this.previousItem;
@@ -581,42 +598,49 @@ public class PerItemTopKCollector implements PatternsCollector {
 		return this.k;
 	}
 
-	public static void main(String[] args) {
-		PerItemTopKCollector coll = new PerItemTopKCollector(null, 5, 1, new FrequentsIterator() {
-			boolean done = false;
-
-			@Override
-			public int peek() {
-				return 1;
-			}
-
-			@Override
-			public int next() {
-				if (!done) {
-					done = true;
-					return 1;
-				} else {
-					return -1;
-				}
-			}
-
-			@Override
-			public int last() {
-				return 1;
-			}
-		});
-
-		coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 1, 24 }, true), 1);
-		coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 2, 57, 78 }, true), 1);
-		coll.insertPatternInTop(new PatternWithFreq(110, new int[] { 3 }, false), 1);
-		coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 4 }, false), 1);
-		System.out.println(coll);
-		System.out.println(coll.getBound(1));
-		coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 5 }, true), 1);
-		System.out.println(coll);
-		System.out.println(coll.getBound(1));
-		coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 6 }, true), 1);
-		System.out.println(coll);
-		System.out.println(coll.getBound(1));
-	}
+	// public static void main(String[] args) {
+	// PerItemTopKCollector coll = new PerItemTopKCollector(null, 5, 1, new
+	// FrequentsIterator() {
+	// boolean done = false;
+	//
+	// @Override
+	// public int peek() {
+	// return 1;
+	// }
+	//
+	// @Override
+	// public int next() {
+	// if (!done) {
+	// done = true;
+	// return 1;
+	// } else {
+	// return -1;
+	// }
+	// }
+	//
+	// @Override
+	// public int last() {
+	// return 1;
+	// }
+	// });
+	//
+	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 1, 24 },
+	// true), 1);
+	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 2, 57, 78 },
+	// true), 1);
+	// coll.insertPatternInTop(new PatternWithFreq(110, new int[] { 3 }, false),
+	// 1);
+	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 4 }, false),
+	// 1);
+	// System.out.println(coll);
+	// System.out.println(coll.getBound(1));
+	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 5 }, true),
+	// 1);
+	// System.out.println(coll);
+	// System.out.println(coll.getBound(1));
+	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 6 }, true),
+	// 1);
+	// System.out.println(coll);
+	// System.out.println(coll.getBound(1));
+	// }
 }
