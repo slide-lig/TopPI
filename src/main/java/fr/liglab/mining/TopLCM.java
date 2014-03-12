@@ -49,7 +49,7 @@ public class TopLCM {
 	PerItemTopKCollector collector;
 
 	final long[] globalCounters;
-	
+
 	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
 		this(patternsCollector, nbThreads, false);
 	}
@@ -60,11 +60,11 @@ public class TopLCM {
 		}
 		this.collector = patternsCollector;
 		this.threads = new ArrayList<TopLCMThread>(nbThreads);
-		
+
 		for (int i = 0; i < nbThreads; i++) {
 			this.threads.add(new TopLCMThread());
 		}
-		
+
 		this.globalCounters = new long[TopLCMCounters.values().length];
 		this.progressWatch = launchProgressWatch ? new ProgressWatcherThread() : null;
 	}
@@ -84,7 +84,6 @@ public class TopLCM {
 		this.lcm(initState, pool);
 		pool.shutdown();
 	}
-	
 
 	/**
 	 * Initial invocation for the hard to schedule
@@ -93,14 +92,14 @@ public class TopLCM {
 		if (initState.counters.pattern.length > 0) {
 			collector.collect(initState.counters.transactionsCount, initState.counters.pattern);
 		}
-		
+
 		List<Future<?>> running = new ArrayList<Future<?>>(this.threads.size());
 
 		for (TopLCMThread t : this.threads) {
 			t.stackState(initState);
 			running.add(pool.submit(t));
 		}
-		
+
 		if (this.progressWatch != null) {
 			this.progressWatch.setInitState(initState);
 			this.progressWatch.start();
@@ -115,7 +114,7 @@ public class TopLCM {
 				throw new RuntimeException(e);
 			}
 		}
-		
+
 		for (TopLCMThread t : this.threads) {
 			for (int i = 0; i < t.counters.length; i++) {
 				this.globalCounters[i] += t.counters[i];
@@ -253,7 +252,7 @@ public class TopLCM {
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();
 		}
-		
+
 		/**
 		 * null until run() completed
 		 */
@@ -291,7 +290,6 @@ public class TopLCM {
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false,
 				"Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
-		options.addOption("w", true, "Width of the breadth-first exploration - defaults to 0");
 
 		try {
 			GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
@@ -351,10 +349,6 @@ public class TopLCM {
 			ExplorationStep.ultraVerbose = true;
 		} else if (cmd.hasOption('v')) {
 			ExplorationStep.verbose = true;
-		}
-
-		if (cmd.hasOption('w')) {
-			ExplorationStep.BREADTH_SIZE = Integer.parseInt(cmd.getOptionValue('w'));
 		}
 
 		int nbThreads = Runtime.getRuntime().availableProcessors();
@@ -419,8 +413,8 @@ public class TopLCM {
 
 		// breadth is 0 because we're at the root, so there is no point in
 		// having some
-		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(
-				initState.counters.getExtensionsIterator(), initState.counters.getReverseRenaming());
+		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(initState.counters.getExtensionsIterator(),
+				initState.counters.getReverseRenaming());
 
 		topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents, extensions);
 
@@ -458,9 +452,6 @@ public class TopLCM {
 		}
 		if (cmd.hasOption('V')) {
 			conf.setBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, true);
-		}
-		if (cmd.hasOption('w')) {
-			conf.setInt(TopLCMoverHadoop.KEY_BREADTH_WIDTH, Integer.parseInt(cmd.getOptionValue('w')));
 		}
 
 		TopLCMoverHadoop driver = new TopLCMoverHadoop(conf);

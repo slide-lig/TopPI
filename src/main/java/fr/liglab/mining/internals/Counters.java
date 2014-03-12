@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIntIterator;
@@ -30,7 +31,7 @@ public final class Counters implements Cloneable {
 	/**
 	 * Items occuring less than minSup times will be considered infrequent
 	 */
-	public final int minSupport;
+	public int minSupport;
 
 	/**
 	 * How many transactions are represented by the given dataset ?
@@ -46,7 +47,7 @@ public final class Counters implements Cloneable {
 	/**
 	 * Sum of given *filtered* transactions' lengths, ignoring their weight
 	 */
-	public final int distinctTransactionLengthSum;
+	public int distinctTransactionLengthSum;
 
 	/**
 	 * Support count, per item having a support count in [minSupport; 100% [
@@ -249,6 +250,102 @@ public final class Counters implements Cloneable {
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
 		this.maxFrequent = biggestItemID;
+	}
+
+	public void raiseMinimumSupport(PerItemTopKCollector topKcoll) {
+		int[] topKDistinctSupports = new int[topKcoll.getK()];
+		int[] topKCorrespondingItems = new int[topKcoll.getK()];
+		boolean[] closed = new boolean[topKcoll.getK()];
+		Arrays.fill(closed, true);
+		int updatedMinSupport = Integer.MAX_VALUE;
+		// split between extension candidates and others ?
+		// set a max because some items will never be able to raise their
+		// threshold anyway?
+		for (int i = 0; i < this.maxCandidate; i++) {
+			if (this.supportCounts[i] != 0) {
+				updatedMinSupport = Math.min(updatedMinSupport,
+						topKcoll.collectForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
+				updateTopK(topKDistinctSupports, topKCorrespondingItems, closed, i, this.supportCounts[i]);
+			}
+		}
+		for (int i = this.maxCandidate; i < this.supportCounts.length; i++) {
+			if (this.supportCounts[i] != 0) {
+				updateTopK(topKDistinctSupports, topKCorrespondingItems, closed, i, this.supportCounts[i]);
+			}
+		}
+		for (int i = topKDistinctSupports.length - 1; i >= 0; i--) {
+			if (topKDistinctSupports[i] == 0) {
+				break;
+			} else {
+				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
+				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
+				topKcoll.collect(topKDistinctSupports[i], newPattern, closed[i]);
+			}
+		}
+		if (updatedMinSupport > this.minSupport) {
+			for (int item : this.pattern) {
+				updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(item));
+			}
+			if (updatedMinSupport > this.minSupport) {
+				// because of the -1 that the collector can return
+				updatedMinSupport = Math.max(updatedMinSupport, this.minSupport);
+				// System.out.println(Arrays.toString(this.pattern) +
+				// " raising min support from " + this.minSupport
+				// + " to " + updatedMinSupport);
+				// System.err.println(topKcoll);
+				int remainingDistinctTransLengths = 0;
+				int remainingFrequents = 0;
+				int biggestItemID = 0;
+				this.minSupport = updatedMinSupport;
+				for (int i = 0; i < this.supportCounts.length; i++) {
+					if (this.supportCounts[i] != 0 && this.supportCounts[i] < this.minSupport) {
+						this.supportCounts[i] = 0;
+						this.distinctTransactionsCounts[i] = 0;
+					} else {
+						biggestItemID = Math.max(biggestItemID, i);
+						remainingFrequents++;
+						remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
+					}
+				}
+				this.distinctTransactionLengthSum = remainingDistinctTransLengths;
+				this.nbFrequents = remainingFrequents;
+				this.maxFrequent = biggestItemID;
+			} else {
+				// System.out.println(Arrays.toString(this.pattern) +
+				// " not raising min support at " + this.minSupport);
+			}
+		} else {
+			// System.out.println(Arrays.toString(this.pattern) +
+			// " not raising min support at " + this.minSupport);
+		}
+	}
+
+	private static void updateTopK(int[] supports, int[] items, boolean[] nonClosed, int item, int support) {
+		if (support < supports[0]) {
+			return;
+		} else {
+			int pos = Arrays.binarySearch(supports, support);
+			if (pos >= 0) {
+				nonClosed[pos] = false;
+			} else {
+				// pos = (-(insertion point) - 1)
+				// first element greater
+				// size of array if greatest
+				int insertionPoint = -pos - 1;
+				if (insertionPoint == 1) {
+					supports[0] = support;
+					items[0] = item;
+					nonClosed[0] = true;
+				} else {
+					System.arraycopy(supports, 1, supports, 0, insertionPoint - 1);
+					System.arraycopy(items, 1, items, 0, insertionPoint - 1);
+					System.arraycopy(nonClosed, 1, nonClosed, 0, insertionPoint - 1);
+					supports[insertionPoint - 1] = support;
+					items[insertionPoint - 1] = item;
+					nonClosed[insertionPoint - 1] = true;
+				}
+			}
+		}
 	}
 
 	/**
