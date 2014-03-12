@@ -277,7 +277,7 @@ public final class Counters implements Cloneable {
 			} else {
 				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
 				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
-				topKcoll.collect(topKDistinctSupports[i], newPattern, (i == topKDistinctSupports.length - 1));
+				topKcoll.collect(topKDistinctSupports[i], newPattern, false);
 			}
 		}
 		if (updatedMinSupport > this.minSupport) {
