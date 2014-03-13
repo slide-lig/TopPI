@@ -112,7 +112,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * @return true if the insertion actually happened
 	 */
 	private boolean updateTop(PatternWithFreq entry, PatternWithFreq[] itemTopK, int item) {
-		// ordering is first based on support and then on length
+		// ordering is first based on support then closed > not closed then
+		// pattern size short > long
 		// careful! if adding a non closed we want to find other non closed even
 		// if shorter length
 		// if (item == 497 && entry.getSupportCount() == 14044) {
