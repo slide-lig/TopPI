@@ -116,9 +116,6 @@ public class PerItemTopKCollector implements PatternsCollector {
 		// pattern size short > long
 		// careful! if adding a non closed we want to find other non closed even
 		// if shorter length
-		// if (item == 497 && entry.getSupportCount() == 14044) {
-		// System.out.println(entry);
-		// }
 		final int support = entry.getSupportCount();
 		int insertPos = 0;
 		int evictedPos = -1;
@@ -257,13 +254,15 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public void outputAll() {
+		// for (final int k : this.topK.keys()) {
 		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
+			// final PatternWithFreq[] itemTopK = this.topK.get(k);
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
 					if (!itemTopK[i].isClosed()) {
-						System.err.println("unclosed pattern " + itemTopK[i]);
+						System.err.println("unclosed pattern " + /* k + " " + */itemTopK[i]);
 					}
 					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 				}
@@ -432,7 +431,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		public synchronized void onEjection() {
 			this.nbRefs--;
 			if (nbRefs == 0) {
-				CountersHandler.increment((this.pattern == null) ? TopLCMCounters.EjectedPlaceholders
+				CountersHandler.increment((this.closed) ? TopLCMCounters.EjectedPlaceholders
 						: TopLCMCounters.EjectedPatterns);
 			}
 		}
@@ -513,7 +512,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			int extensionSupport = supports[extension];
 			final int maxCandidate = state.counters.getMaxCandidate();
 
-			boolean shortcut = localValidUntil > extension && localPreviousResult >= extensionSupport;
+			boolean shortcut = localValidUntil > extension && localPreviousResult > extensionSupport;
 
 			if (getBound(reverseRenaming[extension]) <= extensionSupport) {
 				return true;
