@@ -262,7 +262,7 @@ public final class Counters implements Cloneable {
 		for (int i = 0; i < this.maxCandidate; i++) {
 			if (this.supportCounts[i] != 0) {
 				updatedMinSupport = Math.min(updatedMinSupport,
-						topKcoll.collectForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
+						topKcoll.collectUnclosedForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
 				updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i]);
 			}
 		}

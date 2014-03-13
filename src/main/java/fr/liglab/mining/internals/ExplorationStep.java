@@ -402,6 +402,7 @@ public final class ExplorationStep implements Cloneable {
 				}
 
 				if (greatest > candidate) {
+					collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);
 					throw new WrongFirstParentException(candidate, greatest);
 				}
 				collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);

@@ -72,7 +72,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	public final int collectForItem(final int support, final int[] parentPattern, final int item) {
+	public final int collectUnclosedForItem(final int support, final int[] parentPattern, final int item) {
 		int prevSup = this.getBound(item);
 		if (support >= prevSup) {
 			// deliberately not adding item to array
