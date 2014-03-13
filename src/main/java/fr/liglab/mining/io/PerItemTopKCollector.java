@@ -431,8 +431,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 		public synchronized void onEjection() {
 			this.nbRefs--;
 			if (nbRefs == 0) {
-				CountersHandler.increment((this.closed) ? TopLCMCounters.EjectedPlaceholders
-						: TopLCMCounters.EjectedPatterns);
+				if (this.closed) {
+					CountersHandler.increment(TopLCMCounters.EjectedPatterns);
+				} else {
+					CountersHandler.increment(TopLCMCounters.EjectedPlaceholders);
+				}
 			}
 		}
 

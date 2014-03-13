@@ -255,6 +255,7 @@ public final class Counters implements Cloneable {
 	public void raiseMinimumSupport(PerItemTopKCollector topKcoll) {
 		int[] topKDistinctSupports = new int[topKcoll.getK()];
 		int[] topKCorrespondingItems = new int[topKcoll.getK()];
+		boolean highestUnique = false;
 		int updatedMinSupport = Integer.MAX_VALUE;
 		// split between extension candidates and others ?
 		// set a max because some items will never be able to raise their
@@ -263,22 +264,26 @@ public final class Counters implements Cloneable {
 			if (this.supportCounts[i] != 0) {
 				updatedMinSupport = Math.min(updatedMinSupport,
 						topKcoll.collectUnclosedForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
-				updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i]);
+				highestUnique = updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i],
+						highestUnique);
 			}
 		}
 		for (int i = this.maxCandidate; i < this.supportCounts.length; i++) {
 			if (this.supportCounts[i] != 0) {
-				updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i]);
+				highestUnique = updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i],
+						highestUnique);
 			}
 		}
+		boolean highest = true;
 		for (int i = topKDistinctSupports.length - 1; i >= 0; i--) {
 			if (topKDistinctSupports[i] == 0) {
 				break;
 			} else {
 				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
 				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
-				topKcoll.collect(topKDistinctSupports[i], newPattern, false);
+				topKcoll.collect(topKDistinctSupports[i], newPattern, highest && highestUnique);
 			}
+			highest = false;
 		}
 		if (updatedMinSupport > this.minSupport) {
 			for (int item : this.pattern) {
@@ -322,9 +327,10 @@ public final class Counters implements Cloneable {
 		// }
 	}
 
-	private static void updateTopK(int[] supports, int[] items, int item, int support) {
+	// true if the current highest in topk can be considered unique
+	private static boolean updateTopK(int[] supports, int[] items, int item, int support, boolean highestUnique) {
 		if (support < supports[0]) {
-			return;
+			return highestUnique;
 		} else {
 			int pos = Arrays.binarySearch(supports, support);
 			if (pos < 0) {
@@ -340,6 +346,17 @@ public final class Counters implements Cloneable {
 					System.arraycopy(items, 1, items, 0, insertionPoint - 1);
 					supports[insertionPoint - 1] = support;
 					items[insertionPoint - 1] = item;
+				}
+				if (insertionPoint == supports.length) {
+					return true;
+				} else {
+					return highestUnique;
+				}
+			} else {
+				if (pos != supports.length - 1) {
+					return highestUnique;
+				} else {
+					return false;
 				}
 			}
 		}
