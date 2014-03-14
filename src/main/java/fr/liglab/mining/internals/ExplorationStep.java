@@ -219,8 +219,14 @@ public final class ExplorationStep implements Cloneable {
 		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming(), k);
 
 		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-		return new ExplorationStep(candidateCounts, filtered);
+		
+		if (verbose) {
+			System.err.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"projectOn\":%3$d,\"originalId\":%4$d}\n",
+							Calendar.getInstance(), Thread.currentThread().getId(), candidate, 
+							this.counters.getReverseRenaming()[candidate]);
+		}
+		
+		return new ExplorationStep(candidateCounts,filtered);
 	}
 
 	private ExplorationStep(Counters candidateCounts, Iterator<TransactionReader> support) {
