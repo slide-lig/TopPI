@@ -310,6 +310,8 @@ public final class Counters implements Cloneable {
 						remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
 					}
 				}
+				CountersHandler.add(TopLCMCounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
+						- remainingDistinctTransLengths);
 				this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 				this.nbFrequents = remainingFrequents;
 				this.maxFrequent = biggestItemID;
@@ -698,6 +700,10 @@ public final class Counters implements Cloneable {
 		return new ExtensionsIterator(this.maxCandidate);
 	}
 
+	public FrequentsIterator getReversedExtensionsIterator() {
+		return new ReversedExtensionsIterator(this.maxCandidate);
+	}
+
 	/**
 	 * Notice: enumerated item IDs are in local base, use this.reverseRenaming
 	 * 
@@ -754,6 +760,55 @@ public final class Counters implements Cloneable {
 		@Override
 		public int peek() {
 			return this.index.get();
+		}
+
+		@Override
+		public int last() {
+			return this.max;
+		}
+	}
+
+	protected class ReversedExtensionsIterator implements FrequentsIterator {
+		private final AtomicInteger index;
+		private final int max;
+
+		/**
+		 * will provide an iterator on frequent items (in increasing order) in
+		 * [0,to[
+		 */
+		public ReversedExtensionsIterator(final int to) {
+			this.index = new AtomicInteger(to - 1);
+			this.max = to;
+		}
+
+		/**
+		 * @return -1 if iterator is finished
+		 */
+		public int next() {
+			if (compactedArrays) {
+				final int nextIndex = this.index.getAndDecrement();
+				if (nextIndex >= 0) {
+					return nextIndex;
+				} else {
+					return -1;
+				}
+			} else {
+				while (true) {
+					final int nextIndex = this.index.getAndDecrement();
+					if (nextIndex >= 0) {
+						if (supportCounts[nextIndex] > 0) {
+							return nextIndex;
+						}
+					} else {
+						return -1;
+					}
+				}
+			}
+		}
+
+		@Override
+		public int peek() {
+			return this.max - this.index.get();
 		}
 
 		@Override
