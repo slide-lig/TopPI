@@ -303,13 +303,18 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 *         item's K-th itemset's support count
 	 */
 	public int getBound(final int item) {
-		PatternWithFreq p = this.topK.get(item)[this.k - 1];
-		if (p == null) {
-			return -1;
-		} else if (p.isClosed()) {
-			return p.getSupportCount() + 1;
+		PatternWithFreq[] pTab = this.topK.get(item);
+		if (pTab == null) {
+			return Integer.MAX_VALUE;
 		} else {
-			return p.getSupportCount();
+			PatternWithFreq p = pTab[this.k - 1];
+			if (p == null) {
+				return -1;
+			} else if (p.isClosed()) {
+				return p.getSupportCount() + 1;
+			} else {
+				return p.getSupportCount();
+			}
 		}
 	}
 
