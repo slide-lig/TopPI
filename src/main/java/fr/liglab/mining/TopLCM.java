@@ -102,7 +102,7 @@ public class TopLCM {
 		}
 
 		if (this.progressWatch != null) {
-			this.progressWatch.setInitState(initState);
+			this.progressWatch.setStartersIterator(initState.candidates);
 			this.progressWatch.start();
 		}
 

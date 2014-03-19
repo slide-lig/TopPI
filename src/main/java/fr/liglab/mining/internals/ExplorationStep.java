@@ -62,7 +62,7 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	protected Selector selectChain;
 
-	protected final FrequentsIterator candidates;
+	public final FrequentsIterator candidates;
 
 	/**
 	 * When an extension fails first-parent test, it ends up in this map. Keys
@@ -372,21 +372,7 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep copy() {
 		return new ExplorationStep(core_item, dataset.clone(), counters.clone(), selectChain, candidates, failedFPTests);
 	}
-
-	public Progress getProgression() {
-		return new Progress();
-	}
-
-	public final class Progress {
-		public final int current;
-		public final int last;
-
-		protected Progress() {
-			this.current = candidates.peek();
-			this.last = candidates.last();
-		}
-	}
-
+	
 	protected ExplorationStep doDepthExplorationFromScratch(int candidate, PerItemTopKCollector collector) {
 		// if (this.counters.pattern.length == 1 && this.counters.pattern[0] ==
 		// 338 && this.counters.reverseRenaming[candidate] ==497) {

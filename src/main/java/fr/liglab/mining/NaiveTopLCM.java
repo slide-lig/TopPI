@@ -50,7 +50,7 @@ public class NaiveTopLCM {
 		this.collector = collector;
 		this.initState = initState;
 		this.progressWatch = new ProgressWatcherThread();
-		this.progressWatch.setInitState(initState);
+		this.progressWatch.setStartersIterator(this.starters);
 		
 		int[] reverseRenaming = initState.counters.getReverseRenaming();
 		
