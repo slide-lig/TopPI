@@ -52,4 +52,24 @@ public class MultiThreadedFileCollector implements PatternsCollector {
 		return (int) (totalLen / nbPatterns);
 	}
 
+	@Override
+	public long getCollected() {
+		long nbPatterns = 0;
+		for (FileCollector collector : this.collectors) {
+			nbPatterns += collector.getCollected();
+		}
+		return nbPatterns;
+	}
+
+	@Override
+	public long getCollectedLength() {
+		long totalLen = 0;
+		
+		for (FileCollector collector : this.collectors) {
+			totalLen += collector.getCollectedLength();
+		}
+		
+		return totalLen;
+	}
+
 }

@@ -264,6 +264,7 @@ public class NaiveTopLCM {
 		counters.put("outputtedPatterns", collector.close());
 		counters.put("loadingTime", loadingTime);
 		counters.put("avgPatternLength", (long) collector.getAveragePatternLength());
+		counters.put("concatenatedPatternsLength", (long) collector.getCollectedLength());
 
 		if (memoryWatch != null) {
 			memoryWatch.interrupt();

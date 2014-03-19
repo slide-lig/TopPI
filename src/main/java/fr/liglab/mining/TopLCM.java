@@ -372,6 +372,7 @@ public class TopLCM {
 		additionalCounters.put("outputtedPatterns", collector.close());
 		additionalCounters.put("loadingTime", loadingTime);
 		additionalCounters.put("avgPatternLength", (long) collector.getAveragePatternLength());
+		additionalCounters.put("concatenatedPatternsLength", (long) collector.getCollectedLength());
 
 		if (memoryWatch != null) {
 			memoryWatch.interrupt();

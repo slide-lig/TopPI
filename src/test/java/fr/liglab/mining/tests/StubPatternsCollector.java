@@ -93,4 +93,14 @@ public class StubPatternsCollector implements PatternsCollector {
 			return (int) (this.collectedLength / this.collected);
 		}
 	}
+
+	@Override
+	public long getCollected() {
+		return this.collected;
+	}
+
+	@Override
+	public long getCollectedLength() {
+		return this.collectedLength;
+	}
 }

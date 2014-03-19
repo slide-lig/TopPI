@@ -572,9 +572,20 @@ public class PerItemTopKCollector implements PatternsCollector {
 			return new ExplorationLimiter(newNext);
 		}
 	}
-
+	
+	@Override
 	public int getAveragePatternLength() {
 		return this.decorated.getAveragePatternLength();
+	}
+	
+	@Override
+	public long getCollected() {
+		return this.decorated.getCollected();
+	}
+
+	@Override
+	public long getCollectedLength() {
+		return this.decorated.getCollectedLength();
 	}
 
 	public void setInfoMode(boolean outputInfoOnly) {
