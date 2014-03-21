@@ -297,6 +297,13 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 		}
 	}
+	
+	/**
+	 * you want to know this before early collecting !
+	 */
+	public boolean isCollected(final int item) {
+		return this.topK.get(item) != null;
+	}
 
 	/**
 	 * @return MAX_VALUE if item is unknown, -1 if item's top-K isn't full, or
