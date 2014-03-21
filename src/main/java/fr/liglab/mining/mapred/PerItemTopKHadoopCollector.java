@@ -43,7 +43,7 @@ class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
-				} else {
+				} else if (itemTopK[i].isClosed() && itemTopK[i].getPattern().length > 0){
 					final int[] pattern = itemTopK[i].getPattern();
 					
 					if (pattern == null) {
@@ -96,6 +96,7 @@ class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 	// note that "close" overloaded by this class takes into account potentially-null patterns
 	public void preloadBounds(TIntIntMap perItemBounds) {
 		TIntIntIterator iterator = perItemBounds.iterator();
+		int[] fakePattern = new int[] { };
 		while (iterator.hasNext()) {
 			iterator.advance();
 			
@@ -103,7 +104,7 @@ class PerItemTopKHadoopCollector extends PerItemTopKCollector {
 			PatternWithFreq[] top = this.topK.get(item);
 			
 			if (top != null) {
-				Arrays.fill(top, new PatternWithFreq(iterator.value()));
+				Arrays.fill(top, new PatternWithFreq(iterator.value(), fakePattern, true));
 			}
 		}
 	}
