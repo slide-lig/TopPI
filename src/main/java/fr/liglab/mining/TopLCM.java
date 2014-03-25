@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,8 +25,10 @@ import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.util.GenericOptionsParser;
+import org.omg.CORBA.IntHolder;
 
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.internals.Counters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
@@ -61,9 +65,9 @@ public class TopLCM {
 		}
 		this.collector = patternsCollector;
 		this.threads = new ArrayList<TopLCMThread>(nbThreads);
-
+		PreparedJobs pj = new PreparedJobs();
 		for (int i = 0; i < nbThreads; i++) {
-			this.threads.add(new TopLCMThread());
+			this.threads.add(new TopLCMThread(pj));
 		}
 
 		this.globalCounters = new long[TopLCMCounters.values().length];
@@ -115,9 +119,9 @@ public class TopLCM {
 				throw new RuntimeException(e);
 			}
 		}
-		
+
 		Arrays.fill(this.globalCounters, 0);
-		
+
 		for (TopLCMThread t : this.threads) {
 			for (int i = 0; i < t.counters.length; i++) {
 				this.globalCounters[i] += t.counters[i];
@@ -205,14 +209,91 @@ public class TopLCM {
 		return null;
 	}
 
+	private static class CandidateCounters implements Comparable<CandidateCounters> {
+		private final int candidate;
+		private final Counters counters;
+
+		private CandidateCounters(int item, Counters counters) {
+			super();
+			this.candidate = item;
+			this.counters = counters;
+		}
+
+		public final int getCandidate() {
+			return candidate;
+		}
+
+		public final Counters getCounters() {
+			return counters;
+		}
+
+		@Override
+		public int compareTo(CandidateCounters ic) {
+			return this.candidate - ic.candidate;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + candidate;
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			CandidateCounters other = (CandidateCounters) obj;
+			if (candidate != other.candidate)
+				return false;
+			return true;
+		}
+
+	}
+
+	private static class PreparedJobs {
+		private Queue<CandidateCounters> stackedEs;
+		private int nextConsumable;
+
+		public PreparedJobs() {
+			this.stackedEs = new PriorityQueue<TopLCM.CandidateCounters>();
+		}
+
+		public synchronized CandidateCounters getTask() {
+			if (!stackedEs.isEmpty() && stackedEs.peek().getCandidate() == this.nextConsumable) {
+				this.nextConsumable++;
+				CandidateCounters next = stackedEs.poll();
+				if (next.counters == null) {
+					return getTask();
+				} else {
+					return next;
+				}
+			} else {
+				return null;
+			}
+		}
+
+		public synchronized void pushTask(CandidateCounters t) {
+			this.stackedEs.add(t);
+		}
+	}
+
 	public class TopLCMThread implements Runnable {
 		private long[] counters = null;
+		private PreparedJobs preparedJobs;
 		final ReadWriteLock lock;
 		final List<ExplorationStep> stackedJobs;
+		final IntHolder candidateHolder = new IntHolder();
 
-		public TopLCMThread() {
+		public TopLCMThread(PreparedJobs preparedJobs) {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.lock = new ReentrantReadWriteLock();
+			this.preparedJobs = preparedJobs;
 		}
 
 		@Override
@@ -221,20 +302,37 @@ public class TopLCM {
 			// writes
 			boolean exit = false;
 			while (!exit) {
-				ExplorationStep sj = null;
 				if (!this.stackedJobs.isEmpty()) {
-					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
-
-					ExplorationStep extended = sj.next(collector);
-					// iterator is finished, remove it from the stack
-					if (extended == null) {
-						this.lock.writeLock().lock();
-						this.stackedJobs.remove(this.stackedJobs.size() - 1);
-						this.lock.writeLock().unlock();
-					} else {
-						this.stackState(extended);
+					if (this.stackedJobs.size() == 1) {
+						CandidateCounters iex = this.preparedJobs.getTask();
+						if (iex != null) {
+							this.stackState(this.stackedJobs.get(0).resumeExploration(iex.getCounters(),
+									iex.getCandidate(), collector));
+							continue;
+						}
 					}
-
+					ExplorationStep sj = null;
+					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
+					if (this.stackedJobs.size() == 1) {
+						Counters preprocessed = sj.nextPreprocessed(collector, this.candidateHolder);
+						if (this.candidateHolder.value == -1) {
+							this.lock.writeLock().lock();
+							this.stackedJobs.remove(this.stackedJobs.size() - 1);
+							this.lock.writeLock().unlock();
+						} else {
+							this.preparedJobs.pushTask(new CandidateCounters(candidateHolder.value, preprocessed));
+						}
+					} else {
+						ExplorationStep extended = sj.next(collector);
+						// iterator is finished, remove it from the stack
+						if (extended == null) {
+							this.lock.writeLock().lock();
+							this.stackedJobs.remove(this.stackedJobs.size() - 1);
+							this.lock.writeLock().unlock();
+						} else {
+							this.stackState(extended);
+						}
+					}
 				} else { // our list was empty, we should steal from another
 							// thread
 					ExplorationStep stolj = stealJob(this);
