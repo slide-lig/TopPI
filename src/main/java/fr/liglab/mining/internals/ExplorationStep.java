@@ -189,9 +189,10 @@ public final class ExplorationStep implements Cloneable {
 				return null;
 			} else {
 				res = this.doDepthExplorationFromScratch(candidate, collector);
+				/// FIXME: isn't this dead code ?
 				if (LOG_EPSILONS) {
 					synchronized(System.out) {
-						if (res.counters != null && this.counters !=null && this.counters.pattern != null && this.counters.pattern.length == 0) {
+						if (res != null && res.counters != null && this.counters !=null && this.counters.pattern != null && this.counters.pattern.length == 0) {
 							System.out.println(candidate+" "+res.counters.minSupport);
 						}
 					}
@@ -393,6 +394,13 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep resumeExploration(Counters candidateCounts, int candidate, PerItemTopKCollector collector) {
 		if (candidate < INSERT_UNCLOSED_UP_TO_ITEM) {
 			candidateCounts.raiseMinimumSupport(collector, !BASELINE_MODE);
+			if (LOG_EPSILONS) {
+				synchronized(System.out) {
+					if (this.counters !=null && this.counters.pattern != null && this.counters.pattern.length == 0) {
+						System.out.println(candidate+" "+candidateCounts.minSupport);
+					}
+				}
+			}
 		}
 		ExplorationStep next = new ExplorationStep(this, candidate, candidateCounts, dataset.getSupport(candidate));
 		return next;
