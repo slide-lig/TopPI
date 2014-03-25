@@ -252,18 +252,62 @@ public final class Counters implements Cloneable {
 		this.maxFrequent = biggestItemID;
 	}
 
-	public void raiseMinimumSupport(PerItemTopKCollector topKcoll) {
+	/*
+	 * careAboutFutureExtensions true for toplcm, false for baseline
+	 */
+	public void raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions) {
+		int updatedMinSupport = Integer.MAX_VALUE;
+		for (int item : this.pattern) {
+			updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(item));
+			if (updatedMinSupport <= this.minSupport) {
+				return;
+			}
+		}
+		if (careAboutFutureExtensions) {
+			for (int i = 0; i < this.maxCandidate; i++) {
+				if (this.supportCounts[i] != 0) {
+					updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(this.reverseRenaming[i]));
+					if (updatedMinSupport <= this.minSupport) {
+						return;
+					}
+				}
+			}
+		}
+		int remainingDistinctTransLengths = 0;
+		int remainingFrequents = 0;
+		int biggestItemID = 0;
+		this.minSupport = updatedMinSupport;
+		for (int i = 0; i < this.supportCounts.length; i++) {
+			if (this.supportCounts[i] != 0) {
+				if (this.supportCounts[i] < this.minSupport) {
+					this.supportCounts[i] = 0;
+					this.distinctTransactionsCounts[i] = 0;
+				} else {
+					biggestItemID = Math.max(biggestItemID, i);
+					remainingFrequents++;
+					remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
+				}
+			}
+		}
+		CountersHandler.add(TopLCMCounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
+				- remainingDistinctTransLengths);
+		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
+		this.nbFrequents = remainingFrequents;
+		this.maxFrequent = biggestItemID;
+	}
+
+	public void insertUnclosedPatterns(PerItemTopKCollector topKcoll, boolean outputPatternsForFutureExtensions) {
 		int[] topKDistinctSupports = new int[topKcoll.getK()];
 		int[] topKCorrespondingItems = new int[topKcoll.getK()];
 		boolean highestUnique = false;
-		int updatedMinSupport = Integer.MAX_VALUE;
 		// split between extension candidates and others ?
 		// set a max because some items will never be able to raise their
 		// threshold anyway?
 		for (int i = 0; i < this.maxCandidate; i++) {
 			if (this.supportCounts[i] != 0) {
-				updatedMinSupport = Math.min(updatedMinSupport,
-						topKcoll.collectUnclosedForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]));
+				if (outputPatternsForFutureExtensions) {
+					topKcoll.collectUnclosedForItem(this.supportCounts[i], this.pattern, this.reverseRenaming[i]);
+				}
 				highestUnique = updateTopK(topKDistinctSupports, topKCorrespondingItems, i, this.supportCounts[i],
 						highestUnique);
 			}
@@ -285,48 +329,6 @@ public final class Counters implements Cloneable {
 			}
 			highest = false;
 		}
-		if (updatedMinSupport > this.minSupport) {
-			for (int item : this.pattern) {
-				updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(item));
-			}
-			if (updatedMinSupport > this.minSupport) {
-				// because of the -1 that the collector can return
-				updatedMinSupport = Math.max(updatedMinSupport, this.minSupport);
-				// System.out.println(Arrays.toString(this.pattern) +
-				// " raising min support from " + this.minSupport
-				// + " to " + updatedMinSupport);
-				// System.err.println(topKcoll);
-				int remainingDistinctTransLengths = 0;
-				int remainingFrequents = 0;
-				int biggestItemID = 0;
-				this.minSupport = updatedMinSupport;
-				for (int i = 0; i < this.supportCounts.length; i++) {
-					if (this.supportCounts[i] != 0 && this.supportCounts[i] < this.minSupport) {
-						this.supportCounts[i] = 0;
-						this.distinctTransactionsCounts[i] = 0;
-					} else {
-						biggestItemID = Math.max(biggestItemID, i);
-						remainingFrequents++;
-						remainingDistinctTransLengths += this.distinctTransactionsCounts[i];
-					}
-				}
-				CountersHandler.add(TopLCMCounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
-						- remainingDistinctTransLengths);
-				this.distinctTransactionLengthSum = remainingDistinctTransLengths;
-				this.nbFrequents = remainingFrequents;
-				this.maxFrequent = biggestItemID;
-			} else {
-				// System.out.println(Arrays.toString(this.pattern) +
-				// " not raising min support at " + this.minSupport);
-			}
-		} else {
-			// System.out.println(Arrays.toString(this.pattern) +
-			// " not raising min support at " + this.minSupport);
-		}
-		// if (this.pattern.length == 1 && this.pattern[0] == 338) {
-		// System.out.println(Arrays.toString(this.pattern) + " support = " +
-		// this.minSupport);
-		// }
 	}
 
 	// true if the current highest in topk can be considered unique
@@ -614,12 +616,10 @@ public final class Counters implements Cloneable {
 	 *            reverseRenaming from the dataset that fed this Counter
 	 * @param items
 	 *            below this parameter will be renamed by decreasing frequency
-	 * @param if set below Integer.MAX_VALUE, we'll only keep the top-k
-	 *        distincts highest-support items.
 	 * @return the translation from the old renaming to the compressed one
 	 *         (gives -1 for removed items)
 	 */
-	public int[] compressRenaming(int[] olderReverseRenaming, int topK) {
+	public int[] compressSortRenaming(int[] olderReverseRenaming) {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
@@ -651,25 +651,6 @@ public final class Counters implements Cloneable {
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
 
-		// if we only keep the k highest distinct extension supports
-		if (this.maxCandidate > topK) {
-			int prev = -1;
-			int i = 0;
-			for (; topK >= 0 && i < this.maxCandidate; i++) {
-				if (this.supportCounts[i] != prev) {
-					topK--;
-					prev = this.supportCounts[i];
-				}
-			}
-			this.maxCandidate = i;
-			this.maxFrequent = i - 1;
-			for (; i < this.maxCandidate; i++) {
-				this.supportCounts[i] = 0;
-				this.distinctTransactionsCounts[i] = 0;
-				this.reverseRenaming[i] = -1;
-			}
-		}
-
 		this.renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		Arrays.fill(renaming, -1);
 
@@ -683,7 +664,6 @@ public final class Counters implements Cloneable {
 		}
 
 		this.compactedArrays = true;
-
 		return renaming;
 	}
 

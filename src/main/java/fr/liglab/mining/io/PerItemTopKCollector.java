@@ -254,15 +254,16 @@ public class PerItemTopKCollector implements PatternsCollector {
 	}
 
 	public void outputAll() {
-		// for (final int k : this.topK.keys()) {
-		for (final PatternWithFreq[] itemTopK : this.topK.valueCollection()) {
-			// final PatternWithFreq[] itemTopK = this.topK.get(k);
+		for (final int k : this.topK.keys()) {
+			// for (final PatternWithFreq[] itemTopK :
+			// this.topK.valueCollection()) {
+			final PatternWithFreq[] itemTopK = this.topK.get(k);
 			for (int i = 0; i < itemTopK.length; i++) {
 				if (itemTopK[i] == null) {
 					break;
 				} else {
 					if (!itemTopK[i].isClosed()) {
-						System.err.println("unclosed pattern " + /* k + " " + */itemTopK[i]);
+						System.err.println("unclosed pattern " + k + " " + itemTopK[i]);
 					}
 					this.decorated.collect(itemTopK[i].getSupportCount(), itemTopK[i].getPattern());
 				}
@@ -297,7 +298,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			}
 		}
 	}
-	
+
 	/**
 	 * you want to know this before early collecting !
 	 */
@@ -579,12 +580,12 @@ public class PerItemTopKCollector implements PatternsCollector {
 			return new ExplorationLimiter(newNext);
 		}
 	}
-	
+
 	@Override
 	public int getAveragePatternLength() {
 		return this.decorated.getAveragePatternLength();
 	}
-	
+
 	@Override
 	public long getCollected() {
 		return this.decorated.getCollected();
