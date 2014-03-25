@@ -76,6 +76,7 @@ public class NaiveTopLCM {
 				}
 				
 			} catch (InterruptedException e) {
+				e.printStackTrace();
 				throw new RuntimeException(e);
 			}
 		}

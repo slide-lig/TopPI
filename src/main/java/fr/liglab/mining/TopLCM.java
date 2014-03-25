@@ -110,8 +110,10 @@ public class TopLCM {
 			try {
 				t.get();
 			} catch (InterruptedException e) {
+				e.printStackTrace();
 				throw new RuntimeException(e);
 			} catch (ExecutionException e) {
+				e.printStackTrace();
 				throw new RuntimeException(e);
 			}
 		}
