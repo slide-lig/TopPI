@@ -20,6 +20,7 @@ public final class ExplorationStep implements Cloneable {
 
 	public static boolean verbose = false;
 	public static boolean ultraVerbose = false;
+	public static boolean LOG_EPSILONS = false;
 
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toplcm.threshold.view";
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toplcm.threshold.long";
@@ -192,6 +193,13 @@ public final class ExplorationStep implements Cloneable {
 				return null;
 			} else {
 				res = this.doDepthExplorationFromScratch(candidate, collector);
+				if (LOG_EPSILONS) {
+					synchronized(System.out) {
+						if (res.counters != null && this.counters !=null && this.counters.pattern != null && this.counters.pattern.length == 0) {
+							System.out.println(candidate+" "+res.counters.minSupport);
+						}
+					}
+				}
 			}
 
 			if (res != fake) {

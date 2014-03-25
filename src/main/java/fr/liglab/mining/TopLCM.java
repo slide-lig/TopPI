@@ -275,6 +275,8 @@ public class TopLCM {
 				"b",
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
+		options.addOption("e", false,
+				"DEBUG ONLY - prints to stdout the raised threshold, for each starter item");
 		options.addOption("g", true,
 				"Enables Hadoop and gives the number of groups in which the search space will be splitted");
 		options.addOption("h", false, "Show help");
@@ -334,6 +336,8 @@ public class TopLCM {
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
+		
+		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
 
 		if (!cmd.hasOption('k')) {
 			ExplorationStep.LCM_STYLE = true;
