@@ -223,47 +223,7 @@ public final class ExplorationStep implements Cloneable {
 			return this.prepareExploration(candidate, collector);
 		}
 	}
-
-	/**
-	 * for a normal LCM use you should use .next() instead
-	 * 
-	 * @param item
-	 *            internal ID
-	 * @return the projected step, or null in case of failed first-parent test
-	 */
-	@SuppressWarnings("boxing")
-	public ExplorationStep project(int candidate) {
-		TransactionsIterable support = this.dataset.getSupport(candidate);
-
-		Counters candidateCounts = new Counters(this.counters.minSupport, support.iterator(),
-				this.counters.maxFrequent + 1, null, this.counters.maxFrequent + 1, this.counters.getReverseRenaming(),
-				new int[] {});
-		// Counters candidateCounts = new Counters(this.counters.minSupport,
-		// support.iterator());
-
-		int[] renaming = candidateCounts.compressRenaming(this.counters.getReverseRenaming());
-
-		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
-
-		if (verbose) {
-			System.err
-					.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"projectOn\":%3$d,\"originalId\":%4$d}\n",
-							Calendar.getInstance(), Thread.currentThread().getId(), candidate,
-							this.counters.getReverseRenaming()[candidate]);
-		}
-
-		return new ExplorationStep(candidateCounts, filtered);
-	}
-
-	private ExplorationStep(Counters candidateCounts, Iterator<TransactionReader> support) {
-		this.failedFPTests = new TIntIntHashMap();
-		this.counters = candidateCounts;
-		this.core_item = Integer.MAX_VALUE;
-		this.candidates = this.counters.getExtensionsIterator();
-		this.dataset = new Dataset(candidateCounts, support);
-		this.selectChain = null;
-	}
-
+	
 	/**
 	 * Instantiate state for a valid extension.
 	 * 
