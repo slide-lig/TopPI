@@ -24,7 +24,7 @@ public final class ExplorationStep implements Cloneable {
 	public static boolean ultraVerbose = false;
 	// expressed in starter items base
 	public static int INSERT_UNCLOSED_UP_TO_ITEM = Integer.MAX_VALUE;
-	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = true;
+	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
 	public static boolean BASELINE_MODE = false;
 
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toplcm.threshold.view";
