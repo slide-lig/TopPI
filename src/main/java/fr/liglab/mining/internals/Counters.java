@@ -255,20 +255,26 @@ public final class Counters implements Cloneable {
 	/*
 	 * careAboutFutureExtensions true for toplcm, false for baseline
 	 */
-	public void raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions) {
+	public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions) {
 		int updatedMinSupport = Integer.MAX_VALUE;
 		for (int item : this.pattern) {
-			updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(item));
-			if (updatedMinSupport <= this.minSupport) {
-				return;
+			int bound = topKcoll.getBound(item);
+			if (bound <= this.transactionsCount) {
+				updatedMinSupport = Math.min(updatedMinSupport, bound);
+				if (updatedMinSupport <= this.minSupport) {
+					return false;
+				}
 			}
 		}
 		if (careAboutFutureExtensions) {
 			for (int i = 0; i < this.maxCandidate; i++) {
 				if (this.supportCounts[i] != 0) {
-					updatedMinSupport = Math.min(updatedMinSupport, topKcoll.getBound(this.reverseRenaming[i]));
-					if (updatedMinSupport <= this.minSupport) {
-						return;
+					int bound = topKcoll.getBound(this.reverseRenaming[i]);
+					if (bound <= this.supportCounts[i]) {
+						updatedMinSupport = Math.min(updatedMinSupport, bound);
+						if (updatedMinSupport <= this.minSupport) {
+							return false;
+						}
 					}
 				}
 			}
@@ -294,6 +300,7 @@ public final class Counters implements Cloneable {
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;
 		this.maxFrequent = biggestItemID;
+		return true;
 	}
 
 	public void insertUnclosedPatterns(PerItemTopKCollector topKcoll, boolean outputPatternsForFutureExtensions) {

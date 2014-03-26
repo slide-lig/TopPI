@@ -57,7 +57,7 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	public final int core_item;
 
-	public final Dataset dataset;
+	public Dataset dataset;
 
 	public final Counters counters;
 

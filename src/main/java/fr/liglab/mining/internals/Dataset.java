@@ -18,7 +18,7 @@ import gnu.trove.iterator.TIntIterator;
 /**
  * Stores transactions and does occurrence delivery
  */
-public class Dataset implements Cloneable {
+public class Dataset implements Cloneable, DatasetProvider {
 
 	protected final TransactionsList transactions;
 
@@ -53,7 +53,7 @@ public class Dataset implements Cloneable {
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
 		CountersHandler.increment(TopLCMCounters.NbDatasets);
-		
+
 		int maxTransId;
 
 		// if (UByteIndexedTransactionsList.compatible(counters)) {
@@ -88,9 +88,9 @@ public class Dataset implements Cloneable {
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
-					
+
 					if (item < 0) {
-						System.err.println("WTF item "+item+" appearing in transaction "+transId);
+						System.err.println("WTF item " + item + " appearing in transaction " + transId);
 					}
 
 					if (item < tidListBound) {
@@ -169,9 +169,19 @@ public class Dataset implements Cloneable {
 			return this.it.hasNext();
 		}
 	}
-	
+
 	@Override
 	public String toString() {
 		return this.transactions.toString();
+	}
+
+	@Override
+	public Dataset getDatasetForSupportThreshold(int supportThreshold) {
+		return this;
+	}
+
+	@Override
+	public Dataset getDatasetForItem(int item) {
+		return this;
 	}
 }
