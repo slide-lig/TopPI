@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.omg.CORBA.ObjectHolder;
+import javax.xml.ws.Holder;
 
 import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
@@ -110,17 +110,6 @@ public final class Counters implements Cloneable {
 	private int[] reverseRenaming;
 
 	/**
-	 * This field will be null EXCEPT if you're using the initial dataset's
-	 * constructor (in which case it computes its absolute renaming by the way)
-	 * OR if you called compressRenaming (in which case getRenaming will give
-	 * back the same value)
-	 * 
-	 * It gives, for each original item ID, its new identifier. If it's negative
-	 * it means the item should be filtered.
-	 */
-	private int[] renaming = null;
-
-	/**
 	 * will be set to true if arrays have been compacted, ie. if supportCounts
 	 * and distinctTransactionsCounts don't contain any zero.
 	 */
@@ -168,7 +157,6 @@ public final class Counters implements Cloneable {
 		CountersHandler.increment(TopLCMCounters.NbCounters);
 
 		this.reverseRenaming = reuseReverseRenaming;
-		this.renaming = null;
 		this.minSupport = minimumSupport;
 		this.supportCounts = new int[maxItem + 1];
 		this.distinctTransactionsCounts = new int[maxItem + 1];
@@ -393,7 +381,7 @@ public final class Counters implements Cloneable {
 	 * @param minimumSupport
 	 * @param transactions
 	 */
-	Counters(int minimumSupport, Iterator<TransactionReader> transactions, ObjectHolder) {
+	Counters(int minimumSupport, Iterator<TransactionReader> transactions, Holder<int[]> renamingHolder) {
 		// no nbCounters because this one is not in a PLCMThread
 
 		this.minSupport = minimumSupport;
@@ -417,8 +405,8 @@ public final class Counters implements Cloneable {
 
 		this.transactionsCount = transactionsCounter;
 		this.distinctTransactionsCount = transactionsCounter;
-		this.renaming = new int[biggestItemID + 1];
-		Arrays.fill(renaming, -1);
+		renamingHolder.value = new int[biggestItemID + 1];
+		Arrays.fill(renamingHolder.value, -1);
 
 		// item filtering and final computations : some are infrequent, some
 		// belong to closure
@@ -458,7 +446,7 @@ public final class Counters implements Cloneable {
 			final int item = entry.item;
 			final int support = entry.support;
 
-			this.renaming[item] = newItemID;
+			renamingHolder.value[item] = newItemID;
 			this.reverseRenaming[newItemID] = item;
 
 			this.supportCounts[newItemID] = support;
@@ -476,8 +464,8 @@ public final class Counters implements Cloneable {
 
 	private Counters(int minSupport, int transactionsCount, int distinctTransactionsCount,
 			int distinctTransactionLengthSum, int[] supportCounts, int[] distinctTransactionsCounts, int[] closure,
-			int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming, int[] renaming,
-			boolean compactedArrays, int maxCandidate) {
+			int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming, boolean compactedArrays,
+			int maxCandidate) {
 		super();
 		this.minSupport = minSupport;
 		this.transactionsCount = transactionsCount;
@@ -490,7 +478,6 @@ public final class Counters implements Cloneable {
 		this.nbFrequents = nbFrequents;
 		this.maxFrequent = maxFrequent;
 		this.reverseRenaming = reverseRenaming;
-		this.renaming = renaming;
 		this.compactedArrays = compactedArrays;
 		this.maxCandidate = maxCandidate;
 	}
@@ -501,8 +488,7 @@ public final class Counters implements Cloneable {
 				Arrays.copyOf(supportCounts, supportCounts.length), Arrays.copyOf(distinctTransactionsCounts,
 						distinctTransactionsCounts.length), Arrays.copyOf(closure, closure.length), Arrays.copyOf(
 						pattern, pattern.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
-						reverseRenaming.length), Arrays.copyOf(renaming, renaming.length), compactedArrays,
-				maxCandidate);
+						reverseRenaming.length), compactedArrays, maxCandidate);
 	}
 
 	/**
@@ -511,13 +497,6 @@ public final class Counters implements Cloneable {
 	 */
 	public int getMaxFrequent() {
 		return this.maxFrequent;
-	}
-
-	/**
-	 * @return the renaming map from instantiation's base to current base
-	 */
-	public int[] getRenaming() {
-		return renaming;
 	}
 
 	/**

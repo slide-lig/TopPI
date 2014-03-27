@@ -13,6 +13,8 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
 
+import javax.xml.ws.Holder;
+
 import org.omg.CORBA.IntHolder;
 
 /**
@@ -91,8 +93,9 @@ public final class ExplorationStep implements Cloneable {
 		this.selectChain = null;
 
 		FileReader reader = new FileReader(path);
-		this.counters = new Counters(minimumSupport, reader);
-		reader.close(this.counters.getRenaming());
+		Holder<int[]> renamingHolder = new Holder<int[]>();
+		this.counters = new Counters(minimumSupport, reader, renamingHolder);
+		reader.close(renamingHolder.value);
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
 		this.datasetProvider = new DatasetProvider(dataset, minimumSupport, this.counters.getTransactionsCount());
