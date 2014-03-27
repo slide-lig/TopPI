@@ -18,7 +18,7 @@ import gnu.trove.iterator.TIntIterator;
 /**
  * Stores transactions and does occurrence delivery
  */
-public class Dataset implements Cloneable, DatasetProvider {
+public class Dataset implements Cloneable {
 
 	protected final TransactionsList transactions;
 
@@ -28,19 +28,24 @@ public class Dataset implements Cloneable, DatasetProvider {
 	 */
 	protected final TidList tidLists;
 
-	protected Dataset(TransactionsList transactions, TidList occurrences) {
+	private final int minSup;
+	private final int maxItem;
+
+	protected Dataset(TransactionsList transactions, TidList occurrences, int minSup, int maxItem) {
 		// DO NOT COUNT NbDatasets here
 		this.transactions = transactions;
 		this.tidLists = occurrences;
+		this.minSup = minSup;
+		this.maxItem = maxItem;
 	}
 
 	@Override
 	protected Dataset clone() {
-		return new Dataset(this.transactions.clone(), this.tidLists.clone());
+		return new Dataset(this.transactions.clone(), this.tidLists.clone(), this.minSup, this.maxItem);
 	}
 
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
-		this(counters, transactions, Integer.MAX_VALUE);
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int minSup, int maxItem) {
+		this(counters, transactions, Integer.MAX_VALUE, minSup, maxItem);
 	}
 
 	/**
@@ -51,8 +56,10 @@ public class Dataset implements Cloneable, DatasetProvider {
 	 *            - highest item (exclusive) which will have a tidList. set to
 	 *            MAX_VALUE when using predictive pptest.
 	 */
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound, int minSup, int maxItem) {
 		CountersHandler.increment(TopLCMCounters.NbDatasets);
+		this.minSup = minSup;
+		this.maxItem = maxItem;
 
 		int maxTransId;
 
@@ -175,13 +182,11 @@ public class Dataset implements Cloneable, DatasetProvider {
 		return this.transactions.toString();
 	}
 
-	@Override
-	public Dataset getDatasetForSupportThreshold(int supportThreshold) {
-		return this;
+	public int getMinSup() {
+		return this.minSup;
 	}
 
-	@Override
-	public Dataset getDatasetForItem(int item) {
-		return this;
+	public int getMaxItem() {
+		return this.maxItem;
 	}
 }

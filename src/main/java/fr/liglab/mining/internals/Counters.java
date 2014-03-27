@@ -303,7 +303,7 @@ public final class Counters implements Cloneable {
 		return true;
 	}
 
-	public void insertUnclosedPatterns(PerItemTopKCollector topKcoll, boolean outputPatternsForFutureExtensions) {
+	public int insertUnclosedPatterns(PerItemTopKCollector topKcoll, boolean outputPatternsForFutureExtensions) {
 		int[] topKDistinctSupports = new int[topKcoll.getK()];
 		int[] topKCorrespondingItems = new int[topKcoll.getK()];
 		boolean highestUnique = false;
@@ -326,16 +326,21 @@ public final class Counters implements Cloneable {
 			}
 		}
 		boolean highest = true;
+		int lastInsertSupport = this.minSupport;
 		for (int i = topKDistinctSupports.length - 1; i >= 0; i--) {
 			if (topKDistinctSupports[i] == 0) {
+				// AKA I didn't find k distinct supports
+				lastInsertSupport = -1;
 				break;
 			} else {
 				int[] newPattern = Arrays.copyOf(this.pattern, this.pattern.length + 1);
 				newPattern[pattern.length] = this.reverseRenaming[topKCorrespondingItems[i]];
 				topKcoll.collect(topKDistinctSupports[i], newPattern, highest && highestUnique);
+				lastInsertSupport = topKDistinctSupports[i];
 			}
 			highest = false;
 		}
+		return lastInsertSupport;
 	}
 
 	// true if the current highest in topk can be considered unique

@@ -214,11 +214,13 @@ public class TopLCM {
 	private static class CandidateCounters implements Comparable<CandidateCounters> {
 		private final int candidate;
 		private final Counters counters;
+		private final int newCandidateBound;
 
-		private CandidateCounters(int item, Counters counters) {
+		private CandidateCounters(int item, Counters counters, int newCandidateBound) {
 			super();
 			this.candidate = item;
 			this.counters = counters;
+			this.newCandidateBound = newCandidateBound;
 		}
 
 		public final int getCandidate() {
@@ -242,6 +244,10 @@ public class TopLCM {
 			return result;
 		}
 
+		public final int getNewCandidateBound() {
+			return newCandidateBound;
+		}
+
 		@Override
 		public boolean equals(Object obj) {
 			if (this == obj)
@@ -258,31 +264,44 @@ public class TopLCM {
 
 	}
 
+	private static class StopPreparingJobsException extends Exception {
+
+	}
+
 	private static class PreparedJobs {
 		private Queue<CandidateCounters> stackedEs;
 		private int nextConsumable;
+		private int minBoundToNextConsumable;
 
 		public PreparedJobs() {
 			this.stackedEs = new PriorityQueue<TopLCM.CandidateCounters>();
+			this.minBoundToNextConsumable = Integer.MAX_VALUE;
 		}
 
-		public synchronized CandidateCounters getTask() {
-			if (!stackedEs.isEmpty() && stackedEs.peek().getCandidate() == this.nextConsumable) {
+		public synchronized CandidateCounters getTask(IntHolder boundHolder) throws StopPreparingJobsException {
+			while (!stackedEs.isEmpty() && stackedEs.peek().getCandidate() == this.nextConsumable) {
 				this.nextConsumable++;
 				CandidateCounters next = stackedEs.poll();
-				if (next.counters == null) {
-					return getTask();
-				} else {
+				if (next.getNewCandidateBound() > 0) {
+					this.minBoundToNextConsumable = Math
+							.min(this.minBoundToNextConsumable, next.getNewCandidateBound());
+				}
+				if (next.counters != null) {
+					boundHolder.value = this.minBoundToNextConsumable;
 					return next;
 				}
-			} else {
-				return null;
 			}
+			if (this.nextConsumable >= ExplorationStep.INSERT_UNCLOSED_UP_TO_ITEM) {
+				throw new StopPreparingJobsException();
+			}
+			boundHolder.value = this.minBoundToNextConsumable;
+			return null;
 		}
 
 		public synchronized void pushTask(CandidateCounters t) {
 			this.stackedEs.add(t);
 		}
+
 	}
 
 	public class TopLCMThread implements Runnable {
@@ -291,6 +310,7 @@ public class TopLCM {
 		final ReadWriteLock lock;
 		final List<ExplorationStep> stackedJobs;
 		final IntHolder candidateHolder = new IntHolder();
+		final IntHolder boundHolder = new IntHolder();
 
 		public TopLCMThread(PreparedJobs preparedJobs) {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
@@ -303,26 +323,33 @@ public class TopLCM {
 			// no need to readlock, this thread is the only one that can do
 			// writes
 			boolean exit = false;
+			boolean prepareJobs = true;
 			while (!exit) {
 				if (!this.stackedJobs.isEmpty()) {
-					if (this.stackedJobs.size() == 1) {
-						CandidateCounters iex = this.preparedJobs.getTask();
+					if (prepareJobs && this.stackedJobs.size() == 1) {
+						CandidateCounters iex = null;
+						try {
+							iex = this.preparedJobs.getTask(this.boundHolder);
+						} catch (StopPreparingJobsException e) {
+							prepareJobs = false;
+						}
 						if (iex != null) {
 							this.stackState(this.stackedJobs.get(0).resumeExploration(iex.getCounters(),
-									iex.getCandidate(), collector));
+									iex.getCandidate(), collector, this.boundHolder.value));
 							continue;
 						}
 					}
 					ExplorationStep sj = null;
 					sj = this.stackedJobs.get(this.stackedJobs.size() - 1);
-					if (this.stackedJobs.size() == 1) {
-						Counters preprocessed = sj.nextPreprocessed(collector, this.candidateHolder);
+					if (prepareJobs && this.stackedJobs.size() == 1) {
+						Counters preprocessed = sj.nextPreprocessed(collector, this.candidateHolder, this.boundHolder);
 						if (this.candidateHolder.value == -1) {
 							this.lock.writeLock().lock();
 							this.stackedJobs.remove(this.stackedJobs.size() - 1);
 							this.lock.writeLock().unlock();
 						} else {
-							this.preparedJobs.pushTask(new CandidateCounters(candidateHolder.value, preprocessed));
+							this.preparedJobs.pushTask(new CandidateCounters(this.candidateHolder.value, preprocessed,
+									this.boundHolder.value));
 						}
 					} else {
 						ExplorationStep extended = sj.next(collector);
@@ -373,8 +400,7 @@ public class TopLCM {
 				"b",
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
-		options.addOption("e", false,
-				"DEBUG ONLY - prints to stdout the raised threshold, for each starter item");
+		options.addOption("e", false, "DEBUG ONLY - prints to stdout the raised threshold, for each starter item");
 		options.addOption("g", true,
 				"Enables Hadoop and gives the number of groups in which the search space will be splitted");
 		options.addOption("h", false, "Show help");
@@ -434,7 +460,7 @@ public class TopLCM {
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
-		
+
 		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
 
 		if (!cmd.hasOption('k')) {
@@ -447,7 +473,7 @@ public class TopLCM {
 		}
 
 		chrono = System.currentTimeMillis();
-		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
+		ExplorationStep initState = new ExplorationStep(minsup, args[0], minsup);
 		long loadingTime = System.currentTimeMillis() - chrono;
 		System.err.println("Dataset loaded in " + loadingTime + "ms");
 
