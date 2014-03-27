@@ -50,8 +50,4 @@ public class UByteRandomItemsConcatenatedTidList extends RandomItemsConcatenated
 		super(c);
 	}
 
-	public UByteRandomItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
-	}
-
 }

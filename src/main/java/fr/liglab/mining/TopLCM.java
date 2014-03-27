@@ -94,8 +94,8 @@ public class TopLCM {
 	 * Initial invocation for the hard to schedule
 	 */
 	public final void lcm(final ExplorationStep initState, ExecutorService pool) {
-		if (initState.counters.pattern.length > 0) {
-			collector.collect(initState.counters.transactionsCount, initState.counters.pattern);
+		if (initState.counters.getPattern().length > 0) {
+			collector.collect(initState.counters.getTransactionsCount(), initState.counters.getPattern());
 		}
 
 		List<Future<?>> running = new ArrayList<Future<?>>(this.threads.size());
@@ -265,6 +265,11 @@ public class TopLCM {
 	}
 
 	private static class StopPreparingJobsException extends Exception {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
 
 	}
 
@@ -550,7 +555,7 @@ public class TopLCM {
 		FrequentsIteratorRenamer extensions = new FrequentsIteratorRenamer(initState.counters.getExtensionsIterator(),
 				initState.counters.getReverseRenaming());
 
-		topKcoll = new PerItemTopKCollector(collector, k, initState.counters.nbFrequents, extensions);
+		topKcoll = new PerItemTopKCollector(collector, k, initState.counters.getNbFrequents(), extensions);
 
 		topKcoll.setInfoMode(cmd.hasOption('i'));
 		topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));

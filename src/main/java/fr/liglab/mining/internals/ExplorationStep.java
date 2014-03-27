@@ -92,9 +92,10 @@ public final class ExplorationStep implements Cloneable {
 
 		FileReader reader = new FileReader(path);
 		this.counters = new Counters(minimumSupport, reader);
-		reader.close(this.counters.renaming);
-		Dataset dataset = new Dataset(this.counters, reader, this.counters.minSupport, this.counters.maxFrequent);
-		this.datasetProvider = new DatasetProvider(dataset, minimumSupport, this.counters.transactionsCount);
+		reader.close(this.counters.getRenaming());
+		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
+				this.counters.getMaxFrequent());
+		this.datasetProvider = new DatasetProvider(dataset, minimumSupport, this.counters.getTransactionsCount());
 		this.dataset = dataset;
 		this.candidates = this.counters.getExtensionsIterator();
 
@@ -110,11 +111,11 @@ public final class ExplorationStep implements Cloneable {
 		int[] renaming = this.counters.compressRenaming(reverseGlobalRenaming);
 		reader.close(renaming);
 
-		this.dataset = new Dataset(this.counters, reader, this.counters.minSupport, this.counters.maxFrequent);
+		this.dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(), this.counters.getMaxFrequent());
 
-		if (this.counters.pattern.length > 0) {
-			for (int i = 0; i < this.counters.pattern.length; i++) {
-				this.counters.pattern[i] = reverseGlobalRenaming[this.counters.pattern[i]];
+		if (this.counters.getPattern().length > 0) {
+			for (int i = 0; i < this.counters.getPattern().length; i++) {
+				this.counters.getPattern()[i] = reverseGlobalRenaming[this.counters.getPattern()[i]];
 			}
 		}
 
@@ -142,16 +143,16 @@ public final class ExplorationStep implements Cloneable {
 		int[] renaming = this.counters.compressRenaming(reverseRenaming);
 		trans = new TransactionsRenamingDecorator(trans, renaming);
 
-		this.dataset = new Dataset(this.counters, trans, this.counters.minSupport, this.counters.maxFrequent);
+		this.dataset = new Dataset(this.counters, trans, this.counters.getMinSupport(), this.counters.getMaxFrequent());
 		// FIXME
 		// from here we actually instantiated 3 times the dataset's size
 		// once in dataset.transactions, one in dataset.tidLists (both are OK)
 		// and
 		// worse, once again in transactions.cached
 
-		if (this.counters.pattern.length > 0) {
-			for (int i = 0; i < this.counters.pattern.length; i++) {
-				this.counters.pattern[i] = reverseRenaming[this.counters.pattern[i]];
+		if (this.counters.getPattern().length > 0) {
+			for (int i = 0; i < this.counters.getPattern().length; i++) {
+				this.counters.getPattern()[i] = reverseRenaming[this.counters.getPattern()[i]];
 			}
 		}
 
@@ -195,8 +196,8 @@ public final class ExplorationStep implements Cloneable {
 				if (LOG_EPSILONS) {
 					synchronized (System.out) {
 						if (res != null && res.counters != null && this.counters != null
-								&& this.counters.pattern != null && this.counters.pattern.length == 0) {
-							System.out.println(candidate + " " + res.counters.minSupport);
+								&& this.counters.getPattern() != null && this.counters.getPattern().length == 0) {
+							System.out.println(candidate + " " + res.counters.getMinSupport());
 						}
 					}
 				}
@@ -245,18 +246,18 @@ public final class ExplorationStep implements Cloneable {
 
 		this.core_item = extension;
 		this.counters = candidateCounts;
-		int[] reverseRenaming = parentEs.counters.reverseRenaming;
+		int[] reverseRenaming = parentEs.counters.getReverseRenaming();
 
 		if (verbose) {
-			if (parentEs.counters.pattern.length == 0 || ultraVerbose) {
+			if (parentEs.counters.getPattern().length == 0 || ultraVerbose) {
 				System.err
 						.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"pattern\":%3$s,\"extension_internal\":%4$d,\"extension\":%5$d}\n",
 								Calendar.getInstance(), Thread.currentThread().getId(),
-								Arrays.toString(parentEs.counters.pattern), extension, reverseRenaming[extension]);
+								Arrays.toString(parentEs.counters.getPattern()), extension, reverseRenaming[extension]);
 			}
 		}
 
-		if (this.counters.nbFrequents == 0 || this.counters.distinctTransactionsCount == 0) {
+		if (this.counters.getNbFrequents() == 0 || this.counters.getDistinctTransactionsCount() == 0) {
 			this.candidates = null;
 			this.failedFPTests = null;
 			this.selectChain = null;
@@ -270,15 +271,16 @@ public final class ExplorationStep implements Cloneable {
 
 	private Dataset instanciateDatasetAndPickSelectors(ExplorationStep parentExplorationStep, Dataset parentDataset,
 			TransactionsIterable support) {
-		final double supportRate = this.counters.distinctTransactionsCount
+		final double supportRate = this.counters.getDistinctTransactionsCount()
 				/ (double) parentDataset.getStoredTransactionsCount();
 
-		final int averageLen = this.counters.distinctTransactionLengthSum / this.counters.distinctTransactionsCount;
+		final int averageLen = this.counters.getDistinctTransactionLengthSum()
+				/ this.counters.getDistinctTransactionsCount();
 
 		if (averageLen < LONG_TRANSACTION_MODE_THRESHOLD && supportRate > VIEW_SUPPORT_THRESHOLD) {
 			copySelectChainWithoutFPT(parentExplorationStep.selectChain);
-			return new DatasetView(parentDataset, this.counters, support, this.core_item, this.counters.minSupport,
-					this.counters.maxFrequent);
+			return new DatasetView(parentDataset, this.counters, support, this.core_item,
+					this.counters.getMinSupport(), this.counters.getMaxFrequent());
 		} else {
 			if (averageLen > LONG_TRANSACTION_MODE_THRESHOLD) {
 				copySelectChainWithFPT(parentExplorationStep.selectChain);
@@ -298,8 +300,8 @@ public final class ExplorationStep implements Cloneable {
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			// FIXME the last argument is now obsolete
-			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE, this.counters.minSupport,
-					this.counters.maxFrequent);
+			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE, this.counters.getMinSupport(),
+					this.counters.getMaxFrequent());
 
 			if (compress) {
 				// FIXME FIXME core_item refers an UNCOMPRESSED id
@@ -383,20 +385,20 @@ public final class ExplorationStep implements Cloneable {
 
 					candidateCounts = new Counters(suggestedDataset.getMinSup(), support.iterator(), candidate,
 							suggestedDataset.getIgnoredItems(), suggestedDataset.getMaxItem(),
-							counters.reverseRenaming, counters.pattern);
+							counters.getReverseRenaming(), counters.getPattern());
 
 					int greatest = Integer.MIN_VALUE;
-					for (int i = 0; i < candidateCounts.closure.length; i++) {
-						if (candidateCounts.closure[i] > greatest) {
-							greatest = candidateCounts.closure[i];
+					for (int i = 0; i < candidateCounts.getClosure().length; i++) {
+						if (candidateCounts.getClosure()[i] > greatest) {
+							greatest = candidateCounts.getClosure()[i];
 						}
 					}
 
 					if (greatest > candidate) {
-						collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);
+						collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
 						throw new WrongFirstParentException(candidate, greatest);
 					}
-					collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);
+					collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
 					// this meanse that for candidate <
 					// INSERT_UNCLOSED_UP_TO_ITEM we always use the dataset of
 					// minimum support
@@ -404,7 +406,7 @@ public final class ExplorationStep implements Cloneable {
 						boundHolder.value = candidateCounts.insertUnclosedPatterns(collector,
 								INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS);
 						if (boundHolder.value < suggestedDataset.getMinSup()
-								&& suggestedDataset.getMinSup() > this.counters.minSupport) {
+								&& suggestedDataset.getMinSup() > this.counters.getMinSupport()) {
 							restart = true;
 							// says let's switch to the next dataset
 							CountersHandler.increment(TopLCMCounters.RedoCounters);
@@ -425,7 +427,7 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep resumeExploration(Counters candidateCounts, int candidate, PerItemTopKCollector collector,
 			int countersMinSupportVerification) {
 		// check that the counters we made are also ok for all items < candidate
-		if (candidateCounts.minSupport > countersMinSupportVerification) {
+		if (candidateCounts.getMinSupport() > countersMinSupportVerification) {
 			CountersHandler.increment(TopLCMCounters.RedoCounters);
 			candidateCounts = prepareExploration(candidate, collector, new IntHolder(countersMinSupportVerification),
 					true);
@@ -434,13 +436,14 @@ public final class ExplorationStep implements Cloneable {
 			candidateCounts.raiseMinimumSupport(collector, !BASELINE_MODE);
 			if (LOG_EPSILONS) {
 				synchronized (System.out) {
-					if (this.counters != null && this.counters.pattern != null && this.counters.pattern.length == 0) {
-						System.out.println(candidate + " " + candidateCounts.minSupport);
+					if (this.counters != null && this.counters.getPattern() != null
+							&& this.counters.getPattern().length == 0) {
+						System.out.println(candidate + " " + candidateCounts.getMinSupport());
 					}
 				}
 			}
 		}
-		Dataset dataset = this.datasetProvider.getDatasetForSupportThreshold(candidateCounts.minSupport);
+		Dataset dataset = this.datasetProvider.getDatasetForSupportThreshold(candidateCounts.getMinSupport());
 		ExplorationStep next = new ExplorationStep(this, dataset, candidate, candidateCounts,
 				dataset.getSupport(candidate));
 		return next;
@@ -451,21 +454,22 @@ public final class ExplorationStep implements Cloneable {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				TransactionsIterable support = dataset.getSupport(candidate);
 
-				Counters candidateCounts = new Counters(counters.minSupport, support.iterator(), candidate,
-						dataset.getIgnoredItems(), counters.maxFrequent, counters.reverseRenaming, counters.pattern);
+				Counters candidateCounts = new Counters(counters.getMinSupport(), support.iterator(), candidate,
+						dataset.getIgnoredItems(), counters.getMaxFrequent(), counters.getReverseRenaming(),
+						counters.getPattern());
 
 				int greatest = Integer.MIN_VALUE;
-				for (int i = 0; i < candidateCounts.closure.length; i++) {
-					if (candidateCounts.closure[i] > greatest) {
-						greatest = candidateCounts.closure[i];
+				for (int i = 0; i < candidateCounts.getClosure().length; i++) {
+					if (candidateCounts.getClosure()[i] > greatest) {
+						greatest = candidateCounts.getClosure()[i];
 					}
 				}
 
 				if (greatest > candidate) {
-					collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);
+					collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
 					throw new WrongFirstParentException(candidate, greatest);
 				}
-				collector.collect(candidateCounts.transactionsCount, candidateCounts.pattern);
+				collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
 				// not inserting unclosed patterns on purpose, we are not at a
 				// starter
 				// not even raising minimum support, that's how crazy we are

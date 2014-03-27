@@ -5,6 +5,8 @@ import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.omg.CORBA.ObjectHolder;
+
 import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.io.PerItemTopKCollector;
@@ -31,23 +33,23 @@ public final class Counters implements Cloneable {
 	/**
 	 * Items occuring less than minSup times will be considered infrequent
 	 */
-	public int minSupport;
+	private int minSupport;
 
 	/**
 	 * How many transactions are represented by the given dataset ?
 	 */
-	public final int transactionsCount;
+	private final int transactionsCount;
 
 	/**
 	 * How many transactions have been counted (equals transactionsCount when
 	 * all transactions have a weight of 1)
 	 */
-	public final int distinctTransactionsCount;
+	private final int distinctTransactionsCount;
 
 	/**
 	 * Sum of given *filtered* transactions' lengths, ignoring their weight
 	 */
-	public int distinctTransactionLengthSum;
+	private int distinctTransactionLengthSum;
 
 	/**
 	 * Support count, per item having a support count in [minSupport; 100% [
@@ -59,7 +61,7 @@ public final class Counters implements Cloneable {
 	 * 
 	 * TODO private+accessor
 	 */
-	public int[] supportCounts;
+	private int[] supportCounts;
 
 	/**
 	 * For each item having a support count in [minSupport; 100% [ , gives how
@@ -70,7 +72,7 @@ public final class Counters implements Cloneable {
 	 * 
 	 * TODO private+accessor
 	 */
-	public int[] distinctTransactionsCounts;
+	private int[] distinctTransactionsCounts;
 
 	/**
 	 * Items found to have a support count equal to transactionsCount (using IDs
@@ -78,23 +80,23 @@ public final class Counters implements Cloneable {
 	 * getReverseRenaming to translate back these items, rather use parent's
 	 * reverseRenaming (or none for the initial dataset)
 	 */
-	final int[] closure;
+	private final int[] closure;
 
 	/**
 	 * closure of parent's pattern UNION extension - using original item IDs
 	 */
-	public final int[] pattern;
+	private final int[] pattern;
 
 	/**
 	 * Counts how many items have a support count in [minSupport; 100% [ TODO
 	 * protected+accessor
 	 */
-	public int nbFrequents;
+	private int nbFrequents;
 
 	/**
 	 * Biggest item ID having a support count in [minSupport; 100% [
 	 */
-	protected int maxFrequent;
+	private int maxFrequent;
 
 	/**
 	 * This array allows another class to output the discovered closure using
@@ -105,7 +107,7 @@ public final class Counters implements Cloneable {
 	 * "renaming") - compressRenaming, useful when recompacting dataset in
 	 * recursions
 	 */
-	protected int[] reverseRenaming;
+	private int[] reverseRenaming;
 
 	/**
 	 * This field will be null EXCEPT if you're using the initial dataset's
@@ -116,18 +118,18 @@ public final class Counters implements Cloneable {
 	 * It gives, for each original item ID, its new identifier. If it's negative
 	 * it means the item should be filtered.
 	 */
-	protected int[] renaming = null;
+	private int[] renaming = null;
 
 	/**
 	 * will be set to true if arrays have been compacted, ie. if supportCounts
 	 * and distinctTransactionsCounts don't contain any zero.
 	 */
-	protected boolean compactedArrays = false;
+	private boolean compactedArrays = false;
 
 	/**
 	 * Exclusive index of the first item >= core_item in current base
 	 */
-	protected int maxCandidate;
+	private int maxCandidate;
 
 	/**
 	 * We use our own map, although it will contain a single item most of the
@@ -391,7 +393,7 @@ public final class Counters implements Cloneable {
 	 * @param minimumSupport
 	 * @param transactions
 	 */
-	Counters(int minimumSupport, Iterator<TransactionReader> transactions) {
+	Counters(int minimumSupport, Iterator<TransactionReader> transactions, ObjectHolder) {
 		// no nbCounters because this one is not in a PLCMThread
 
 		this.minSupport = minimumSupport;
@@ -570,9 +572,6 @@ public final class Counters implements Cloneable {
 
 		this.maxFrequent = newItemID - 1;
 		this.compactedArrays = true;
-
-		this.renaming = renaming;
-
 		return renaming;
 	}
 
@@ -663,7 +662,7 @@ public final class Counters implements Cloneable {
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
 
-		this.renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
+		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.length)];
 		Arrays.fill(renaming, -1);
 
 		// after this loop we have
@@ -671,7 +670,7 @@ public final class Counters implements Cloneable {
 		// renaming: PreviousDatasetBase (index) -> NewBase (value)
 
 		for (int i = 0; i <= this.maxFrequent; i++) {
-			this.renaming[this.reverseRenaming[i]] = i;
+			renaming[this.reverseRenaming[i]] = i;
 			this.reverseRenaming[i] = olderReverseRenaming[this.reverseRenaming[i]];
 		}
 
@@ -758,6 +757,42 @@ public final class Counters implements Cloneable {
 		public int last() {
 			return this.max;
 		}
+	}
+
+	public final int getMinSupport() {
+		return minSupport;
+	}
+
+	public final int getDistinctTransactionsCount() {
+		return distinctTransactionsCount;
+	}
+
+	public final int getDistinctTransactionLengthSum() {
+		return distinctTransactionLengthSum;
+	}
+
+	public final int getDistinctTransactionsCount(int item) {
+		return distinctTransactionsCounts[item];
+	}
+
+	public final int getSupportCount(int item) {
+		return this.supportCounts[item];
+	}
+
+	public final int getTransactionsCount() {
+		return transactionsCount;
+	}
+
+	public final int[] getClosure() {
+		return closure;
+	}
+
+	public final int[] getPattern() {
+		return pattern;
+	}
+
+	public final int getNbFrequents() {
+		return nbFrequents;
 	}
 
 	protected class ReversedExtensionsIterator implements FrequentsIterator {

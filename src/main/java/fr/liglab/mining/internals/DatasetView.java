@@ -36,12 +36,12 @@ class DatasetView extends Dataset {
 	 * @param ignoreItem
 	 *            typically the item on which we're projecting
 	 */
-	DatasetView(final Dataset parentDataset, final Counters counts, TransactionsIterable viewed, int ignoredItem, int minSup,
-			int maxItem) {
+	DatasetView(final Dataset parentDataset, final Counters counts, TransactionsIterable viewed, int ignoredItem,
+			int minSup, int maxItem) {
 		super(parentDataset.transactions, parentDataset.tidLists, minSup, maxItem);
 		CountersHandler.increment(TopLCMCounters.NbDatasetViews);
 		this.tids = viewed.tids;
-		this.ignoreItems = ItemsetsFactory.extend(counts.closure, ignoredItem, parentDataset.getIgnoredItems());
+		this.ignoreItems = ItemsetsFactory.extend(counts.getClosure(), ignoredItem, parentDataset.getIgnoredItems());
 	}
 
 	/**

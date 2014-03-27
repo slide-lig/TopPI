@@ -524,8 +524,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 				localValidUntil = this.validUntuil;
 			}
 			int[] reverseRenaming = state.counters.getReverseRenaming();
-			int[] supports = state.counters.supportCounts;
-			int extensionSupport = supports[extension];
+			int extensionSupport = state.counters.getSupportCount(extension);
 			final int maxCandidate = state.counters.getMaxCandidate();
 
 			boolean shortcut = localValidUntil > extension && localPreviousResult > extensionSupport;
@@ -537,7 +536,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 			if (!shortcut) {
 				localPreviousResult = Integer.MAX_VALUE;
 				localValidUntil = Integer.MAX_VALUE;
-				for (int i : state.counters.pattern) {
+				for (int i : state.counters.getPattern()) {
 					int bound = getBound(i);
 					if (bound <= extensionSupport) {
 						return true;
@@ -555,7 +554,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 			for (int i = it.next(); i >= 0; i = it.next()) {
 				final int bound = getBound(reverseRenaming[i]);
-				if (bound <= Math.min(extensionSupport, supports[i])) {
+				if (bound <= Math.min(extensionSupport, state.counters.getSupportCount(i))) {
 					int firstParent = state.getFailedFPTest(i);
 
 					if (firstParent <= extension) {

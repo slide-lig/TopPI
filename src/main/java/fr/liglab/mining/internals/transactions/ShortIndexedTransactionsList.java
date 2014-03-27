@@ -11,13 +11,13 @@ public final class ShortIndexedTransactionsList extends IndexedTransactionsList 
 	}
 
 	public static int getMaxTransId(Counters c) {
-		return c.distinctTransactionsCount - 1;
+		return c.getDistinctTransactionsCount() - 1;
 	}
 
 	private short[] concatenated;
 
 	public ShortIndexedTransactionsList(Counters c) {
-		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
+		this(c.getDistinctTransactionLengthSum(), c.getDistinctTransactionsCount());
 	}
 
 	public ShortIndexedTransactionsList(int transactionsLength, int nbTransactions) {

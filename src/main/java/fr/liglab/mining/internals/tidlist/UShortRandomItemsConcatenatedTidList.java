@@ -41,9 +41,4 @@ public class UShortRandomItemsConcatenatedTidList extends RandomItemsConcatenate
 	public UShortRandomItemsConcatenatedTidList(Counters c) {
 		super(c);
 	}
-
-	public UShortRandomItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
-	}
-
 }
