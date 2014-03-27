@@ -86,7 +86,7 @@ public final class ExplorationStep implements Cloneable {
 	 *            to an input file in ASCII format. Each line should be a
 	 *            transaction containing space-separated item IDs.
 	 */
-	public ExplorationStep(int minimumSupport, String path, int k) {
+	public ExplorationStep(int minimumSupport, String path) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 

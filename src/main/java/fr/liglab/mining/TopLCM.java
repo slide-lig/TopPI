@@ -473,7 +473,7 @@ public class TopLCM {
 		}
 
 		chrono = System.currentTimeMillis();
-		ExplorationStep initState = new ExplorationStep(minsup, args[0], minsup);
+		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
 		long loadingTime = System.currentTimeMillis() - chrono;
 		System.err.println("Dataset loaded in " + loadingTime + "ms");
 
