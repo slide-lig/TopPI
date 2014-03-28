@@ -466,9 +466,16 @@ public final class ExplorationStep implements Cloneable {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				TransactionsIterable support = dataset.getSupport(candidate);
 				Counters candidateCounts;
-				candidateCounts = new DenseCounters(counters.getMinSupport(), support.iterator(), candidate,
-						dataset.getIgnoredItems(), counters.getMaxFrequent(), counters.getReverseRenaming(),
-						counters.getPattern());
+				if ((this.counters.pattern == null || this.counters.pattern.length == 0)
+						&& candidate >= USE_SPARSE_COUNTERS_FROM_ITEM) {
+					candidateCounts = new SparseCounters(counters.getMinSupport(), support.iterator(), candidate,
+							dataset.getIgnoredItems(), counters.getMaxFrequent(), counters.getReverseRenaming(),
+							counters.getPattern());
+				} else {
+					candidateCounts = new DenseCounters(counters.getMinSupport(), support.iterator(), candidate,
+							dataset.getIgnoredItems(), counters.getMaxFrequent(), counters.getReverseRenaming(),
+							counters.getPattern());
+				}
 				int greatest = Integer.MIN_VALUE;
 				for (int i = 0; i < candidateCounts.getClosure().length; i++) {
 					if (candidateCounts.getClosure()[i] > greatest) {

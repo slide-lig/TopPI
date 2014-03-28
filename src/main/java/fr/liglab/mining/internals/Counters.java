@@ -3,8 +3,6 @@ package fr.liglab.mining.internals;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.io.PerItemTopKCollector;
 
 /**
@@ -57,8 +55,7 @@ public abstract class Counters implements Cloneable {
 	int[] pattern;
 
 	/**
-	 * Counts how many items have a support count in [minSupport; 100% [ TODO
-	 * protected+accessor
+	 * Counts how many items have a support count in [minSupport; 100%
 	 */
 	int nbFrequents;
 
@@ -82,20 +79,6 @@ public abstract class Counters implements Cloneable {
 	 * Exclusive index of the first item >= core_item in current base
 	 */
 	int maxCandidate;
-
-	/**
-	 * We use our own map, although it will contain a single item most of the
-	 * time, because ThreadLocal causes (huge) memory leaks when used as a
-	 * non-static field.
-	 * 
-	 * @see getLocalFrequentsIterator
-	 */
-	private static final ThreadLocal<FrequentIterator> localFrequentsIterator = new ThreadLocal<FrequentIterator>() {
-		@Override
-		protected FrequentIterator initialValue() {
-			return new FrequentIterator();
-		}
-	};
 
 	/*
 	 * careAboutFutureExtensions true for toplcm, false for baseline
