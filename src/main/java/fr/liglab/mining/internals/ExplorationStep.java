@@ -28,6 +28,7 @@ public final class ExplorationStep implements Cloneable {
 
 	// expressed in starter items base
 	public static int INSERT_UNCLOSED_UP_TO_ITEM = Integer.MAX_VALUE;
+	public static int USE_SPARSE_COUNTERS_FROM_ITEM = Integer.MAX_VALUE;
 	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
 	public static boolean BASELINE_MODE = false;
 
@@ -94,7 +95,7 @@ public final class ExplorationStep implements Cloneable {
 
 		FileReader reader = new FileReader(path);
 		Holder<int[]> renamingHolder = new Holder<int[]>();
-		this.counters = new Counters(minimumSupport, reader, renamingHolder);
+		this.counters = new DenseCounters(minimumSupport, reader, renamingHolder);
 		reader.close(renamingHolder.value);
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
@@ -109,8 +110,8 @@ public final class ExplorationStep implements Cloneable {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
-		this.counters = new Counters(minimumSupport, reader, maxItem + 1, null, maxItem + 1, reverseGlobalRenaming,
-				new int[] {});
+		this.counters = new DenseCounters(minimumSupport, reader, maxItem + 1, null, maxItem + 1,
+				reverseGlobalRenaming, new int[] {});
 		int[] renaming = this.counters.compressRenaming(reverseGlobalRenaming);
 		reader.close(renaming);
 
@@ -139,7 +140,7 @@ public final class ExplorationStep implements Cloneable {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
-		this.counters = new Counters(minimumSupport, transactions.iterator(), maxItem + 1, null, maxItem + 1,
+		this.counters = new DenseCounters(minimumSupport, transactions.iterator(), maxItem + 1, null, maxItem + 1,
 				reverseRenaming, new int[] {});
 		Iterator<TransactionReader> trans = transactions.iterator();
 
@@ -385,10 +386,16 @@ public final class ExplorationStep implements Cloneable {
 					restart = false;
 					Dataset suggestedDataset = this.datasetProvider.getDatasetForItem(candidate, boundHolder.value);
 					TransactionsIterable support = suggestedDataset.getSupport(candidate);
-
-					candidateCounts = new Counters(suggestedDataset.getMinSup(), support.iterator(), candidate,
-							suggestedDataset.getIgnoredItems(), suggestedDataset.getMaxItem(),
-							counters.getReverseRenaming(), counters.getPattern());
+					if ((this.counters.pattern == null || this.counters.pattern.length == 0)
+							&& candidate >= USE_SPARSE_COUNTERS_FROM_ITEM) {
+						candidateCounts = new SparseCounters(suggestedDataset.getMinSup(), support.iterator(),
+								candidate, suggestedDataset.getIgnoredItems(), suggestedDataset.getMaxItem(),
+								counters.getReverseRenaming(), counters.getPattern());
+					} else {
+						candidateCounts = new DenseCounters(suggestedDataset.getMinSup(), support.iterator(),
+								candidate, suggestedDataset.getIgnoredItems(), suggestedDataset.getMaxItem(),
+								counters.getReverseRenaming(), counters.getPattern());
+					}
 
 					int greatest = Integer.MIN_VALUE;
 					for (int i = 0; i < candidateCounts.getClosure().length; i++) {
@@ -401,7 +408,9 @@ public final class ExplorationStep implements Cloneable {
 						collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
 						throw new WrongFirstParentException(candidate, greatest);
 					}
-					collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+					if (!regeneratedInResume) {
+						collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+					}
 					// this meanse that for candidate <
 					// INSERT_UNCLOSED_UP_TO_ITEM we always use the dataset of
 					// minimum support
@@ -456,11 +465,10 @@ public final class ExplorationStep implements Cloneable {
 		try {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				TransactionsIterable support = dataset.getSupport(candidate);
-
-				Counters candidateCounts = new Counters(counters.getMinSupport(), support.iterator(), candidate,
+				Counters candidateCounts;
+				candidateCounts = new DenseCounters(counters.getMinSupport(), support.iterator(), candidate,
 						dataset.getIgnoredItems(), counters.getMaxFrequent(), counters.getReverseRenaming(),
 						counters.getPattern());
-
 				int greatest = Integer.MIN_VALUE;
 				for (int i = 0; i < candidateCounts.getClosure().length; i++) {
 					if (candidateCounts.getClosure()[i] > greatest) {
