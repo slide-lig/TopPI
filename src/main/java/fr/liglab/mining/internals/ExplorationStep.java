@@ -94,11 +94,10 @@ public final class ExplorationStep implements Cloneable {
 		this.counters = new Counters(minimumSupport, reader);
 		reader.close(this.counters.renaming);
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.minSupport, this.counters.maxFrequent);
-		this.datasetProvider = new DatasetProvider(dataset, minimumSupport, this.counters.transactionsCount);
 		this.dataset = dataset;
 		this.candidates = this.counters.getExtensionsIterator();
-
 		this.failedFPTests = new TIntIntHashMap();
+		this.datasetProvider = new DatasetProvider(this);
 	}
 
 	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming) {
