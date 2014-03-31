@@ -13,11 +13,11 @@ public final class UByteIndexedTransactionsList extends IndexedTransactionsList 
 	}
 
 	public static int getMaxTransId(Counters c) {
-		return c.distinctTransactionsCount - 1;
+		return c.getDistinctTransactionsCount() - 1;
 	}
 
 	public UByteIndexedTransactionsList(Counters c) {
-		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
+		this(c.getDistinctTransactionLengthSum(), c.getDistinctTransactionsCount());
 	}
 
 	public UByteIndexedTransactionsList(int transactionsLength, int nbTransactions) {

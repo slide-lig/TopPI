@@ -41,8 +41,4 @@ public class ByteRandomItemsConcatenatedTidList extends RandomItemsConcatenatedT
 		super(c);
 	}
 
-	public ByteRandomItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
-	}
-
 }

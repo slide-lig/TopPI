@@ -19,12 +19,8 @@ public class MapTidList extends TidList {
 	private TIntObjectMap<TIntList> occurrences = new TIntObjectHashMap<TIntList>();
 
 	public MapTidList(Counters c) {
-		this(c.distinctTransactionsCounts);
-	}
-
-	public MapTidList(final int[] supports) {
-		for (int i = 0; i < supports.length; i++) {
-			int j = supports[i];
+		for (int i = 0; i <= c.getMaxFrequent(); i++) {
+			int j = c.getDistinctTransactionsCount(i);
 			if (j > 0) {
 				this.occurrences.put(i, new TIntArrayList(j));
 			}

@@ -50,8 +50,4 @@ public class UByteConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsCo
 		super(c, highestItem);
 	}
 
-	public UByteConsecutiveItemsConcatenatedTidList(int[] lengths, int highestItem) {
-		super(lengths, highestItem);
-	}
-
 }

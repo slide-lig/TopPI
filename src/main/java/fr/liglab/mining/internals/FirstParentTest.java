@@ -12,12 +12,13 @@ import gnu.trove.iterator.TIntIterator;
  * candidate extension
  */
 public final class FirstParentTest extends Selector {
-	
+
 	public static final FirstParentTest tailInstance = new FirstParentTest();
 
 	@Override
 	protected TopLCMCounters getCountersKey() {
-		return null; // YEP! this selector throws an exception so this method should never be called
+		return null; // YEP! this selector throws an exception so this method
+						// should never be called
 	}
 
 	public FirstParentTest() {
@@ -27,7 +28,7 @@ public final class FirstParentTest extends Selector {
 	FirstParentTest(Selector follower) {
 		super(follower);
 	}
-	
+
 	static Selector getTailInstance() {
 		return tailInstance;
 	}
@@ -75,13 +76,12 @@ public final class FirstParentTest extends Selector {
 			throw new IllegalArgumentException("FPtest can only be done on Dataset");
 		}
 
-		final int[] supportCounts = state.counters.supportCounts;
 		final TidList occurrencesLists = state.dataset.tidLists;
 
-		final int candidateSupport = supportCounts[extension];
+		final int candidateSupport = state.counters.getSupportCount(extension);
 
-		for (int i = state.counters.maxFrequent; i > extension; i--) {
-			if (supportCounts[i] >= candidateSupport) {
+		for (int i = state.counters.getMaxFrequent(); i > extension; i--) {
+			if (state.counters.getSupportCount(i) >= candidateSupport) {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {

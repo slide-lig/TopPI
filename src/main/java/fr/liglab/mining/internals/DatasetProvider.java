@@ -25,10 +25,10 @@ public class DatasetProvider {
 	}
 	
 	private void preFilter(ExplorationStep from, Integer minSup) {
-		Counters filtered = new Counters(from.counters, minSup);
+		DenseCounters filtered = new DenseCounters((DenseCounters) from.counters, minSup);
 		
 		TransactionsFilteringDecorator transactions = new TransactionsFilteringDecorator(
-				from.dataset.getTransactions(), filtered.supportCounts, true);
+				from.dataset.getTransactions(), filtered.getSupportCounts(), true);
 		
 		Dataset dataset = new Dataset(filtered, transactions, minSup, filtered.maxFrequent);
 		

@@ -18,13 +18,10 @@ public class ShortMapTidList extends TidList {
 	private TIntObjectMap<TShortList> occurrences = new TIntObjectHashMap<TShortList>();
 
 	public ShortMapTidList(Counters c) {
-		this(c.distinctTransactionsCounts);
-	}
-
-	public ShortMapTidList(final int[] lengths) {
-		for (int i = 0; i < lengths.length; i++) {
-			if (lengths[i] > 0) {
-				this.occurrences.put(i, new TShortArrayList(lengths[i]));
+		for (int i = 0; i < c.getMaxFrequent()+1; i++) {
+			int count = c.getDistinctTransactionsCount(i);
+			if (count > 0) {
+				this.occurrences.put(i, new TShortArrayList(count));
 			}
 		}
 	}

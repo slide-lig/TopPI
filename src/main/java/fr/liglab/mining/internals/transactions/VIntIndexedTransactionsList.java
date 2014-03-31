@@ -14,7 +14,7 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 	}
 
 	public static int getMaxTransId(Counters c) {
-		return c.distinctTransactionsCount - 1;
+		return c.getDistinctTransactionsCount() - 1;
 	}
 
 	static private int getVIntSize(int val) {
@@ -33,16 +33,12 @@ public class VIntIndexedTransactionsList extends IndexedTransactionsList {
 		}
 	}
 
-	public VIntIndexedTransactionsList(Counters c) {
-		this(c.distinctTransactionsCounts, c.distinctTransactionsCount);
-	}
-
-	public VIntIndexedTransactionsList(int[] distinctItemFreq, int nbTransactions) {
-		super(nbTransactions);
+	public VIntIndexedTransactionsList(Counters c, int[] distinctItemFreq, int nbTransactions) {
+		super(c.getDistinctTransactionsCount());
 		int size = 0;
 		for (int i = 0; i < distinctItemFreq.length; i++) {
 			// add 1 because we use the value 0 for empty
-			size += distinctItemFreq[i] * getVIntSize(i + 1);
+			size += c.getDistinctTransactionsCount(i) * getVIntSize(i + 1);
 		}
 		this.concatenated = new byte[size];
 	}

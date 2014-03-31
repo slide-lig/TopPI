@@ -2,6 +2,8 @@ package fr.liglab.mining.mapred;
 
 import java.io.IOException;
 
+import javax.xml.ws.Holder;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.FSDataInputStream;
@@ -71,8 +73,9 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 		
 		FileFilteredReader reader = new FileFilteredReader(inputStream, rebasing, new SingleGroup(nbGroups, maxItemId, gid));
 		
-		initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing);
-		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing);
+		Holder<int[]> renaming = new Holder<int[]>();
+		initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing, renaming);
+		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing, renaming);
 	}
 
 	private void reduceOverDistCache(IntWritable gidW, Iterable<IntWritable> itemsW, Context context) throws IOException, InterruptedException {
@@ -83,16 +86,18 @@ public class AlternativeMiningReducer extends Reducer<IntWritable, IntWritable, 
 		int maxItemId = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
 		
 		ExplorationStep initState = null;
+
+		Holder<int[]> renaming = new Holder<int[]>();
 		
 		for (Path path : DistributedCache.getLocalCacheFiles(conf)) {
 			if (path.toString().contains(conf.get(TopLCMoverHadoop.KEY_INPUT))) {
 				SingleGroup filter = new SingleGroup(nbGroups, maxItemId, gid);
 				FileFilteredReader reader = new FileFilteredReader(path.toString(), rebasing, filter);
-				
-				initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing);
+
+				initState = new ExplorationStep(minsup, reader, maxItemId, this.reverseRebasing, renaming);
 			}
 		}
 		
-		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing);
+		LCMWrapper.mining(gid, initState, context, this.sideOutputs, this.reverseRebasing, renaming);
 	}
 }
