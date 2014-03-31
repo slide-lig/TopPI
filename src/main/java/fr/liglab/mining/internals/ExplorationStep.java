@@ -99,7 +99,6 @@ public final class ExplorationStep implements Cloneable {
 		reader.close(renamingHolder.value);
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
-		this.datasetProvider = new DatasetProvider(this);
 		this.dataset = dataset;
 		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
@@ -382,9 +381,10 @@ public final class ExplorationStep implements Cloneable {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				Counters candidateCounts;
 				boolean restart;
+				boundHolder.value = Math.min(this.counters.getSupportCount(candidate)-collector.getK(), boundHolder.value);
 				do {
 					restart = false;
-					Dataset suggestedDataset = this.datasetProvider.getDatasetForItem(candidate, boundHolder.value);
+					Dataset suggestedDataset = this.datasetProvider.getDatasetForItem(candidate,boundHolder.value);
 					TransactionsIterable support = suggestedDataset.getSupport(candidate);
 					if ((this.counters.pattern == null || this.counters.pattern.length == 0)
 							&& candidate >= USE_SPARSE_COUNTERS_FROM_ITEM) {
@@ -414,7 +414,7 @@ public final class ExplorationStep implements Cloneable {
 					// this meanse that for candidate <
 					// INSERT_UNCLOSED_UP_TO_ITEM we always use the dataset of
 					// minimum support
-					if (!regeneratedInResume && candidate < INSERT_UNCLOSED_UP_TO_ITEM) {
+					if (candidate < INSERT_UNCLOSED_UP_TO_ITEM) {
 						boundHolder.value = candidateCounts.insertUnclosedPatterns(collector,
 								INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS);
 						if (boundHolder.value < suggestedDataset.getMinSup()
