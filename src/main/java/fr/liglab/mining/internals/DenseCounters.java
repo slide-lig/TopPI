@@ -479,7 +479,7 @@ public class DenseCounters extends Counters {
 				highestUnique = updateTopK(topKDistinctSupports, topKCorrespondingItems, i, count, highestUnique);
 			}
 		}
-		for (int i = this.maxCandidate; i < this.maxFrequent; i++) {
+		for (int i = this.maxCandidate; i <= this.maxFrequent; i++) {
 			int count = this.getSupportCount(i);
 			if (count != 0) {
 				highestUnique = updateTopK(topKDistinctSupports, topKCorrespondingItems, i, count, highestUnique);
