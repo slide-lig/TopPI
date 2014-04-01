@@ -91,13 +91,14 @@ public final class ExplorationStep implements Cloneable {
 	 *            to an input file in ASCII format. Each line should be a
 	 *            transaction containing space-separated item IDs.
 	 */
-	public ExplorationStep(int minimumSupport, String path) {
+	public ExplorationStep(int minimumSupport, String path, int k) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
 		FileReader reader = new FileReader(path);
 		Holder<int[]> renamingHolder = new Holder<int[]>();
-		this.counters = new DenseCounters(minimumSupport, reader, renamingHolder);
+		DenseCounters firstCounters = new DenseCounters(minimumSupport, reader, renamingHolder);
+		this.counters = firstCounters;
 		reader.close(renamingHolder.value);
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
@@ -105,6 +106,19 @@ public final class ExplorationStep implements Cloneable {
 		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
 		this.datasetProvider = new DatasetProvider(this);
+		
+		ExplorationStep.findUnclosedInsertionBound(firstCounters.getSupportCounts(), minimumSupport + k);
+	}
+	
+	protected static void findUnclosedInsertionBound(int[] supportCounts, int supportBound) {
+		int i = 0;
+		
+		while (i < supportCounts.length && supportCounts[i] >= supportBound) {
+			i++;
+		}
+		
+		INSERT_UNCLOSED_UP_TO_ITEM = i;
+		//System.err.println("INSERT_UNCLOSED_UP_TO_ITEM = "+INSERT_UNCLOSED_UP_TO_ITEM);
 	}
 
 	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming,

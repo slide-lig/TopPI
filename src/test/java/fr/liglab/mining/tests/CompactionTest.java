@@ -12,7 +12,7 @@ public class CompactionTest {
 	@Test
 	public void test() {
 		
-		ExplorationStep init = new ExplorationStep(2, FileReaderTest.PATH_MICRO);
+		ExplorationStep init = new ExplorationStep(2, FileReaderTest.PATH_MICRO, 10);
 		
 		TransactionsIterable support = init.dataset.getSupport(1);
 		Counters candidateCounts = new DenseCounters(2, support.iterator(), 
