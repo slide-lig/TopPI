@@ -29,7 +29,6 @@ import org.omg.CORBA.IntHolder;
 
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.Counters;
-import fr.liglab.mining.internals.DatasetProvider;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
@@ -467,15 +466,6 @@ public class TopLCM {
 		if (args.length >= 3) {
 			outputPath = args[2];
 		}
-		
-		if (cmd.hasOption('p')) {
-			String[] splitted = cmd.getOptionValue('p').split(",");
-			Integer[] parsed = new Integer[splitted.length];
-			for (int i = 0; i < splitted.length; i++) {
-				parsed[i] = Integer.parseInt(splitted[i]);
-			}
-			DatasetProvider.toBePreFiltered = parsed;
-		}
 
 		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
 
@@ -505,11 +495,20 @@ public class TopLCM {
 			nbThreads = Integer.parseInt(cmd.getOptionValue('t'));
 		}
 
+		chrono = System.currentTimeMillis();
+		
+		if (cmd.hasOption('p')) {
+			String[] splitted = cmd.getOptionValue('p').split(",");
+			Integer[] parsed = new Integer[splitted.length];
+			for (int i = 0; i < splitted.length; i++) {
+				parsed[i] = Integer.parseInt(splitted[i]);
+			}
+			initState.datasetProvider.preFilter(initState, parsed);
+		}
+
 		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
 
 		TopLCM miner = new TopLCM(collector, nbThreads, true);
-
-		chrono = System.currentTimeMillis();
 		miner.lcm(initState);
 		chrono = System.currentTimeMillis() - chrono;
 

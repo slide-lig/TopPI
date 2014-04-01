@@ -4,36 +4,30 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 public class DatasetProvider {
-	/**
-	 * If non-null, this should be an array of frequency thresholds for which you want 
-	 * pre-filtered datasets 
-	 */
-	public static Integer[] toBePreFiltered = null;
-	
 	private final double dampingFactor = 0.95;
 	private final TreeMap<Integer, Dataset> datasets;
 
 	public DatasetProvider(ExplorationStep target) {
 		this.datasets = new TreeMap<Integer, Dataset>();
 		this.datasets.put(target.counters.minSupport, target.dataset);
-		
-		if (toBePreFiltered != null) {
-			//System.err.println("Starting prefiltering at "+System.currentTimeMillis());
-			Thread[] workers = new Thread[toBePreFiltered.length];
-			for (int i = 0; i < toBePreFiltered.length; i++) {
-				workers[i] = new FilteringThread(target, toBePreFiltered[i]);
-				workers[i].start();
-			}
-			
-			for (Thread thread : workers) {
-				try {
-					thread.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			//System.err.println("Done prefiltering at "+System.currentTimeMillis());
+	}
+	
+	public void preFilter(ExplorationStep target, Integer[] toBePreFiltered) {
+		//System.err.println("Starting prefiltering at "+System.currentTimeMillis());
+		Thread[] workers = new Thread[toBePreFiltered.length];
+		for (int i = 0; i < toBePreFiltered.length; i++) {
+			workers[i] = new FilteringThread(target, toBePreFiltered[i]);
+			workers[i].start();
 		}
+		
+		for (Thread thread : workers) {
+			try {
+				thread.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		//System.err.println("Done prefiltering at "+System.currentTimeMillis());
 	}
 
 	public Dataset getDatasetForSupportThreshold(int supportThreshold) {
