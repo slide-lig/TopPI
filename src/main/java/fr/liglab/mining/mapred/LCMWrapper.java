@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import javax.xml.ws.Holder;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Counter;
@@ -41,12 +43,13 @@ public final class LCMWrapper {
 	 * @param reverseRebasing
 	 * @param sideOutputs can be null
 	 * @param globalToInitial 
+	 * @param renaming 
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
 	static void mining(int gid, ExplorationStep initState,
 			org.apache.hadoop.mapreduce.Reducer<?,?,IntWritable, SupportAndTransactionWritable>.Context context,
-			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs, int[] globalToInitial) throws IOException, InterruptedException {
+			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs, int[] globalToInitial, Holder<int[]> renaming) throws IOException, InterruptedException {
 		
 		final Configuration conf = context.getConfiguration();
 
@@ -88,7 +91,7 @@ public final class LCMWrapper {
 		
 		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) > 0) { // start group
 			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
-			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState));
+			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState, renaming));
 		}
 		
 		initState.appendSelector(chain);
@@ -126,8 +129,8 @@ public final class LCMWrapper {
 		
 	}
 
-	private static int[] buildRenamingToGlobal(ExplorationStep initState) {
-		int[] toCurrent = initState.counters.getRenaming();
+	private static int[] buildRenamingToGlobal(ExplorationStep initState, Holder<int[]> renaming) {
+		int[] toCurrent = renaming.value;
 		int[] toGlobal = new int[initState.counters.getMaxFrequent()+1];
 		
 		for (int i = 0; i < toCurrent.length; i++) {

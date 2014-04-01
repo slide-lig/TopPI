@@ -78,6 +78,7 @@ public abstract class Counters implements Cloneable {
 	/**
 	 * Exclusive index of the first item >= core_item in current base
 	 */
+
 	int maxCandidate;
 
 	/*

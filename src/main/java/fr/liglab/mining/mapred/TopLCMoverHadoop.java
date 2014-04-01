@@ -18,7 +18,6 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
-import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
@@ -202,29 +201,17 @@ public class TopLCMoverHadoop {
 		Job job = new Job(this.conf, "Mining (single-pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
-		if (this.conf.get(KEY_SUBDBS_BUILDER, "").length() > 0) {
-			job.setInputFormatClass(SequenceFileInputFormat.class);
-			FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
-			
-			job.setMapperClass(AlternativeMiningMapper.class);
-			job.setMapOutputKeyClass(IntWritable.class);
-			job.setMapOutputValueClass(IntWritable.class);
-			
-			job.setReducerClass(AlternativeMiningReducer.class);
-			
-			if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("distcache")) {
-				DistCache.copyToCache(job.getConfiguration(), this.input);
-			}
-			
-		} else {
-			job.setInputFormatClass(TextInputFormat.class);
-			FileInputFormat.addInputPath(job, new Path(this.input) );
-			
-			job.setMapperClass(MiningMapper.class);
-			job.setMapOutputKeyClass(IntWritable.class);
-			job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-			
-			job.setReducerClass(MiningReducer.class);
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
+		
+		job.setMapperClass(AlternativeMiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(IntWritable.class);
+		
+		job.setReducerClass(AlternativeMiningReducer.class);
+		
+		if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("distcache")) {
+			DistCache.copyToCache(job.getConfiguration(), this.input);
 		}
 		
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);

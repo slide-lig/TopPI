@@ -29,6 +29,10 @@ public class Dataset implements Cloneable {
 	protected final TidList tidLists;
 
 	private final int minSup;
+	
+	/**
+	 * inclusive higher bound
+	 */
 	private final int maxItem;
 
 	protected Dataset(TransactionsList transactions, TidList occurrences, int minSup, int maxItem) {
@@ -135,6 +139,10 @@ public class Dataset implements Cloneable {
 
 	public TransactionsIterable getSupport(int item) {
 		return new TransactionsIterable(this.tidLists.getIterable(item));
+	}
+	
+	public Iterator<TransactionReader> getTransactions() {
+		return new TransactionsIterator(this.transactions.getIdIterator());
 	}
 
 	public final class TransactionsIterable implements Iterable<TransactionReader> {

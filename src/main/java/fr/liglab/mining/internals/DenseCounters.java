@@ -270,6 +270,42 @@ public class DenseCounters extends Counters {
 		this.compactedArrays = true;
 		this.distinctTransactionLengthSum = remainingSupportsSum;
 	}
+	
+	/**
+	 * Applies items over-filtering to another Counters
+	 * ASSUMES THAT "initial" HAS BEEN COUNTER OVER AN UNCOMPRESSED DATASET
+	 * AND THAT ITEMS in "initial" ARE SORTED BY DECREASING SUPPORT COUNTS
+	 * that is one where all transaction weight 1
+	 */
+	public DenseCounters(DenseCounters initial, int newThreshold) {
+		CountersHandler.increment(TopLCMCounters.NbCounters);
+		
+		this.reverseRenaming = initial.reverseRenaming;
+		this.closure = initial.closure;
+		this.pattern = initial.pattern;
+		this.minSupport = newThreshold;
+		
+		int maxItem = 0;
+		int totalLen = 0;
+		int[] sc = initial.supportCounts;
+		while(maxItem < sc.length && sc[maxItem] >= newThreshold) {
+			totalLen += sc[maxItem];
+			maxItem++;
+		}
+		this.nbFrequents = maxItem;
+		this.maxCandidate = maxItem;
+		this.maxFrequent = maxItem - 1;
+		this.distinctTransactionLengthSum = totalLen;
+		
+		this.supportCounts = new int[this.maxCandidate];
+		System.arraycopy(initial.supportCounts, 0, this.supportCounts, 0, this.maxCandidate);
+		
+		// NOTE: these ones will be outdated once we've constructed the filtered-merged dataset
+		// but we don't care, because they're not accessed after this construction...
+		this.transactionsCount = initial.transactionsCount;
+		this.distinctTransactionsCount = initial.distinctTransactionsCount;
+		this.distinctTransactionsCounts = initial.distinctTransactionsCounts;
+	}
 
 	private DenseCounters(int minSupport, int transactionsCount, int distinctTransactionsCount,
 			int distinctTransactionLengthSum, int[] supportCounts, int[] distinctTransactionsCounts, int[] closure,
@@ -557,5 +593,8 @@ public class DenseCounters extends Counters {
 	public final int getSupportCount(int item) {
 		return this.supportCounts[item];
 	}
-
+	
+	public final int[] getSupportCounts() {
+		return this.supportCounts;
+	}
 }
