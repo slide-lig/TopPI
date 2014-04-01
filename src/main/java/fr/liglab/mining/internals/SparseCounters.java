@@ -216,31 +216,34 @@ public class SparseCounters extends Counters {
 		this.rebasedSupportCounts = new int[this.nbFrequents];
 		this.rebasedDistinctTransactionsCounts = new int[this.nbFrequents];
 		// we will always have newItemID <= item
-		int newItemID = 0;
-		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
+		int newItemIDBelowCandidate = 0;
+		int newItemIDAboveCandidate = this.nbFrequents - 1;
 		TIntIntIterator supportIterator = this.supportCounts.iterator();
 		while (supportIterator.hasNext()) {
 			supportIterator.advance();
-			renaming[supportIterator.key()] = newItemID;
-			this.reverseRenaming[newItemID] = olderReverseRenaming[supportIterator.key()];
-
-			this.rebasedDistinctTransactionsCounts[newItemID] = this.distinctTransactionsCounts.get(supportIterator
-					.value());
-			this.rebasedSupportCounts[newItemID] = supportIterator.value();
-
 			if (supportIterator.key() < this.maxCandidate) {
-				greatestBelowMaxCandidate = newItemID;
+				renaming[supportIterator.key()] = newItemIDBelowCandidate;
+				this.reverseRenaming[newItemIDBelowCandidate] = olderReverseRenaming[supportIterator.key()];
+				this.rebasedDistinctTransactionsCounts[newItemIDBelowCandidate] = this.distinctTransactionsCounts
+						.get(supportIterator.value());
+				this.rebasedSupportCounts[newItemIDBelowCandidate] = supportIterator.value();
+				newItemIDBelowCandidate++;
+			} else {
+				renaming[supportIterator.key()] = newItemIDAboveCandidate;
+				this.reverseRenaming[newItemIDAboveCandidate] = olderReverseRenaming[supportIterator.key()];
+				this.rebasedDistinctTransactionsCounts[newItemIDAboveCandidate] = this.distinctTransactionsCounts
+						.get(supportIterator.value());
+				this.rebasedSupportCounts[newItemIDAboveCandidate] = supportIterator.value();
+				newItemIDAboveCandidate--;
 			}
-
-			newItemID++;
 		}
 		this.supportCounts = null;
 		this.distinctTransactionsCounts = null;
 
-		this.maxCandidate = greatestBelowMaxCandidate + 1;
+		this.maxCandidate = newItemIDBelowCandidate;
 		Arrays.fill(renaming, this.rebasedSupportCounts.length, renaming.length, -1);
 
-		this.maxFrequent = newItemID - 1;
+		this.maxFrequent = this.nbFrequents - 1;
 		this.compactedArrays = true;
 		return renaming;
 	}
@@ -395,29 +398,33 @@ public class SparseCounters extends Counters {
 		this.reverseRenaming = new int[this.nbFrequents];
 		// first, compact
 		// we will always have newItemID <= item
-		int newItemID = 0;
-		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
-
+		int newItemIDBelowCandidate = 0;
+		int newItemIDAboveCandidate = this.nbFrequents - 1;
+		TIntIntIterator supportIterator = this.supportCounts.iterator();
 		// after this loop we have
 		// reverseRenaming: NewBase (index) -> PreviousDatasetBase (value)
 		// supportCounts: NewBase (index) -> Support (value)
 		// distinctTransactionCount: NewBase (index) -> Count (value)
-		TIntIntIterator supportIterator = this.supportCounts.iterator();
 		while (supportIterator.hasNext()) {
 			supportIterator.advance();
-			this.reverseRenaming[newItemID] = supportIterator.key();
-			this.rebasedSupportCounts[newItemID] = supportIterator.value();
-			this.rebasedDistinctTransactionsCounts[newItemID] = this.distinctTransactionsCounts.get(supportIterator
-					.key());
 			if (supportIterator.key() < this.maxCandidate) {
-				greatestBelowMaxCandidate = newItemID;
+				this.reverseRenaming[newItemIDBelowCandidate] = supportIterator.key();
+				this.rebasedSupportCounts[newItemIDBelowCandidate] = supportIterator.value();
+				this.rebasedDistinctTransactionsCounts[newItemIDBelowCandidate] = this.distinctTransactionsCounts
+						.get(supportIterator.key());
+				newItemIDBelowCandidate++;
+			} else {
+				this.reverseRenaming[newItemIDAboveCandidate] = supportIterator.key();
+				this.rebasedSupportCounts[newItemIDAboveCandidate] = supportIterator.value();
+				this.rebasedDistinctTransactionsCounts[newItemIDAboveCandidate] = this.distinctTransactionsCounts
+						.get(supportIterator.key());
+				newItemIDAboveCandidate--;
 			}
-			newItemID++;
 		}
 		this.supportCounts = null;
 		this.distinctTransactionsCounts = null;
-		this.maxCandidate = greatestBelowMaxCandidate + 1;
-		this.maxFrequent = newItemID - 1;
+		this.maxCandidate = newItemIDBelowCandidate;
+		this.maxFrequent = this.nbFrequents - 1;
 
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
