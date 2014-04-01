@@ -82,6 +82,7 @@ public class SparseCounters extends Counters {
 		// TODO take care of default capacity
 
 		CountersHandler.increment(TopLCMCounters.NbCounters);
+		CountersHandler.increment(TopLCMCounters.NbSparseCounters);
 
 		this.reverseRenaming = reuseReverseRenaming;
 		this.minSupport = minimumSupport;

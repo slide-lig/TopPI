@@ -6,7 +6,7 @@ public final class CountersHandler {
 	 * to TopLCMCounters.counters
 	 */
 	public enum TopLCMCounters {
-		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters, PatternsTraversed, EjectedPlaceholders, EjectedPatterns, DatasetReductionByEpsilonRaising, RedoCounters
+		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters, NbSparseCounters, PatternsTraversed, EjectedPlaceholders, EjectedPatterns, DatasetReductionByEpsilonRaising, RedoCounters
 	}
 
 	private static final ThreadLocal<long[]> counters = new ThreadLocal<long[]>() {
