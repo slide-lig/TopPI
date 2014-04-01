@@ -18,21 +18,22 @@ public class DatasetProvider {
 		this.datasets.put(target.counters.minSupport, target.dataset);
 		
 		if (toBePreFiltered != null) {
-			for (Integer minsup : toBePreFiltered) {
-				preFilter(target, minsup);
+			//System.err.println("Starting prefiltering at "+System.currentTimeMillis());
+			Thread[] workers = new Thread[toBePreFiltered.length];
+			for (int i = 0; i < toBePreFiltered.length; i++) {
+				workers[i] = new FilteringThread(target, toBePreFiltered[i]);
+				workers[i].start();
 			}
+			
+			for (Thread thread : workers) {
+				try {
+					thread.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			//System.err.println("Done prefiltering at "+System.currentTimeMillis());
 		}
-	}
-	
-	private void preFilter(ExplorationStep from, Integer minSup) {
-		DenseCounters filtered = new DenseCounters((DenseCounters) from.counters, minSup);
-		
-		TransactionsFilteringDecorator transactions = new TransactionsFilteringDecorator(
-				from.dataset.getTransactions(), filtered.getSupportCounts(), true);
-		
-		Dataset dataset = new Dataset(filtered, transactions, minSup, filtered.maxFrequent);
-		
-		this.datasets.put(minSup, dataset);
 	}
 
 	public Dataset getDatasetForSupportThreshold(int supportThreshold) {
@@ -51,6 +52,29 @@ public class DatasetProvider {
 					* this.dampingFactor));
 		} else {
 			return this.datasets.firstEntry().getValue();
+		}
+	}
+	
+	private class FilteringThread extends Thread {
+		
+		private ExplorationStep source;
+		private Integer minSup;
+
+		FilteringThread(ExplorationStep from, Integer minSup){
+			this.source = from;
+			this.minSup = minSup;
+		}
+		
+		 @Override
+		public void run() {
+			DenseCounters filtered = new DenseCounters((DenseCounters) source.counters, minSup);
+			
+			TransactionsFilteringDecorator transactions = new TransactionsFilteringDecorator(
+					source.dataset.getTransactions(), filtered.getSupportCounts(), true);
+			
+			Dataset dataset = new Dataset(filtered, transactions, minSup, filtered.maxFrequent);
+			
+			datasets.put(minSup, dataset);
 		}
 	}
 }
