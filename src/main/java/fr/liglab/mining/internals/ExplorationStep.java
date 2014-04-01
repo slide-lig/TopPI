@@ -120,7 +120,8 @@ public final class ExplorationStep implements Cloneable {
 		//System.err.println("INSERT_UNCLOSED_UP_TO_ITEM = "+INSERT_UNCLOSED_UP_TO_ITEM);
 	}
 
-	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming, Holder<int[]> renaming) {
+	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming,
+			Holder<int[]> renaming) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
@@ -307,24 +308,13 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			final int[] renaming;
-			boolean compress = COMPRESS_LVL1 && parentExplorationStep.core_item == Integer.MAX_VALUE
-					&& this.core_item < Integer.MAX_VALUE;
 
-			if (compress) {
-				renaming = this.counters.compressRenaming(null);
-			} else {
-				renaming = this.counters.compressSortRenaming(null);
-			}
+			renaming = this.counters.compressSortRenaming(null);
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
 			// FIXME the last argument is now obsolete
 			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE, this.counters.getMinSupport(),
 					this.counters.getMaxFrequent());
-
-			if (compress) {
-				// FIXME FIXME core_item refers an UNCOMPRESSED id
-				dataset.compress(this.core_item);
-			}
 
 			return dataset;
 		}
@@ -396,10 +386,11 @@ public final class ExplorationStep implements Cloneable {
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				Counters candidateCounts;
 				boolean restart;
-				boundHolder.value = Math.min(this.counters.getSupportCount(candidate)-collector.getK(), boundHolder.value);
+				boundHolder.value = Math.min(this.counters.getSupportCount(candidate) - collector.getK(),
+						boundHolder.value);
 				do {
 					restart = false;
-					Dataset suggestedDataset = this.datasetProvider.getDatasetForItem(candidate,boundHolder.value);
+					Dataset suggestedDataset = this.datasetProvider.getDatasetForItem(candidate, boundHolder.value);
 					TransactionsIterable support = suggestedDataset.getSupport(candidate);
 					if ((this.counters.pattern == null || this.counters.pattern.length == 0)
 							&& candidate >= USE_SPARSE_COUNTERS_FROM_ITEM) {
