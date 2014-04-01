@@ -382,7 +382,6 @@ public class TopLCM {
 
 		private void stackState(ExplorationStep state) {
 			CountersHandler.increment(TopLCMCounters.PatternsTraversed);
-
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();
@@ -419,7 +418,10 @@ public class TopLCM {
 				"m",
 				false,
 				"(only for standalone) Give highest memory usage after mining (instanciates a watcher thread that periodically triggers garbage collection)");
-		options.addOption("p", true, "Comma-separated frequency thresholds that should be used for pre-filtered datasets. Warning: we create a thread for each.");
+		options.addOption(
+				"p",
+				true,
+				"Comma-separated frequency thresholds that should be used for pre-filtered datasets. Warning: we create a thread for each.");
 		options.addOption("r", true, "path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
@@ -496,7 +498,7 @@ public class TopLCM {
 		}
 
 		chrono = System.currentTimeMillis();
-		
+
 		if (cmd.hasOption('p')) {
 			String[] splitted = cmd.getOptionValue('p').split(",");
 			Integer[] parsed = new Integer[splitted.length];

@@ -390,7 +390,8 @@ public class DenseCounters extends Counters {
 			// size 0 or 1
 			return;
 		} else if (end - start == 2) {
-			if (this.supportCounts[start] < this.supportCounts[start + 1]) {
+			if (this.supportCounts[start] < this.supportCounts[start + 1]
+					|| ((this.supportCounts[start] == this.supportCounts[start + 1] && this.reverseRenaming[start] > this.reverseRenaming[start + 1]))) {
 				this.swap(start, start + 1);
 			}
 		} else {
@@ -401,7 +402,8 @@ public class DenseCounters extends Counters {
 			int insertInf = start;
 			int insertSup = end - 2;
 			for (int i = start; i <= insertSup;) {
-				if (this.supportCounts[i] > pivotVal || this.supportCounts[i] == pivotVal && i < pivotPos) {
+				if (this.supportCounts[i] > pivotVal
+						|| (this.supportCounts[i] == pivotVal && this.reverseRenaming[i] < this.reverseRenaming[end - 1])) {
 					insertInf++;
 					i++;
 				} else {
@@ -412,7 +414,6 @@ public class DenseCounters extends Counters {
 			this.swap(end - 1, insertSup + 1);
 			quickSortOnSup(start, insertInf);
 			quickSortOnSup(insertSup + 2, end);
-
 		}
 	}
 

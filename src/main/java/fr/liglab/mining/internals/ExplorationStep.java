@@ -28,8 +28,9 @@ public final class ExplorationStep implements Cloneable {
 
 	// expressed in starter items base
 	public static int INSERT_UNCLOSED_UP_TO_ITEM = Integer.MAX_VALUE;
-	public static int USE_SPARSE_COUNTERS_FROM_ITEM =
-			Integer.valueOf(System.getProperty("lcm.sparse.from", "2147483640"));
+	@SuppressWarnings("boxing")
+	public static int USE_SPARSE_COUNTERS_FROM_ITEM = Integer.valueOf(System.getProperty("lcm.sparse.from",
+			Integer.toString(Integer.MAX_VALUE)));
 	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
 	public static boolean BASELINE_MODE = false;
 
@@ -294,7 +295,6 @@ public final class ExplorationStep implements Cloneable {
 			}
 
 			final int[] renaming;
-
 			renaming = this.counters.compressSortRenaming(null);
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 

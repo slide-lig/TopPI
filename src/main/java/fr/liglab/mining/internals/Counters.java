@@ -116,6 +116,9 @@ public abstract class Counters implements Cloneable {
 					return highestUnique;
 				}
 			} else {
+				if (item > items[pos]) {
+					items[pos] = item;
+				}
 				if (pos != supports.length - 1) {
 					return highestUnique;
 				} else {

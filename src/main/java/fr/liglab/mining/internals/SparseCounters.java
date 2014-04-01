@@ -35,6 +35,8 @@ public class SparseCounters extends Counters {
 	 */
 	private boolean compactedArrays = false;
 
+	private final int rebasingSize;
+
 	/**
 	 * We use our own map, although it will contain a single item most of the
 	 * time, because ThreadLocal causes (huge) memory leaks when used as a
@@ -88,7 +90,7 @@ public class SparseCounters extends Counters {
 		this.minSupport = minimumSupport;
 		this.supportCounts = new TIntIntHashMap(1000, Constants.DEFAULT_LOAD_FACTOR, Integer.MAX_VALUE, 0);
 		this.distinctTransactionsCounts = new TIntIntHashMap(1000, Constants.DEFAULT_LOAD_FACTOR, Integer.MAX_VALUE, 0);
-
+		this.rebasingSize = maxItem + 1;
 		// item support and transactions counting
 
 		int weightsSum = 0;
@@ -172,7 +174,7 @@ public class SparseCounters extends Counters {
 	private SparseCounters(int minSupport, int transactionsCount, int distinctTransactionsCount,
 			int distinctTransactionLengthSum, TIntIntMap supportCounts, TIntIntMap distinctTransactionsCounts,
 			int[] closure, int[] pattern, int nbFrequents, int maxFrequent, int[] reverseRenaming,
-			boolean compactedArrays, int maxCandidate) {
+			boolean compactedArrays, int maxCandidate, int rebasingSize) {
 		super();
 		this.minSupport = minSupport;
 		this.transactionsCount = transactionsCount;
@@ -187,6 +189,7 @@ public class SparseCounters extends Counters {
 		this.reverseRenaming = reverseRenaming;
 		this.compactedArrays = compactedArrays;
 		this.maxCandidate = maxCandidate;
+		this.rebasingSize = rebasingSize;
 	}
 
 	@Override
@@ -195,7 +198,7 @@ public class SparseCounters extends Counters {
 				distinctTransactionLengthSum, new TIntIntHashMap(supportCounts), new TIntIntHashMap(
 						distinctTransactionsCounts), Arrays.copyOf(closure, closure.length), Arrays.copyOf(pattern,
 						pattern.length), nbFrequents, maxFrequent, Arrays.copyOf(reverseRenaming,
-						reverseRenaming.length), compactedArrays, maxCandidate);
+						reverseRenaming.length), compactedArrays, maxCandidate, rebasingSize);
 	}
 
 	/**
@@ -211,39 +214,30 @@ public class SparseCounters extends Counters {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
-
-		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.supportCounts.size())];
-		this.reverseRenaming = new int[this.nbFrequents];
-		this.rebasedSupportCounts = new int[this.nbFrequents];
 		this.rebasedDistinctTransactionsCounts = new int[this.nbFrequents];
+		this.rebasedSupportCounts = new int[this.nbFrequents];
+		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.rebasingSize)];
+		Arrays.fill(renaming, -1);
+		this.reverseRenaming = new int[this.nbFrequents];
+
 		// we will always have newItemID <= item
-		int newItemIDBelowCandidate = 0;
-		int newItemIDAboveCandidate = this.nbFrequents - 1;
-		TIntIntIterator supportIterator = this.supportCounts.iterator();
-		while (supportIterator.hasNext()) {
-			supportIterator.advance();
-			if (supportIterator.key() < this.maxCandidate) {
-				renaming[supportIterator.key()] = newItemIDBelowCandidate;
-				this.reverseRenaming[newItemIDBelowCandidate] = olderReverseRenaming[supportIterator.key()];
-				this.rebasedDistinctTransactionsCounts[newItemIDBelowCandidate] = this.distinctTransactionsCounts
-						.get(supportIterator.value());
-				this.rebasedSupportCounts[newItemIDBelowCandidate] = supportIterator.value();
-				newItemIDBelowCandidate++;
-			} else {
-				renaming[supportIterator.key()] = newItemIDAboveCandidate;
-				this.reverseRenaming[newItemIDAboveCandidate] = olderReverseRenaming[supportIterator.key()];
-				this.rebasedDistinctTransactionsCounts[newItemIDAboveCandidate] = this.distinctTransactionsCounts
-						.get(supportIterator.value());
-				this.rebasedSupportCounts[newItemIDAboveCandidate] = supportIterator.value();
-				newItemIDAboveCandidate--;
+		int newItemID = 0;
+		int greatestBelowMaxCandidate = Integer.MIN_VALUE;
+		int[] keys = this.supportCounts.keys();
+		Arrays.sort(keys);
+		for (int key : keys) {
+			renaming[key] = newItemID;
+			this.reverseRenaming[newItemID] = olderReverseRenaming[key];
+			this.rebasedDistinctTransactionsCounts[newItemID] = this.distinctTransactionsCounts.get(key);
+			this.rebasedSupportCounts[newItemID] = this.supportCounts.get(key);
+			if (key < this.maxCandidate) {
+				greatestBelowMaxCandidate = newItemID;
 			}
+			newItemID++;
 		}
 		this.supportCounts = null;
 		this.distinctTransactionsCounts = null;
-
-		this.maxCandidate = newItemIDBelowCandidate;
-		Arrays.fill(renaming, this.rebasedSupportCounts.length, renaming.length, -1);
-
+		this.maxCandidate = greatestBelowMaxCandidate + 1;
 		this.maxFrequent = this.nbFrequents - 1;
 		this.compactedArrays = true;
 		return renaming;
@@ -254,7 +248,8 @@ public class SparseCounters extends Counters {
 			// size 0 or 1
 			return;
 		} else if (end - start == 2) {
-			if (this.rebasedSupportCounts[start] < this.rebasedSupportCounts[start + 1]) {
+			if (this.rebasedSupportCounts[start] < this.rebasedSupportCounts[start + 1]
+					|| ((this.rebasedSupportCounts[start] == this.rebasedSupportCounts[start + 1] && this.reverseRenaming[start] > this.reverseRenaming[start + 1]))) {
 				this.swap(start, start + 1);
 			}
 		} else {
@@ -265,7 +260,8 @@ public class SparseCounters extends Counters {
 			int insertInf = start;
 			int insertSup = end - 2;
 			for (int i = start; i <= insertSup;) {
-				if (this.rebasedSupportCounts[i] > pivotVal || this.rebasedSupportCounts[i] == pivotVal && i < pivotPos) {
+				if (this.rebasedSupportCounts[i] > pivotVal
+						|| (this.rebasedSupportCounts[i] == pivotVal && this.reverseRenaming[i] < this.reverseRenaming[end - 1])) {
 					insertInf++;
 					i++;
 				} else {
@@ -394,8 +390,8 @@ public class SparseCounters extends Counters {
 		if (olderReverseRenaming == null) {
 			olderReverseRenaming = this.reverseRenaming;
 		}
-		this.rebasedSupportCounts = new int[this.nbFrequents];
 		this.rebasedDistinctTransactionsCounts = new int[this.nbFrequents];
+		this.rebasedSupportCounts = new int[this.nbFrequents];
 		this.reverseRenaming = new int[this.nbFrequents];
 		// first, compact
 		// we will always have newItemID <= item
@@ -430,7 +426,7 @@ public class SparseCounters extends Counters {
 		// now, sort up to the pivot
 		this.quickSortOnSup(0, this.maxCandidate);
 
-		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.rebasedSupportCounts.length)];
+		int[] renaming = new int[Math.max(olderReverseRenaming.length, this.rebasingSize)];
 		Arrays.fill(renaming, -1);
 
 		// after this loop we have
