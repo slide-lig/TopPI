@@ -467,19 +467,16 @@ public class TopLCM {
 			outputPath = args[2];
 		}
 
-		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
-
-		if (!cmd.hasOption('k')) {
-			ExplorationStep.LCM_STYLE = true;
-		}
-
 		if (cmd.hasOption('m')) {
 			memoryWatch = new MemoryPeakWatcherThread();
 			memoryWatch.start();
 		}
 
+		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
+		int k = Integer.parseInt(cmd.getOptionValue('k'));
+
 		chrono = System.currentTimeMillis();
-		ExplorationStep initState = new ExplorationStep(minsup, args[0]);
+		ExplorationStep initState = new ExplorationStep(minsup, args[0], k);
 		long loadingTime = System.currentTimeMillis() - chrono;
 		System.err.println("Dataset loaded in " + loadingTime + "ms");
 
