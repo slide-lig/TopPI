@@ -445,7 +445,8 @@ public final class ExplorationStep implements Cloneable {
 	public ExplorationStep resumeExploration(Counters candidateCounts, int candidate, PerItemTopKCollector collector,
 			int countersMinSupportVerification) {
 		// check that the counters we made are also ok for all items < candidate
-		if (candidateCounts.getMinSupport() > countersMinSupportVerification) {
+		if (candidateCounts.getMinSupport() > countersMinSupportVerification &&
+				candidateCounts.getMinSupport() > this.counters.getMinSupport()) {
 			CountersHandler.increment(TopLCMCounters.RedoCounters);
 			candidateCounts = prepareExploration(candidate, collector, new IntHolder(countersMinSupportVerification),
 					true);
