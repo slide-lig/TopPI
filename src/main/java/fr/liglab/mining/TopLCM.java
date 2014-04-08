@@ -273,6 +273,15 @@ public class TopLCM {
 
 	}
 
+	private static class StopResumingJobsException extends Exception {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+	}
+
 	private static class PreparedJobs {
 		private Queue<CandidateCounters> stackedEs;
 		private int nextConsumable;
@@ -283,7 +292,8 @@ public class TopLCM {
 			this.minBoundToNextConsumable = Integer.MAX_VALUE;
 		}
 
-		public synchronized CandidateCounters getTask(IntHolder boundHolder) throws StopPreparingJobsException {
+		public synchronized CandidateCounters getTask(IntHolder boundHolder) throws StopPreparingJobsException,
+				StopResumingJobsException {
 			while (!stackedEs.isEmpty() && stackedEs.peek().getCandidate() == this.nextConsumable) {
 				this.nextConsumable++;
 				CandidateCounters next = stackedEs.poll();
@@ -297,7 +307,11 @@ public class TopLCM {
 				}
 			}
 			if (this.nextConsumable >= ExplorationStep.INSERT_UNCLOSED_UP_TO_ITEM) {
-				throw new StopPreparingJobsException();
+				if (this.stackedEs.isEmpty()) {
+					throw new StopResumingJobsException();
+				} else {
+					throw new StopPreparingJobsException();
+				}
 			}
 			boundHolder.value = this.minBoundToNextConsumable;
 			return null;
@@ -335,18 +349,22 @@ public class TopLCM {
 			// writes
 			boolean exit = false;
 			boolean prepareJobs = true;
+			boolean resumeJobs = true;
 			while (!exit) {
 				if (!this.stackedJobs.isEmpty()) {
-					if (prepareJobs && this.stackedJobs.size() == 1) {
+					if (resumeJobs && this.stackedJobs.size() == 1) {
 						CandidateCounters iex = null;
 						try {
 							iex = this.preparedJobs.getTask(this.boundHolder);
 						} catch (StopPreparingJobsException e) {
 							prepareJobs = false;
+						} catch (StopResumingJobsException e) {
+							prepareJobs = false;
+							resumeJobs = false;
 						}
 						if (iex != null) {
-							this.stackState(this.rootState.resumeExploration(iex.getCounters(),
-									iex.getCandidate(), collector, this.boundHolder.value));
+							this.stackState(this.rootState.resumeExploration(iex.getCounters(), iex.getCandidate(),
+									collector, this.boundHolder.value));
 							continue;
 						}
 					}
