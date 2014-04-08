@@ -101,7 +101,7 @@ public class TopLCM {
 		List<Future<?>> running = new ArrayList<Future<?>>(this.threads.size());
 
 		for (TopLCMThread t : this.threads) {
-			t.stackState(initState);
+			t.init(initState);
 			running.add(pool.submit(t));
 		}
 
@@ -316,11 +316,17 @@ public class TopLCM {
 		final List<ExplorationStep> stackedJobs;
 		final IntHolder candidateHolder = new IntHolder();
 		final IntHolder boundHolder = new IntHolder();
+		private ExplorationStep rootState;
 
 		public TopLCMThread(PreparedJobs preparedJobs) {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.lock = new ReentrantReadWriteLock();
 			this.preparedJobs = preparedJobs;
+		}
+
+		public void init(ExplorationStep initState) {
+			this.stackState(initState);
+			this.rootState = initState;
 		}
 
 		@Override
@@ -339,7 +345,7 @@ public class TopLCM {
 							prepareJobs = false;
 						}
 						if (iex != null) {
-							this.stackState(this.stackedJobs.get(0).resumeExploration(iex.getCounters(),
+							this.stackState(this.rootState.resumeExploration(iex.getCounters(),
 									iex.getCandidate(), collector, this.boundHolder.value));
 							continue;
 						}
