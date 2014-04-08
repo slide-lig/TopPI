@@ -375,6 +375,7 @@ public class TopLCM {
 					}
 				} else { // our list was empty, we should steal from another
 							// thread
+					prepareJobs = false;
 					ExplorationStep stolj = stealJob(this);
 					if (stolj == null) {
 						exit = true;
