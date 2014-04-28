@@ -383,6 +383,10 @@ public final class ExplorationStep implements Cloneable {
 	protected Counters prepareExploration(int candidate, PerItemTopKCollector collector, IntHolder boundHolder,
 			boolean regeneratedInResume) {
 		try {
+			if (ultraVerbose) {
+				System.err.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"prepare_candidate\":%3$d}\n",
+								Calendar.getInstance(), Thread.currentThread().getId(), candidate);
+			}
 			if (selectChain.select(candidate, ExplorationStep.this)) {
 				Counters candidateCounts;
 				boolean restart;
@@ -444,6 +448,11 @@ public final class ExplorationStep implements Cloneable {
 
 	public ExplorationStep resumeExploration(Counters candidateCounts, int candidate, PerItemTopKCollector collector,
 			int countersMinSupportVerification) {
+		if (ultraVerbose) {
+			System.err.format("{\"time\":\"%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS\",\"thread\":%2$d,\"resume_candidate\":%3$d}\n",
+							Calendar.getInstance(), Thread.currentThread().getId(), candidate);
+		}
+		
 		// check that the counters we made are also ok for all items < candidate
 		if (candidateCounts.getMinSupport() > countersMinSupportVerification &&
 				candidateCounts.getMinSupport() > this.counters.getMinSupport()) {
