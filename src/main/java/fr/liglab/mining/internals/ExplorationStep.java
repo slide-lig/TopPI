@@ -6,12 +6,14 @@ import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileFilteredReader;
 import fr.liglab.mining.io.FileReader;
+import fr.liglab.mining.io.FileWithStringIDsReader;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
+import java.util.Map;
 
 import javax.xml.ws.Holder;
 
@@ -83,6 +85,10 @@ public final class ExplorationStep implements Cloneable {
 	 */
 	private final TIntIntHashMap failedFPTests;
 
+	public ExplorationStep(int minimumSupport, String path, int k) {
+		this(minimumSupport, path, k, null);
+	}
+	
 	/**
 	 * Start exploration on a dataset contained in a file.
 	 * 
@@ -90,16 +96,34 @@ public final class ExplorationStep implements Cloneable {
 	 * @param path
 	 *            to an input file in ASCII format. Each line should be a
 	 *            transaction containing space-separated item IDs.
+	 * @param k
+	 * @param itemIDmap set to null if your file already uses integer item IDs 
 	 */
-	public ExplorationStep(int minimumSupport, String path, int k) {
+	public ExplorationStep(int minimumSupport, String path, int k, Holder<Map<String,Integer>> itemIDmap) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
-
-		FileReader reader = new FileReader(path);
+		
+		Iterator<TransactionReader> reader;
+		
+		if (itemIDmap == null) {
+			reader = new FileReader(path);
+		} else {
+			reader = new FileWithStringIDsReader(path);
+		}
+		
 		Holder<int[]> renamingHolder = new Holder<int[]>();
+		
 		DenseCounters firstCounters = new DenseCounters(minimumSupport, reader, renamingHolder);
 		this.counters = firstCounters;
-		reader.close(renamingHolder.value);
+		
+		if (itemIDmap == null) {
+			((FileReader) reader).close(renamingHolder.value);
+		} else {
+			itemIDmap.value = ((FileWithStringIDsReader) reader).close();
+			reader = new FileWithStringIDsReader(path, itemIDmap.value);
+			reader = new TransactionsRenamingDecorator(reader, renamingHolder.value);
+		}
+		
 		Dataset dataset = new Dataset(this.counters, reader, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
 		this.dataset = dataset;

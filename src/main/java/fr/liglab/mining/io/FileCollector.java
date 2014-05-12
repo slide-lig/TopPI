@@ -39,7 +39,7 @@ public class FileCollector implements PatternsCollector {
 		buffer.clear();
 	}
 	
-	public void collect(final int support, final int[] pattern) {
+	public final void collect(final int support, final int[] pattern) {
 		putInt(support);
 		safePut((byte) '\t'); // putChar('\t') would append TWO bytes, but in ASCII we need only one
 		
@@ -51,7 +51,7 @@ public class FileCollector implements PatternsCollector {
 				addSeparator = true;
 			}
 			
-			putInt(item);
+			putItem(item);
 		}
 		
 		safePut((byte) '\n');
@@ -59,7 +59,11 @@ public class FileCollector implements PatternsCollector {
 		this.collectedLength += pattern.length;
 	}
 	
-	protected void putInt(final int i) {
+	protected void putItem(final int i) {
+		putInt(i);
+	}
+	
+	protected final void putInt(final int i) {
 		try {
 			byte[] asBytes = Integer.toString(i).getBytes(charset);
 			buffer.put(asBytes);
@@ -69,7 +73,7 @@ public class FileCollector implements PatternsCollector {
 		}
 	}
 	
-	protected void safePut(final byte b) {
+	protected final void safePut(final byte b) {
 		try {
 			buffer.put(b);
 		} catch (BufferOverflowException e) {
@@ -78,7 +82,7 @@ public class FileCollector implements PatternsCollector {
 		}
 	}
 	
-	protected void flush() {
+	protected final void flush() {
 		try {
 			buffer.flip();
 			channel.write(buffer);
@@ -88,7 +92,7 @@ public class FileCollector implements PatternsCollector {
 		}
 	}
 
-	public long close() {
+	public final long close() {
 		try {
 			flush();
 			channel.close();
@@ -100,7 +104,7 @@ public class FileCollector implements PatternsCollector {
 		return this.collected;
 	}
 
-	public int getAveragePatternLength() {
+	public final int getAveragePatternLength() {
 		if (this.collected == 0) {
 			return 0;
 		} else {
@@ -111,14 +115,14 @@ public class FileCollector implements PatternsCollector {
 	/**
 	 * @return how many patterns have been written so far
 	 */
-	public long getCollected() {
+	public final long getCollected() {
 		return collected;
 	}
 	
 	/**
 	 * @return sum of collected patterns' lengths
 	 */
-	public long getCollectedLength() {
+	public final long getCollectedLength() {
 		return collectedLength;
 	}
 }

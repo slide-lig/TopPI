@@ -16,6 +16,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.xml.ws.Holder;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -32,6 +34,7 @@ import fr.liglab.mining.internals.Counters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.io.FileCollector;
+import fr.liglab.mining.io.FileCollectorWithIDMapper;
 import fr.liglab.mining.io.NullCollector;
 import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
@@ -449,6 +452,7 @@ public class TopLCM {
 				"Comma-separated frequency thresholds that should be used for pre-filtered datasets. Warning: we create a thread for each.");
 		options.addOption("r", true, "path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
 		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
+		options.addOption("S", false, "(only for standalone) enable arbitrary strings as item IDs in the input file");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
 		options.addOption("u", false, "(only for standalone) output unique patterns only");
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
@@ -498,12 +502,17 @@ public class TopLCM {
 			memoryWatch = new MemoryPeakWatcherThread();
 			memoryWatch.start();
 		}
+		
+		Holder<Map<String,Integer>> itemIDmap = null;
+		if (cmd.hasOption('S')) {
+			itemIDmap = new Holder<Map<String,Integer>>();
+		}
 
 		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
 		int k = Integer.parseInt(cmd.getOptionValue('k'));
 
 		chrono = System.currentTimeMillis();
-		ExplorationStep initState = new ExplorationStep(minsup, args[0], k);
+		ExplorationStep initState = new ExplorationStep(minsup, args[0], k, itemIDmap);
 		long loadingTime = System.currentTimeMillis() - chrono;
 		System.err.println("Dataset loaded in " + loadingTime + "ms");
 
@@ -530,7 +539,7 @@ public class TopLCM {
 			initState.datasetProvider.preFilter(initState, parsed);
 		}
 
-		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads);
+		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads, itemIDmap);
 
 		TopLCM miner = new TopLCM(collector, nbThreads, true);
 		miner.lcm(initState);
@@ -555,9 +564,10 @@ public class TopLCM {
 	 * Parse command-line arguments to instanciate the right collector
 	 * 
 	 * @param nbThreads
+	 * @param itemIDmap 
 	 */
 	private static PerItemTopKCollector instanciateCollector(CommandLine cmd, String outputPath,
-			ExplorationStep initState, int nbThreads) {
+			ExplorationStep initState, int nbThreads, Holder<Map<String, Integer>> itemIDmapHolder) {
 
 		PerItemTopKCollector topKcoll = null;
 		PatternsCollector collector = null;
@@ -565,16 +575,29 @@ public class TopLCM {
 		if (cmd.hasOption('b')) { // BENCHMARK MODE !
 			collector = new NullCollector();
 		} else {
+			Map<Integer, String> itemIDmap = null;
+			if (itemIDmapHolder != null) {
+				itemIDmap = new HashMap<Integer, String>(itemIDmapHolder.value.size());
+				for (Entry<String, Integer> entry : itemIDmapHolder.value.entrySet()) {
+					itemIDmap.put(entry.getValue(), entry.getKey());
+				}
+			}
+			
 			if (outputPath != null) {
 				try {
-					collector = new FileCollector(outputPath);
+					if (itemIDmap == null) {
+						collector = new FileCollector(outputPath);
+					} else {
+						collector = new FileCollectorWithIDMapper(outputPath, itemIDmap);
+					}
+					
 				} catch (IOException e) {
 					e.printStackTrace(System.err);
 					System.err.println("Aborting mining.");
 					System.exit(1);
 				}
 			} else {
-				collector = new StdOutCollector();
+				collector = new StdOutCollector(itemIDmap);
 			}
 
 			if (cmd.hasOption('s')) {

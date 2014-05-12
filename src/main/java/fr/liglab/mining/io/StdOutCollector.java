@@ -1,14 +1,35 @@
 package fr.liglab.mining.io;
 
 import java.util.Arrays;
+import java.util.Map;
 
-public class StdOutCollector implements PatternsCollector {
+public final class StdOutCollector implements PatternsCollector {
 
 	protected long collected = 0;
 	protected long collectedLength = 0;
+	private Map<Integer, String> map;
+	
+	/**
+	 * @param itemIDmap can be null
+	 */
+	public StdOutCollector(Map<Integer, String> itemIDmap) {
+		this.map = itemIDmap;
+	}
 
 	synchronized public void collect(final int support, final int[] pattern) {
-		System.out.println(Integer.toString(support) + "\t" + Arrays.toString(pattern));
+		if (map == null) {
+			System.out.println(Integer.toString(support) + "\t" + Arrays.toString(pattern));
+		} else {
+			StringBuilder sb = new StringBuilder(2*pattern.length + 1);
+			sb.append(support);
+			char separator = '\t';
+			for (int i : pattern) {
+				sb.append(separator);
+				sb.append(map.get(i));
+				separator = ' ';
+			}
+			System.out.println(sb.toString());
+		}
 		this.collected++;
 		this.collectedLength += pattern.length;
 	}
