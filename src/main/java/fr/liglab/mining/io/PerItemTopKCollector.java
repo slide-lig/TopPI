@@ -4,6 +4,7 @@ import fr.liglab.mining.CountersHandler;
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
+import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
 import fr.liglab.mining.internals.TransactionReader;
 import gnu.trove.iterator.TIntObjectIterator;
@@ -18,6 +19,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
+ * For a custom use of the results, extend this class and browse the topK field.
+ * 
  * Wraps a collector. As a (stateful) Selector it will limit exploration to
  * top-k-per-items patterns.
  * 
@@ -49,6 +52,30 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * input files) and should give, per line : ITEM_ID NB_PATTERNS_TO_KEEP
 	 */
 	protected String pathToPerItemK = null;
+	
+	/**
+	 * This is the recommanded constructor when using TopLCM as a library.
+	 * @param k
+	 * @param initState
+	 */
+	public PerItemTopKCollector(final int k, final ExplorationStep initState) {
+		this(null, k, initState);
+	}
+	
+	public PerItemTopKCollector(final PatternsCollector follower, final int k, final ExplorationStep initState) {
+		this.decorated = follower;
+		this.k = k;
+		this.topK = new TIntObjectHashMap<PatternWithFreq[]>(initState.counters.getNbFrequents());
+
+		FrequentsIteratorRenamer items = new FrequentsIteratorRenamer(initState.counters.getExtensionsIterator(),
+				initState.counters.getReverseRenaming());
+
+		for (int item = items.next(); item != -1; item = items.next()) {
+			this.topK.put(item, new PatternWithFreq[k]);
+		}
+
+		initState.appendSelector(this.asSelector());
+	}
 
 	public PerItemTopKCollector(final PatternsCollector follower, final int k, final int nbItems,
 			final FrequentsIterator items) {
@@ -91,7 +118,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	/**
 	 * @return true if the insertion actually happened
 	 */
-	public boolean insertPatternInTop(PatternWithFreq entry, int item) {
+	public final boolean insertPatternInTop(PatternWithFreq entry, int item) {
 		PatternWithFreq[] itemTopK = this.topK.get(item);
 
 		if (itemTopK != null) {
@@ -208,6 +235,10 @@ public class PerItemTopKCollector implements PatternsCollector {
 		if (this.pathToPerItemK != null) {
 			this.applyPerItemKRestriction();
 		}
+		
+		if (this.decorated == null) {
+			return 0;
+		}
 
 		if (this.infoMode) {
 			this.collectItemStats();
@@ -253,7 +284,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	public void outputAll() {
+	private void outputAll() {
 		for (final int k : this.topK.keys()) {
 			// for (final PatternWithFreq[] itemTopK :
 			// this.topK.valueCollection()) {
@@ -274,7 +305,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	/**
 	 * @see infoMode
 	 */
-	protected void collectItemStats() {
+	private void collectItemStats() {
 		TIntObjectIterator<PatternWithFreq[]> iterator = this.topK.iterator();
 
 		while (iterator.hasNext()) {
@@ -310,7 +341,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	 * @return MAX_VALUE if item is unknown, -1 if item's top-K isn't full, or
 	 *         item's K-th itemset's support count
 	 */
-	public int getBound(final int item) {
+	public final int getBound(final int item) {
 		PatternWithFreq[] pTab = this.topK.get(item);
 		if (pTab == null) {
 			return Integer.MAX_VALUE;
@@ -326,7 +357,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	public TIntIntMap getTopKBounds() {
+	public final TIntIntMap getTopKBounds() {
 		final TIntIntMap output = new TIntIntHashMap(this.topK.size());
 		this.topK.forEachEntry(new TIntObjectProcedure<PatternWithFreq[]>() {
 
@@ -488,11 +519,11 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 	}
 
-	public Selector asSelector() {
+	public final Selector asSelector() {
 		return new ExplorationLimiter(null);
 	}
 
-	protected final class ExplorationLimiter extends Selector {
+	private final class ExplorationLimiter extends Selector {
 
 		private int previousItem = -1;
 		private int previousResult = -1;
@@ -582,17 +613,29 @@ public class PerItemTopKCollector implements PatternsCollector {
 
 	@Override
 	public int getAveragePatternLength() {
-		return this.decorated.getAveragePatternLength();
+		if (this.decorated != null) {
+			return this.decorated.getAveragePatternLength();
+		} else {
+			return 0;
+		}
 	}
 
 	@Override
 	public long getCollected() {
-		return this.decorated.getCollected();
+		if (this.decorated != null) {
+			return this.decorated.getCollected();
+		} else {
+			return 0;
+		}
 	}
 
 	@Override
 	public long getCollectedLength() {
-		return this.decorated.getCollectedLength();
+		if (this.decorated != null) {
+			return this.decorated.getCollectedLength();
+		} else {
+			return 0;
+		}
 	}
 
 	public void setInfoMode(boolean outputInfoOnly) {
@@ -607,53 +650,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 		this.pathToPerItemK = path;
 	}
 
-	public int getK() {
+	public final int getK() {
 		return this.k;
 	}
-
-	// public static void main(String[] args) {
-	// PerItemTopKCollector coll = new PerItemTopKCollector(null, 5, 1, new
-	// FrequentsIterator() {
-	// boolean done = false;
-	//
-	// @Override
-	// public int peek() {
-	// return 1;
-	// }
-	//
-	// @Override
-	// public int next() {
-	// if (!done) {
-	// done = true;
-	// return 1;
-	// } else {
-	// return -1;
-	// }
-	// }
-	//
-	// @Override
-	// public int last() {
-	// return 1;
-	// }
-	// });
-	//
-	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 1, 24 },
-	// true), 1);
-	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 2, 57, 78 },
-	// true), 1);
-	// coll.insertPatternInTop(new PatternWithFreq(110, new int[] { 3 }, false),
-	// 1);
-	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 4 }, false),
-	// 1);
-	// System.out.println(coll);
-	// System.out.println(coll.getBound(1));
-	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 5 }, true),
-	// 1);
-	// System.out.println(coll);
-	// System.out.println(coll.getBound(1));
-	// coll.insertPatternInTop(new PatternWithFreq(100, new int[] { 6 }, true),
-	// 1);
-	// System.out.println(coll);
-	// System.out.println(coll.getBound(1));
-	// }
 }

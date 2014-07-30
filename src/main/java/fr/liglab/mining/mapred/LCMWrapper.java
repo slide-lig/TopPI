@@ -9,6 +9,7 @@ import javax.xml.ws.Holder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import fr.liglab.mining.CountersHandler.TopLCMCounters;
@@ -17,6 +18,7 @@ import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
+import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
 /**
@@ -96,7 +98,7 @@ public final class LCMWrapper {
 		
 		initState.appendSelector(chain);
 		
-		TopLCM miner = new TopLCM(topKcoll, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
+		TopLCMinHadoop miner = new TopLCMinHadoop(topKcoll, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();
@@ -141,6 +143,21 @@ public final class LCMWrapper {
 		}
 		
 		return toGlobal;
+	}
+	
+	private static final class TopLCMinHadoop extends TopLCM {
+
+		public TopLCMinHadoop(PerItemTopKCollector patternsCollector, int nbThreads) {
+			super(patternsCollector, nbThreads);
+		}
+
+		@SuppressWarnings("rawtypes")
+		public void setHadoopContext(Context context) {
+			if (this.progressWatch != null) {
+				this.progressWatch.setHadoopContext(context);
+			}
+		}
+
 	}
 
 }

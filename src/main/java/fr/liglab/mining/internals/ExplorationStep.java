@@ -144,6 +144,25 @@ public final class ExplorationStep implements Cloneable {
 		INSERT_UNCLOSED_UP_TO_ITEM = i;
 		//System.err.println("INSERT_UNCLOSED_UP_TO_ITEM = "+INSERT_UNCLOSED_UP_TO_ITEM);
 	}
+	
+	/**
+	 * Start exploration on an abstract dataset
+	 */
+	public ExplorationStep(int minimumSupport, int k, Iterable<TransactionReader> source) {
+		this.core_item = Integer.MAX_VALUE;
+		this.selectChain = null;
+		Holder<int[]> renamingHolder = new Holder<int[]>();
+		DenseCounters firstCounters = new DenseCounters(minimumSupport, source.iterator(), renamingHolder);
+		this.counters = firstCounters;
+		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(source.iterator(), renamingHolder.value);
+		this.dataset = new Dataset(this.counters, filtered, this.counters.getMinSupport(),
+				this.counters.getMaxFrequent());
+		this.candidates = this.counters.getExtensionsIterator();
+		this.failedFPTests = new TIntIntHashMap();
+		
+		this.datasetProvider = new DatasetProvider(this);
+		ExplorationStep.findUnclosedInsertionBound(firstCounters.getSupportCounts(), minimumSupport + k);
+	}
 
 	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming,
 			Holder<int[]> renaming) {
