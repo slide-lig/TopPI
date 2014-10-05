@@ -81,10 +81,7 @@ public abstract class Counters implements Cloneable {
 
 	int maxCandidate;
 
-	/*
-	 * careAboutFutureExtensions true for toppi, false for baseline
-	 */
-	abstract public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions);
+	abstract public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll);
 
 	abstract void eraseItem(int i);
 

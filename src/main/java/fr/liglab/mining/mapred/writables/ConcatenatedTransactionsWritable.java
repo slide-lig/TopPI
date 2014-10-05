@@ -3,6 +3,7 @@ package fr.liglab.mining.mapred.writables;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -16,6 +17,15 @@ public final class ConcatenatedTransactionsWritable implements Writable {
 	private int[] fromDisk = null;
 	
 	public ConcatenatedTransactionsWritable() {}
+	
+	@Override
+	public String toString() {
+		if (this.fromDisk != null) {
+			return Arrays.toString(this.fromDisk);
+		} else {
+			return "[not written yet]";
+		}
+	}
 	
 	/**
 	 * @param buffer a list of transactions to be written to disk

@@ -289,7 +289,7 @@ public class SparseCounters extends Counters {
 		this.rebasedDistinctTransactionsCounts[j] = temp;
 	}
 
-	final public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions) {
+	final public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll) {
 		int updatedMinSupport = Integer.MAX_VALUE;
 		for (int item : this.pattern) {
 			int bound = topKcoll.getBound(item);
@@ -300,26 +300,26 @@ public class SparseCounters extends Counters {
 				}
 			}
 		}
-		if (careAboutFutureExtensions) {
-			TIntIntIterator supportIterator = this.supportCounts.iterator();
-			while (supportIterator.hasNext()) {
-				supportIterator.advance();
-				if (supportIterator.key() < this.maxCandidate) {
-					int bound = topKcoll.getBound(this.reverseRenaming[supportIterator.key()]);
-					if (bound <= supportIterator.value()) {
-						updatedMinSupport = Math.min(updatedMinSupport, bound);
-						if (updatedMinSupport <= this.minSupport) {
-							return false;
-						}
+		
+		TIntIntIterator supportIterator = this.supportCounts.iterator();
+		while (supportIterator.hasNext()) {
+			supportIterator.advance();
+			if (supportIterator.key() < this.maxCandidate) {
+				int bound = topKcoll.getBound(this.reverseRenaming[supportIterator.key()]);
+				if (bound <= supportIterator.value()) {
+					updatedMinSupport = Math.min(updatedMinSupport, bound);
+					if (updatedMinSupport <= this.minSupport) {
+						return false;
 					}
 				}
 			}
 		}
+		
 		int remainingDistinctTransLengths = 0;
 		int remainingFrequents = 0;
 		int biggestItemID = 0;
 		this.minSupport = updatedMinSupport;
-		TIntIntIterator supportIterator = this.supportCounts.iterator();
+		supportIterator = this.supportCounts.iterator();
 		while (supportIterator.hasNext()) {
 			supportIterator.advance();
 			if (supportIterator.value() < this.minSupport) {

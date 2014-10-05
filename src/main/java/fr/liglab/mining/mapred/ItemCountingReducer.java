@@ -46,7 +46,7 @@ public class ItemCountingReducer extends
 	@Override
 	protected void cleanup(Context context) throws java.io.IOException, InterruptedException {
 		final Configuration conf = context.getConfiguration();
-		final int minSupport = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 10);
+		final int minSupport = conf.getInt(TopPIoverHadoop.KEY_MINSUP, 10);
 		
 		final IntWritable keyW = new IntWritable();
 		final IntWritable valueW = new IntWritable();

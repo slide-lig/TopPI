@@ -20,6 +20,7 @@ import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
+import fr.liglab.mining.util.ProgressWatcherThread;
 
 /**
  * This wrapper lets another class handle the initState instantiation
@@ -29,11 +30,11 @@ import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
  *  - the global, used by all maps in DistCache, where 0 is the most frequent item
  *  - a local one, used in initState, which is a compression of the global
  */
-public final class LCMWrapper {
+public final class MinerWrapper {
 
 	static final String BOUNDS_OUTPUT_NAME = "bounds";
-	static final String KEY_BOUNDS_PATH = "lcm.bound.path";
-	static final String KEY_COLLECT_NON_GROUP = "lcm.collect.outgroup";
+	static final String KEY_BOUNDS_PATH = "toppi.bound.path";
+	static final String KEY_COLLECT_NON_GROUP = "toppi.collect.outgroup";
 	
 	private enum MyCounter {MINING_TIME};
 	
@@ -55,34 +56,37 @@ public final class LCMWrapper {
 		
 		final Configuration conf = context.getConfiguration();
 
-		ExplorationStep.verbose = conf.getBoolean(TopLCMoverHadoop.KEY_VERBOSE, false);
-		ExplorationStep.ultraVerbose = conf.getBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, false);
+		ExplorationStep.verbose = conf.getBoolean(TopPIoverHadoop.KEY_VERBOSE, false);
+		ExplorationStep.ultraVerbose = conf.getBoolean(TopPIoverHadoop.KEY_ULTRA_VERBOSE, false);
 		
-		final int k        = conf.getInt(TopLCMoverHadoop.KEY_K, 1);
-		final int minsup   = conf.getInt(TopLCMoverHadoop.KEY_MINSUP, 1000);
-		final int maxId    = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 1);
-		final int nbGroups = conf.getInt(TopLCMoverHadoop.KEY_NBGROUPS, 1);
+		final int k        = conf.getInt(TopPIoverHadoop.KEY_K, 1);
+		final int minsup   = conf.getInt(TopPIoverHadoop.KEY_MINSUP, 1000);
+		final int maxId    = conf.getInt(TopPIoverHadoop.KEY_REBASING_MAX_ID, 1);
+		final int nbGroups = conf.getInt(TopPIoverHadoop.KEY_NBGROUPS, 1);
 		
-		context.progress();
+		ProgressWatcherThread coucou = new ProgressWatcherThread();
+		coucou.setHadoopContext(context);
+		coucou.start();
 		
-		if (conf.get(TopLCMoverHadoop.KEY_SUB_DB_ONLY, "").length() > 0) {
+		if (conf.get(TopPIoverHadoop.KEY_SUB_DB_ONLY, "").length() > 0) {
 			return;
 		}
 		
 		Grouper grouper = new Grouper(nbGroups, maxId);
 		FrequentsIterator collected;
+
+		ExplorationStep.INSERT_UNCLOSED_UP_TO_ITEM = -1;
+		ExplorationStep.INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) == 1) {
-			// collect all
-			collected = initState.counters.getExtensionsIterator();
-			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
-		} else if (conf.getBoolean(KEY_COLLECT_NON_GROUP, false)) {
+		if (conf.getBoolean(KEY_COLLECT_NON_GROUP, false)) {
 			collected = grouper.getNonGroupItems(gid);
 			collected = new FrequentsIteratorRenamer(collected, globalToInitial);
+			ExplorationStep.EARLYCOLLECTION = false;
 		} else {
 			// collect group
 			collected = grouper.getGroupItems(gid);
 			collected = new FrequentsIteratorRenamer(collected, globalToInitial);
+			ExplorationStep.EARLYCOLLECTION = true;
 		}
 		
 		PerItemTopKHadoopCollector topKcoll = new PerItemTopKHadoopCollector(context, k, maxId, collected);
@@ -91,14 +95,13 @@ public final class LCMWrapper {
 		
 		Selector chain = topKcoll.asSelector();
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) > 0) { // start group
-			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
-			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState, renaming));
-		}
+		// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
+		chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState, renaming));
 		
 		initState.appendSelector(chain);
 		
-		TopLCMinHadoop miner = new TopLCMinHadoop(topKcoll, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
+		coucou.setStartersIterator(initState.candidates);
+		TopPIinHadoop miner = new TopPIinHadoop(topKcoll, conf.getInt(TopPIoverHadoop.KEY_NB_THREADS, 1));
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();
@@ -145,9 +148,9 @@ public final class LCMWrapper {
 		return toGlobal;
 	}
 	
-	private static final class TopLCMinHadoop extends TopPI {
+	private static final class TopPIinHadoop extends TopPI {
 
-		public TopLCMinHadoop(PerItemTopKCollector patternsCollector, int nbThreads) {
+		public TopPIinHadoop(PerItemTopKCollector patternsCollector, int nbThreads) {
 			super(patternsCollector, nbThreads);
 		}
 

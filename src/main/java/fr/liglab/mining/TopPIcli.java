@@ -24,7 +24,7 @@ import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.io.StdOutCollector;
-import fr.liglab.mining.mapred.TopLCMoverHadoop;
+import fr.liglab.mining.mapred.TopPIoverHadoop;
 import fr.liglab.mining.util.MemoryPeakWatcherThread;
 
 public class TopPIcli {
@@ -39,6 +39,8 @@ public class TopPIcli {
 				"b",
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
+		// FIXME
+		//options.addOption("B", false, "Do a 3-passes preliminary jobs - an experiment for datasets with more than 2 million items");
 		options.addOption("e", false, "DEBUG ONLY - prints to stdout the raised threshold, for each starter item");
 		options.addOption("g", true,
 				"Enables Hadoop and gives the number of groups in which the search space will be splitted");
@@ -46,9 +48,10 @@ public class TopPIcli {
 		options.addOption(
 				"i",
 				false,
-				"Outputs a single pattern for each frequent item. Given support is item's support count and pattern's items are "
+				"(only for standalone) Outputs a single pattern for each frequent item. "
+						+ "Given support is item's support count and pattern's items are "
 						+ "the item itself, its patterns count (max=K), its patterns' supports sum and its lowest pattern support.");
-		options.addOption("k", true, "The K to top-k-per-item mining");
+		options.addOption("k", true, "The 'K' in top-K-per-item mining");
 		options.addOption(
 				"m",
 				false,
@@ -58,7 +61,7 @@ public class TopPIcli {
 				true,
 				"Comma-separated frequency thresholds that should be used for pre-filtered datasets. Warning: we create a thread for each.");
 		options.addOption("r", true, "path to a file giving, per line, ITEM_ID NB_PATTERNS_TO_KEEP");
-		options.addOption("s", false, "Sort items in outputted patterns, in ascending order");
+		options.addOption("s", false, "(only for standalone) Sort items in outputted patterns, in ascending order");
 		options.addOption("S", false, "(only for standalone) enable arbitrary strings as item IDs in the input file");
 		options.addOption("t", true, "How many threads will be launched (defaults to your machine's processors count)");
 		options.addOption("u", false, "(only for standalone) output unique patterns only");
@@ -234,24 +237,21 @@ public class TopPIcli {
 			throw new IllegalArgumentException("Output's prefix path must be provided when using Hadoop");
 		}
 
-		conf.set(TopLCMoverHadoop.KEY_INPUT, args[0]);
-		conf.setInt(TopLCMoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
-		conf.set(TopLCMoverHadoop.KEY_OUTPUT, args[2]);
-		conf.setInt(TopLCMoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
-		conf.setInt(TopLCMoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
+		conf.set(TopPIoverHadoop.KEY_INPUT, args[0]);
+		conf.setInt(TopPIoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
+		conf.set(TopPIoverHadoop.KEY_OUTPUT, args[2]);
+		conf.setInt(TopPIoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
+		conf.setInt(TopPIoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
 
 		if (cmd.hasOption('s')) {
 			System.err.println("Hadoop version does not support itemset sorting");
 			System.exit(1);
 		}
-		if (cmd.hasOption('v')) {
-			conf.setBoolean(TopLCMoverHadoop.KEY_VERBOSE, true);
-		}
-		if (cmd.hasOption('V')) {
-			conf.setBoolean(TopLCMoverHadoop.KEY_ULTRA_VERBOSE, true);
-		}
+		conf.setBoolean(TopPIoverHadoop.KEY_VERBOSE, cmd.hasOption('v'));
+		conf.setBoolean(TopPIoverHadoop.KEY_ULTRA_VERBOSE, cmd.hasOption('V'));
+		conf.setBoolean(TopPIoverHadoop.KEY_MANY_ITEMS_MODE, cmd.hasOption('B'));
 
-		TopLCMoverHadoop driver = new TopLCMoverHadoop(conf);
+		TopPIoverHadoop driver = new TopPIoverHadoop(conf);
 		System.exit(driver.run());
 	}
 

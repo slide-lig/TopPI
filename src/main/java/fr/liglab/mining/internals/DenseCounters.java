@@ -416,7 +416,7 @@ public class DenseCounters extends Counters {
 		}
 	}
 
-	final public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll, boolean careAboutFutureExtensions) {
+	final public boolean raiseMinimumSupport(PerItemTopKCollector topKcoll) {
 		int updatedMinSupport = Integer.MAX_VALUE;
 		for (int item : this.pattern) {
 			int bound = topKcoll.getBound(item);
@@ -427,16 +427,14 @@ public class DenseCounters extends Counters {
 				}
 			}
 		}
-		if (careAboutFutureExtensions) {
-			for (int i = 0; i < this.maxCandidate; i++) {
-				int count = this.getSupportCount(i);
-				if (count != 0) {
-					int bound = topKcoll.getBound(this.reverseRenaming[i]);
-					if (bound <= count) {
-						updatedMinSupport = Math.min(updatedMinSupport, bound);
-						if (updatedMinSupport <= this.minSupport) {
-							return false;
-						}
+		for (int i = 0; i < this.maxCandidate; i++) {
+			int count = this.getSupportCount(i);
+			if (count != 0) {
+				int bound = topKcoll.getBound(this.reverseRenaming[i]);
+				if (bound <= count) {
+					updatedMinSupport = Math.min(updatedMinSupport, bound);
+					if (updatedMinSupport <= this.minSupport) {
+						return false;
 					}
 				}
 			}

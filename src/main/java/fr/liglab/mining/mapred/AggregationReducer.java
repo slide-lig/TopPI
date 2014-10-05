@@ -18,7 +18,7 @@ public class AggregationReducer extends Reducer<ItemAndSupportWritable, SupportA
 	
 	@Override
 	protected void setup(Context context) throws java.io.IOException , InterruptedException {
-		this.k = context.getConfiguration().getInt(TopLCMoverHadoop.KEY_K, 1);
+		this.k = context.getConfiguration().getInt(TopPIoverHadoop.KEY_K, 1);
 		this.lastCount = 0;
 	}
 	

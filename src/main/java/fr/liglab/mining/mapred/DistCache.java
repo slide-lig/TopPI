@@ -39,10 +39,12 @@ final class DistCache {
 				System.out.println(file.toUri().toString());
 			}
 		}
+		
+		fs.close();
 	}
 	
 	static TIntIntMap readRebasing(Configuration conf) throws IOException {
-		return readIntIntMap(conf, REBASINGMAP_DIRNAME, conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, 10));
+		return readIntIntMap(conf, REBASINGMAP_DIRNAME, conf.getInt(TopPIoverHadoop.KEY_REBASING_MAX_ID, 10));
 	}
 	
 	static TIntIntMap readPerItemBounds(Configuration conf) throws IOException {
@@ -67,6 +69,8 @@ final class DistCache {
 			}
 		}
 		
+		fs.close();
+		
 		return map;
 	}
 	
@@ -74,10 +78,10 @@ final class DistCache {
 	 * @return a map which associates a rebased item ID to its original ID
 	 */
 	static int[] readReverseRebasing(Configuration conf) throws IOException {
-		final int maxId = conf.getInt(TopLCMoverHadoop.KEY_REBASING_MAX_ID, -1);
+		final int maxId = conf.getInt(TopPIoverHadoop.KEY_REBASING_MAX_ID, -1);
 		
 		if (maxId < 0) {
-			throw new IllegalArgumentException("Given configuration should contain a value for "+TopLCMoverHadoop.KEY_REBASING_MAX_ID);
+			throw new IllegalArgumentException("Given configuration should contain a value for "+TopPIoverHadoop.KEY_REBASING_MAX_ID);
 		}
 		
 		int[] map = new int[maxId+1];
@@ -97,6 +101,8 @@ final class DistCache {
 				reader.close();
 			}
 		}
+		
+		fs.close();
 		
 		return map;
 	}

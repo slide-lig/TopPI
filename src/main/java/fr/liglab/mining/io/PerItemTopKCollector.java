@@ -54,7 +54,7 @@ public class PerItemTopKCollector implements PatternsCollector {
 	protected String pathToPerItemK = null;
 	
 	/**
-	 * This is the recommanded constructor when using TopLCM as a library.
+	 * This is the recommended constructor when using TopPI as a library.
 	 * @param k
 	 * @param initState
 	 */

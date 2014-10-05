@@ -34,7 +34,7 @@ public final class ExplorationStep implements Cloneable {
 	public static int USE_SPARSE_COUNTERS_FROM_ITEM = Integer.valueOf(System.getProperty("toppi.sparse.from",
 			Integer.toString(Integer.MAX_VALUE)));
 	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
-	public static boolean BASELINE_MODE = false;
+	public static boolean EARLYCOLLECTION = true;
 
 	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toppi.threshold.view";
 	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toppi.threshold.long";
@@ -145,8 +145,8 @@ public final class ExplorationStep implements Cloneable {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 		Holder<int[]> renamingHolder = new Holder<int[]>();
-		DenseCounters firstCounters = new DenseCounters(minimumSupport, source.iterator(), renamingHolder);
-		this.counters = firstCounters;
+		DenseCounters firstCounter = new DenseCounters(minimumSupport, source.iterator(), renamingHolder);
+		this.counters = firstCounter;
 		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(source.iterator(), renamingHolder.value);
 		this.dataset = new Dataset(this.counters, filtered, this.counters.getMinSupport(),
 				this.counters.getMaxFrequent());
@@ -154,16 +154,20 @@ public final class ExplorationStep implements Cloneable {
 		this.failedFPTests = new TIntIntHashMap();
 		
 		this.datasetProvider = new DatasetProvider(this);
-		ExplorationStep.findUnclosedInsertionBound(firstCounters.getSupportCounts(), minimumSupport + k);
+		ExplorationStep.findUnclosedInsertionBound(firstCounter.getSupportCounts(), minimumSupport + k);
 	}
-
+	
+	/**
+	 * Only for the Hadoop variant
+	 */
 	public ExplorationStep(int minimumSupport, FileFilteredReader reader, int maxItem, int[] reverseGlobalRenaming,
-			Holder<int[]> renaming) {
+			Holder<int[]> renaming, int k) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
-		this.counters = new DenseCounters(minimumSupport, reader, maxItem + 1, null, maxItem + 1,
+		DenseCounters firstCounters = new DenseCounters(minimumSupport, reader, maxItem + 1, null, maxItem + 1,
 				reverseGlobalRenaming, new int[] {});
+		this.counters = firstCounters;
 		renaming.value = this.counters.compressRenaming(reverseGlobalRenaming);
 		reader.close(renaming.value);
 
@@ -177,45 +181,42 @@ public final class ExplorationStep implements Cloneable {
 
 		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
+		
+		this.datasetProvider = new DatasetProvider(this);
+		
+		ExplorationStep.findUnclosedInsertionBound(firstCounters.getSupportCounts(), minimumSupport + k);
 	}
-
+	
 	/**
-	 * Start exploration on one of Hadoop's sub-dataset
-	 * 
-	 * @param minimumSupport
-	 * @param transactions
-	 * @param maxItem
-	 * @param reverseRenaming
+	 * Only for the Hadoop variant
 	 */
-	public ExplorationStep(int minimumSupport, Iterable<TransactionReader> transactions, int maxItem,
-			int[] reverseRenaming) {
+	public ExplorationStep(int minimumSupport, Iterable<TransactionReader> reader, int maxItem, int[] reverseGlobalRenaming,
+			Holder<int[]> renaming, int k) {
 		this.core_item = Integer.MAX_VALUE;
 		this.selectChain = null;
 
-		this.counters = new DenseCounters(minimumSupport, transactions.iterator(), maxItem + 1, null, maxItem + 1,
-				reverseRenaming, new int[] {});
-		Iterator<TransactionReader> trans = transactions.iterator();
+		DenseCounters firstCounters = new DenseCounters(minimumSupport, reader.iterator(), maxItem + 1, null, maxItem + 1,
+				reverseGlobalRenaming, new int[] {});
+		this.counters = firstCounters;
+		renaming.value = this.counters.compressRenaming(reverseGlobalRenaming);
+		TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(reader.iterator(), renaming.value);
 
-		int[] renaming = this.counters.compressRenaming(reverseRenaming);
-		trans = new TransactionsRenamingDecorator(trans, renaming);
-
-		this.dataset = new Dataset(this.counters, trans, this.counters.getMinSupport(), this.counters.getMaxFrequent());
-		// FIXME
-		// from here we actually instantiated 3 times the dataset's size
-		// once in dataset.transactions, one in dataset.tidLists (both are OK)
-		// and
-		// worse, once again in transactions.cached
+		this.dataset = new Dataset(this.counters, filtered, this.counters.getMinSupport(), this.counters.getMaxFrequent());
 
 		if (this.counters.getPattern().length > 0) {
 			for (int i = 0; i < this.counters.getPattern().length; i++) {
-				this.counters.getPattern()[i] = reverseRenaming[this.counters.getPattern()[i]];
+				this.counters.getPattern()[i] = reverseGlobalRenaming[this.counters.getPattern()[i]];
 			}
 		}
 
 		this.candidates = this.counters.getExtensionsIterator();
 		this.failedFPTests = new TIntIntHashMap();
+		
+		this.datasetProvider = new DatasetProvider(this);
+		
+		ExplorationStep.findUnclosedInsertionBound(firstCounters.getSupportCounts(), minimumSupport + k);
 	}
-
+	
 	private ExplorationStep(int core_item, Dataset dataset, Counters counters, Selector selectChain,
 			FrequentsIterator candidates, TIntIntHashMap failedFPTests) {
 		super();
@@ -248,7 +249,6 @@ public final class ExplorationStep implements Cloneable {
 				return null;
 			} else {
 				res = this.doDepthExplorationFromScratch(candidate, collector);
-				// / FIXME: isn't this dead code ?
 				if (LOG_EPSILONS) {
 					synchronized (System.out) {
 						if (res != null && res.counters != null && this.counters != null
@@ -348,7 +348,6 @@ public final class ExplorationStep implements Cloneable {
 			renaming = this.counters.compressSortRenaming(null);
 			TransactionsRenamingDecorator filtered = new TransactionsRenamingDecorator(support.iterator(), renaming);
 
-			// FIXME the last argument is now obsolete
 			Dataset dataset = new Dataset(this.counters, filtered, Integer.MAX_VALUE, this.counters.getMinSupport(),
 					this.counters.getMaxFrequent());
 
@@ -370,8 +369,6 @@ public final class ExplorationStep implements Cloneable {
 		if (chain == null) {
 			this.selectChain = null;
 		} else if (chain.contains(FirstParentTest.class)) {
-			// /// FIXME: this is not really correct
-			// /// that selectChain stuff is not adapated
 			this.selectChain = chain.copy(null);
 		} else {
 			this.selectChain = chain.copy();
@@ -451,7 +448,9 @@ public final class ExplorationStep implements Cloneable {
 					}
 
 					if (greatest > candidate) {
-						collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+						if (EARLYCOLLECTION && collector.isCollected(candidateCounts.getReverseRenaming()[greatest])) {
+							collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+						}
 						throw new WrongFirstParentException(candidate, greatest);
 					}
 					if (!regeneratedInResume) {
@@ -497,7 +496,7 @@ public final class ExplorationStep implements Cloneable {
 					true);
 		}
 		if (candidate < INSERT_UNCLOSED_UP_TO_ITEM) {
-			candidateCounts.raiseMinimumSupport(collector, !BASELINE_MODE);
+			candidateCounts.raiseMinimumSupport(collector);
 			if (LOG_EPSILONS) {
 				synchronized (System.out) {
 					if (this.counters != null && this.counters.getPattern() != null
@@ -536,17 +535,15 @@ public final class ExplorationStep implements Cloneable {
 				}
 
 				if (greatest > candidate) {
-					collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+					if (EARLYCOLLECTION && collector.isCollected(candidateCounts.getReverseRenaming()[greatest])) {
+						collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
+					}
 					throw new WrongFirstParentException(candidate, greatest);
 				}
 				collector.collect(candidateCounts.getTransactionsCount(), candidateCounts.getPattern());
-				// not inserting unclosed patterns on purpose, we are not at a
-				// starter
-				// not even raising minimum support, that's how crazy we are
 				// if we're here we're either not a starter or a starter that's
 				// not likely to fill its topk
-				// candidateCounts.raiseMinimumSupport(collector,
-				// !BASELINE_MODE);
+				// => no unclosed insertion, nor minsup raise
 				ExplorationStep next = new ExplorationStep(this, this.dataset, candidate, candidateCounts, support);
 
 				return next;

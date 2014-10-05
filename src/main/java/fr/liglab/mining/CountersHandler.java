@@ -3,7 +3,7 @@ package fr.liglab.mining;
 public final class CountersHandler {
 	/**
 	 * Some classes in EnumerationStep may declare counters here. see references
-	 * to TopLCMCounters.counters
+	 * to TopPICounters.counters
 	 */
 	public enum TopPICounters {
 		FailedFPTests, PreFPTestsRejections, TopKRejections, TransactionsCompressions, NbDatasets, NbDatasetViews, NbCounters, NbSparseCounters, PatternsTraversed, EjectedPlaceholders, EjectedPatterns, DatasetReductionByEpsilonRaising, RedoCounters
