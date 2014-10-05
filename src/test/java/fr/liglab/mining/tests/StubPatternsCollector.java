@@ -11,7 +11,7 @@ import fr.liglab.mining.io.PatternsCollector;
 
 /**
  * Firstly, fill expected patterns with expectCollect()
- * Then invoke LCM with this collector
+ * Then invoke the miner with this collector
  * 
  * a RuntimeException is thrown :
  * - if an unexpected pattern appears

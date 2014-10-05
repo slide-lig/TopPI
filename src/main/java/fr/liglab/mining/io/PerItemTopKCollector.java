@@ -1,7 +1,7 @@
 package fr.liglab.mining.io;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
@@ -476,9 +476,9 @@ public class PerItemTopKCollector implements PatternsCollector {
 			this.nbRefs--;
 			if (nbRefs == 0) {
 				if (this.closed) {
-					CountersHandler.increment(TopLCMCounters.EjectedPatterns);
+					CountersHandler.increment(TopPICounters.EjectedPatterns);
 				} else {
-					CountersHandler.increment(TopLCMCounters.EjectedPlaceholders);
+					CountersHandler.increment(TopPICounters.EjectedPlaceholders);
 				}
 			}
 		}
@@ -534,8 +534,8 @@ public class PerItemTopKCollector implements PatternsCollector {
 		}
 
 		@Override
-		protected TopLCMCounters getCountersKey() {
-			return TopLCMCounters.TopKRejections;
+		protected TopPICounters getCountersKey() {
+			return TopPICounters.TopKRejections;
 		}
 
 		private synchronized void updatePrevious(final int i, final int r, int v) {

@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.tidlist.TidList.TIntIterable;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.iterator.TIntIterator;
@@ -39,7 +39,7 @@ class DatasetView extends Dataset {
 	DatasetView(final Dataset parentDataset, final Counters counts, TransactionsIterable viewed, int ignoredItem,
 			int minSup, int maxItem) {
 		super(parentDataset.transactions, parentDataset.tidLists, minSup, maxItem);
-		CountersHandler.increment(TopLCMCounters.NbDatasetViews);
+		CountersHandler.increment(TopPICounters.NbDatasetViews);
 		this.tids = viewed.tids;
 		this.ignoreItems = ItemsetsFactory.extend(counts.getClosure(), ignoredItem, parentDataset.getIgnoredItems());
 	}

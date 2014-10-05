@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
@@ -16,7 +16,7 @@ public final class FirstParentTest extends Selector {
 	public static final FirstParentTest tailInstance = new FirstParentTest();
 
 	@Override
-	protected TopLCMCounters getCountersKey() {
+	protected TopPICounters getCountersKey() {
 		return null; // YEP! this selector throws an exception so this method
 						// should never be called
 	}
@@ -85,7 +85,7 @@ public final class FirstParentTest extends Selector {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
-					CountersHandler.increment(TopLCMCounters.PreFPTestsRejections);
+					CountersHandler.increment(TopPICounters.PreFPTestsRejections);
 					throw new WrongFirstParentException(extension, i);
 				}
 			}

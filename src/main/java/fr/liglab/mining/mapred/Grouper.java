@@ -1,6 +1,6 @@
 package fr.liglab.mining.mapred;
 
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.Selector;
@@ -111,7 +111,7 @@ public class Grouper {
 		}
 
 		@Override
-		protected TopLCMCounters getCountersKey() {
+		protected TopPICounters getCountersKey() {
 			return null;
 		}
 	}

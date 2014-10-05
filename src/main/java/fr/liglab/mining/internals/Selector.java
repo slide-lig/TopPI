@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 
 /**
  * Main class for chained exploration filters, implemented as an immutable
@@ -26,10 +26,10 @@ public abstract class Selector {
 	abstract protected Selector copy(Selector newNext);
 
 	/**
-	 * @return which enum value from TopLCMCounters will be used to count this Selector's rejections, 
+	 * @return which enum value from TopPICounters will be used to count this Selector's rejections, 
 	 * or null if we don't want to count rejections from the implementing class
 	 */
-	abstract protected TopLCMCounters getCountersKey();
+	abstract protected TopPICounters getCountersKey();
 
 	public Selector() {
 		this.next = null;
@@ -52,7 +52,7 @@ public abstract class Selector {
 		if (this.allowExploration(extension, state)) {
 			return (this.next == null || this.next.select(extension, state));
 		} else {
-			TopLCMCounters key = this.getCountersKey();
+			TopPICounters key = this.getCountersKey();
 			if (key != null) {
 				CountersHandler.increment(key);
 			}

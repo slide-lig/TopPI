@@ -12,8 +12,8 @@ import org.apache.hadoop.mapreduce.Counter;
 import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
-import fr.liglab.mining.TopLCM;
+import fr.liglab.mining.CountersHandler.TopPICounters;
+import fr.liglab.mining.TopPI;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
@@ -102,7 +102,7 @@ public final class LCMWrapper {
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();
-		miner.lcm(initState);
+		miner.startMining(initState);
 		chrono = (System.currentTimeMillis() - chrono) / 1000;
 		
 		context.progress();
@@ -121,7 +121,7 @@ public final class LCMWrapper {
 			System.err.println(miner.toString(logged));
 		}
 		
-		for (Entry<TopLCMCounters, Long> entry : miner.getCounters().entrySet()) {
+		for (Entry<TopPICounters, Long> entry : miner.getCounters().entrySet()) {
 			Counter counter = context.getCounter(entry.getKey());
 			counter.increment(entry.getValue());
 		}
@@ -145,7 +145,7 @@ public final class LCMWrapper {
 		return toGlobal;
 	}
 	
-	private static final class TopLCMinHadoop extends TopLCM {
+	private static final class TopLCMinHadoop extends TopPI {
 
 		public TopLCMinHadoop(PerItemTopKCollector patternsCollector, int nbThreads) {
 			super(patternsCollector, nbThreads);

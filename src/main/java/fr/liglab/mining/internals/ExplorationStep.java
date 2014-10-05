@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.Dataset.TransactionsIterable;
 import fr.liglab.mining.internals.Selector.WrongFirstParentException;
 import fr.liglab.mining.io.FileFilteredReader;
@@ -20,7 +20,7 @@ import javax.xml.ws.Holder;
 import org.omg.CORBA.IntHolder;
 
 /**
- * Represents an LCM recursion step. Its also acts as a Dataset factory.
+ * Represents a recursion step. Its also acts as a Dataset factory.
  */
 public final class ExplorationStep implements Cloneable {
 
@@ -31,13 +31,13 @@ public final class ExplorationStep implements Cloneable {
 	// expressed in starter items base
 	public static int INSERT_UNCLOSED_UP_TO_ITEM = Integer.MAX_VALUE;
 	@SuppressWarnings("boxing")
-	public static int USE_SPARSE_COUNTERS_FROM_ITEM = Integer.valueOf(System.getProperty("lcm.sparse.from",
+	public static int USE_SPARSE_COUNTERS_FROM_ITEM = Integer.valueOf(System.getProperty("toppi.sparse.from",
 			Integer.toString(Integer.MAX_VALUE)));
 	public static boolean INSERT_UNCLOSED_FOR_FUTURE_EXTENSIONS = false;
 	public static boolean BASELINE_MODE = false;
 
-	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toplcm.threshold.view";
-	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toplcm.threshold.long";
+	public final static String KEY_VIEW_SUPPORT_THRESHOLD = "toppi.threshold.view";
+	public final static String KEY_LONG_TRANSACTIONS_THRESHOLD = "toppi.threshold.long";
 
 	/**
 	 * @see longTransactionsMode
@@ -50,13 +50,6 @@ public final class ExplorationStep implements Cloneable {
 	 * VIEW_SUPPORT_THRESHOLD%, projection will be a DatasetView
 	 */
 	static double VIEW_SUPPORT_THRESHOLD = Double.parseDouble(System.getProperty(KEY_VIEW_SUPPORT_THRESHOLD, "0.15"));
-
-	/**
-	 * When set to true we stick to a complete LCMv2 implementation, with
-	 * predictive prefix-preservation tests and compressions at all steps.
-	 * Setting this to false is better when mining top-k-per-item patterns.
-	 */
-	public static boolean LCM_STYLE = false;
 
 	public static boolean COMPRESS_LVL1 = false;
 
@@ -396,7 +389,7 @@ public final class ExplorationStep implements Cloneable {
 			this.failedFPTests.put(item, firstParent);
 		}
 
-		CountersHandler.increment(TopLCMCounters.FailedFPTests);
+		CountersHandler.increment(TopPICounters.FailedFPTests);
 	}
 
 	public void appendSelector(Selector s) {
@@ -474,7 +467,7 @@ public final class ExplorationStep implements Cloneable {
 								&& suggestedDataset.getMinSup() > this.counters.getMinSupport()) {
 							restart = true;
 							// says let's switch to the next dataset
-							CountersHandler.increment(TopLCMCounters.RedoCounters);
+							CountersHandler.increment(TopPICounters.RedoCounters);
 							boundHolder.value = suggestedDataset.getMinSup() - 1;
 						}
 					}
@@ -499,7 +492,7 @@ public final class ExplorationStep implements Cloneable {
 		// check that the counters we made are also ok for all items < candidate
 		if (candidateCounts.getMinSupport() > countersMinSupportVerification &&
 				candidateCounts.getMinSupport() > this.counters.getMinSupport()) {
-			CountersHandler.increment(TopLCMCounters.RedoCounters);
+			CountersHandler.increment(TopPICounters.RedoCounters);
 			candidateCounts = prepareExploration(candidate, collector, new IntHolder(countersMinSupportVerification),
 					true);
 		}

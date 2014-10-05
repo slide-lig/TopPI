@@ -3,7 +3,7 @@ package fr.liglab.mining.internals;
 import java.util.Iterator;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList;
 import fr.liglab.mining.internals.tidlist.TidList.TIntIterable;
@@ -61,7 +61,7 @@ public class Dataset implements Cloneable {
 	 *            MAX_VALUE when using predictive pptest.
 	 */
 	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound, int minSup, int maxItem) {
-		CountersHandler.increment(TopLCMCounters.NbDatasets);
+		CountersHandler.increment(TopPICounters.NbDatasets);
 		this.minSup = minSup;
 		this.maxItem = maxItem;
 

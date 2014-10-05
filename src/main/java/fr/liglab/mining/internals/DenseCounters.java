@@ -7,7 +7,7 @@ import java.util.PriorityQueue;
 import javax.xml.ws.Holder;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.util.ItemAndSupport;
 import fr.liglab.mining.util.ItemsetsFactory;
@@ -90,7 +90,7 @@ public class DenseCounters extends Counters {
 	public DenseCounters(int minimumSupport, Iterator<TransactionReader> transactions, int extension,
 			int[] ignoredItems, final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
 
-		CountersHandler.increment(TopLCMCounters.NbCounters);
+		CountersHandler.increment(TopPICounters.NbCounters);
 
 		this.reverseRenaming = reuseReverseRenaming;
 		this.minSupport = minimumSupport;
@@ -191,7 +191,6 @@ public class DenseCounters extends Counters {
 	 * @param transactions
 	 */
 	DenseCounters(int minimumSupport, Iterator<TransactionReader> transactions, Holder<int[]> renamingHolder) {
-		// no nbCounters because this one is not in a PLCMThread
 
 		this.minSupport = minimumSupport;
 
@@ -278,7 +277,7 @@ public class DenseCounters extends Counters {
 	 * weight 1
 	 */
 	public DenseCounters(DenseCounters initial, int newThreshold) {
-		CountersHandler.increment(TopLCMCounters.NbCounters);
+		CountersHandler.increment(TopPICounters.NbCounters);
 
 		this.reverseRenaming = initial.reverseRenaming;
 		this.closure = initial.closure;
@@ -458,7 +457,7 @@ public class DenseCounters extends Counters {
 				}
 			}
 		}
-		CountersHandler.add(TopLCMCounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
+		CountersHandler.add(TopPICounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
 				- remainingDistinctTransLengths);
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;

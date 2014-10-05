@@ -4,10 +4,10 @@
   
   <modelVersion>4.0.0</modelVersion>
   <groupId>fr.liglab.mining</groupId>
-  <artifactId>TopLCM</artifactId>
+  <artifactId>TopPI</artifactId>
   <version>1.0</version>
-  <name>TopLCM</name>
-  <description>Multi-threaded implementation of the top-k-per-item frequent closed itemset miner, TopLCM</description>
+  <name>TopPI</name>
+  <description>Multi-threaded implementation of the top-k-per-item frequent closed itemset miner, TopPI</description>
   
   <properties>
   	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -33,7 +33,7 @@
           <archive>
             <manifest>
               <addClasspath>false</addClasspath>
-              <mainClass>fr.liglab.mining.TopLCMcli</mainClass>
+              <mainClass>fr.liglab.mining.TopPIcli</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -47,7 +47,7 @@
           <archive>
             <manifest>
               <addClasspath>false</addClasspath>
-              <mainClass>fr.liglab.mining.TopLCMcli</mainClass>
+              <mainClass>fr.liglab.mining.TopPIcli</mainClass>
             </manifest>
           </archive>
         </configuration>

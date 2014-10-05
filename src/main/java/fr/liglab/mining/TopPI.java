@@ -17,60 +17,60 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.omg.CORBA.IntHolder;
 
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.internals.Counters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.util.ProgressWatcherThread;
 
 
-public class TopLCM {
-	final List<TopLCMThread> threads;
+public class TopPI {
+	final List<TopPIThread> threads;
 	protected ProgressWatcherThread progressWatch;
 
 	PerItemTopKCollector collector;
 
 	final long[] globalCounters;
 
-	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads) {
+	public TopPI(PerItemTopKCollector patternsCollector, int nbThreads) {
 		this(patternsCollector, nbThreads, false);
 	}
 
-	public TopLCM(PerItemTopKCollector patternsCollector, int nbThreads, boolean launchProgressWatch) {
+	public TopPI(PerItemTopKCollector patternsCollector, int nbThreads, boolean launchProgressWatch) {
 		if (nbThreads < 1) {
 			throw new IllegalArgumentException("nbThreads has to be > 0, given " + nbThreads);
 		}
 		this.collector = patternsCollector;
-		this.threads = new ArrayList<TopLCMThread>(nbThreads);
+		this.threads = new ArrayList<TopPIThread>(nbThreads);
 		PreparedJobs pj = new PreparedJobs();
 		for (int i = 0; i < nbThreads; i++) {
-			this.threads.add(new TopLCMThread(pj));
+			this.threads.add(new TopPIThread(pj));
 		}
 
-		this.globalCounters = new long[TopLCMCounters.values().length];
+		this.globalCounters = new long[TopPICounters.values().length];
 		this.progressWatch = launchProgressWatch ? new ProgressWatcherThread() : null;
 	}
 
 	/**
 	 * Initial invocation for common folks
 	 */
-	public final void lcm(final ExplorationStep initState) {
+	public final void startMining(final ExplorationStep initState) {
 		ExecutorService pool = Executors.newFixedThreadPool(this.threads.size());
-		this.lcm(initState, pool);
+		this.startMining(initState, pool);
 		pool.shutdown();
 	}
 
 	/**
 	 * Initial invocation for the hard to schedule
 	 */
-	public final void lcm(final ExplorationStep initState, ExecutorService pool) {
+	public final void startMining(final ExplorationStep initState, ExecutorService pool) {
 		if (initState.counters.getPattern().length > 0) {
 			collector.collect(initState.counters.getTransactionsCount(), initState.counters.getPattern());
 		}
 
 		List<Future<?>> running = new ArrayList<Future<?>>(this.threads.size());
 
-		for (TopLCMThread t : this.threads) {
+		for (TopPIThread t : this.threads) {
 			t.init(initState);
 			running.add(pool.submit(t));
 		}
@@ -94,7 +94,7 @@ public class TopLCM {
 
 		Arrays.fill(this.globalCounters, 0);
 
-		for (TopLCMThread t : this.threads) {
+		for (TopPIThread t : this.threads) {
 			for (int i = 0; i < t.counters.length; i++) {
 				this.globalCounters[i] += t.counters[i];
 			}
@@ -105,10 +105,10 @@ public class TopLCM {
 		}
 	}
 
-	public Map<TopLCMCounters, Long> getCounters() {
-		HashMap<TopLCMCounters, Long> map = new HashMap<TopLCMCounters, Long>();
+	public Map<TopPICounters, Long> getCounters() {
+		HashMap<TopPICounters, Long> map = new HashMap<TopPICounters, Long>();
 
-		TopLCMCounters[] counters = TopLCMCounters.values();
+		TopPICounters[] counters = TopPICounters.values();
 
 		for (int i = 0; i < this.globalCounters.length; i++) {
 			map.put(counters[i], this.globalCounters[i]);
@@ -120,13 +120,13 @@ public class TopLCM {
 	public String toString(Map<String, Long> additionalCounters) {
 		StringBuilder builder = new StringBuilder();
 
-		builder.append("{\"name\":\"TopLCM\", \"threads\":");
+		builder.append("{\"name\":\"TopPI\", \"threads\":");
 		builder.append(this.threads.size());
 
-		TopLCMCounters[] counters = TopLCMCounters.values();
+		TopPICounters[] counters = TopPICounters.values();
 
 		for (int i = 0; i < this.globalCounters.length; i++) {
-			TopLCMCounters counter = counters[i];
+			TopPICounters counter = counters[i];
 
 			builder.append(", \"");
 			builder.append(counter.toString());
@@ -152,9 +152,9 @@ public class TopLCM {
 		return this.toString(null);
 	}
 
-	ExplorationStep stealJob(TopLCMThread thief) {
+	ExplorationStep stealJob(TopPIThread thief) {
 		// here we need to readlock because the owner thread can write
-		for (TopLCMThread victim : this.threads) {
+		for (TopPIThread victim : this.threads) {
 			if (victim != thief) {
 				ExplorationStep e = stealJob(thief, victim);
 				if (e != null) {
@@ -165,7 +165,7 @@ public class TopLCM {
 		return null;
 	}
 
-	ExplorationStep stealJob(TopLCMThread thief, TopLCMThread victim) {
+	ExplorationStep stealJob(TopPIThread thief, TopPIThread victim) {
 		victim.lock.readLock().lock();
 		for (int stealPos = 0; stealPos < victim.stackedJobs.size(); stealPos++) {
 			ExplorationStep sj = victim.stackedJobs.get(stealPos);
@@ -258,7 +258,7 @@ public class TopLCM {
 		private int minBoundToNextConsumable;
 
 		public PreparedJobs() {
-			this.stackedEs = new PriorityQueue<TopLCM.CandidateCounters>();
+			this.stackedEs = new PriorityQueue<TopPI.CandidateCounters>();
 			this.minBoundToNextConsumable = Integer.MAX_VALUE;
 		}
 
@@ -293,7 +293,7 @@ public class TopLCM {
 
 	}
 
-	public class TopLCMThread implements Runnable {
+	public class TopPIThread implements Runnable {
 		private long[] counters = null;
 		private PreparedJobs preparedJobs;
 		final ReadWriteLock lock;
@@ -302,7 +302,7 @@ public class TopLCM {
 		final IntHolder boundHolder = new IntHolder();
 		private ExplorationStep rootState;
 
-		public TopLCMThread(PreparedJobs preparedJobs) {
+		public TopPIThread(PreparedJobs preparedJobs) {
 			this.stackedJobs = new ArrayList<ExplorationStep>();
 			this.lock = new ReentrantReadWriteLock();
 			this.preparedJobs = preparedJobs;
@@ -376,7 +376,7 @@ public class TopLCM {
 		}
 
 		private void stackState(ExplorationStep state) {
-			CountersHandler.increment(TopLCMCounters.PatternsTraversed);
+			CountersHandler.increment(TopPICounters.PatternsTraversed);
 			this.lock.writeLock().lock();
 			this.stackedJobs.add(state);
 			this.lock.writeLock().unlock();

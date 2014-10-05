@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.util.ItemsetsFactory;
 import gnu.trove.impl.Constants;
@@ -83,8 +83,8 @@ public class SparseCounters extends Counters {
 			int[] ignoredItems, final int maxItem, int[] reuseReverseRenaming, int[] parentPattern) {
 		// TODO take care of default capacity
 
-		CountersHandler.increment(TopLCMCounters.NbCounters);
-		CountersHandler.increment(TopLCMCounters.NbSparseCounters);
+		CountersHandler.increment(TopPICounters.NbCounters);
+		CountersHandler.increment(TopPICounters.NbSparseCounters);
 
 		this.reverseRenaming = reuseReverseRenaming;
 		this.minSupport = minimumSupport;
@@ -331,7 +331,7 @@ public class SparseCounters extends Counters {
 				remainingDistinctTransLengths += supportIterator.value();
 			}
 		}
-		CountersHandler.add(TopLCMCounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
+		CountersHandler.add(TopPICounters.DatasetReductionByEpsilonRaising, this.distinctTransactionLengthSum
 				- remainingDistinctTransLengths);
 		this.distinctTransactionLengthSum = remainingDistinctTransLengths;
 		this.nbFrequents = remainingFrequents;

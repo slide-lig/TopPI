@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals.transactions;
 
 import fr.liglab.mining.CountersHandler;
-import fr.liglab.mining.CountersHandler.TopLCMCounters;
+import fr.liglab.mining.CountersHandler.TopPICounters;
 import gnu.trove.iterator.TIntIterator;
 
 /**
@@ -32,7 +32,7 @@ public abstract class TransactionsList implements Iterable<IterableTransaction>,
 	abstract public int size();
 
 	public void compress(final int prefixEnd) {
-		CountersHandler.increment(TopLCMCounters.TransactionsCompressions);
+		CountersHandler.increment(TopPICounters.TransactionsCompressions);
 		int[] sortList = new int[this.size()];
 		TIntIterator idIter = this.getIdIterator();
 		for (int i = 0; i < sortList.length; i++) {

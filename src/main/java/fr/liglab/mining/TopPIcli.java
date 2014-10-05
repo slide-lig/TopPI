@@ -27,7 +27,7 @@ import fr.liglab.mining.io.StdOutCollector;
 import fr.liglab.mining.mapred.TopLCMoverHadoop;
 import fr.liglab.mining.util.MemoryPeakWatcherThread;
 
-public class TopLCMcli {
+public class TopPIcli {
 	protected static long chrono;
 
 	public static void main(String[] args) throws Exception {
@@ -86,7 +86,7 @@ public class TopLCMcli {
 	}
 
 	public static void printMan(Options options) {
-		String syntax = "java fr.liglab.mining.TopLCM [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
+		String syntax = "java fr.liglab.mining.TopPIcli -k [K] [OPTIONS] INPUT_PATH MINSUP [OUTPUT_PATH]";
 		String header = "\nIf OUTPUT_PATH is missing, patterns are printed to standard output.\nOptions are :";
 		String footer = "\nFor advanced tuning you may also set properties : "
 				+ ExplorationStep.KEY_LONG_TRANSACTIONS_THRESHOLD + ", " + ExplorationStep.KEY_VIEW_SUPPORT_THRESHOLD;
@@ -148,8 +148,8 @@ public class TopLCMcli {
 
 		PerItemTopKCollector collector = instanciateCollector(cmd, outputPath, initState, nbThreads, itemIDmap);
 
-		TopLCM miner = new TopLCM(collector, nbThreads, true);
-		miner.lcm(initState);
+		TopPI miner = new TopPI(collector, nbThreads, true);
+		miner.startMining(initState);
 		chrono = System.currentTimeMillis() - chrono;
 
 		Map<String, Long> additionalCounters = new HashMap<String, Long>();
