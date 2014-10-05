@@ -38,7 +38,4 @@ public class IntConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsConc
 		super(c, highestItem);
 	}
 
-	public IntConsecutiveItemsConcatenatedTidList(int[] lengths, int highestItem) {
-		super(lengths, highestItem);
-	}
 }

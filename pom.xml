@@ -33,7 +33,7 @@
           <archive>
             <manifest>
               <addClasspath>false</addClasspath>
-              <mainClass>fr.liglab.mining.TopLCM</mainClass>
+              <mainClass>fr.liglab.mining.TopLCMcli</mainClass>
             </manifest>
           </archive>
         </configuration>
@@ -47,7 +47,7 @@
           <archive>
             <manifest>
               <addClasspath>false</addClasspath>
-              <mainClass>fr.liglab.mining.TopLCM</mainClass>
+              <mainClass>fr.liglab.mining.TopLCMcli</mainClass>
             </manifest>
           </archive>
         </configuration>

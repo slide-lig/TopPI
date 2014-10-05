@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 
 /**
  * Main class for chained exploration filters, implemented as an immutable
@@ -9,7 +9,7 @@ import fr.liglab.mining.TopLCM.TopLCMCounters;
  */
 public abstract class Selector {
 
-	private final Selector next;
+	final Selector next;
 
 	/**
 	 * @param extension in state's local base
@@ -54,7 +54,7 @@ public abstract class Selector {
 		} else {
 			TopLCMCounters key = this.getCountersKey();
 			if (key != null) {
-				((TopLCM.TopLCMThread) Thread.currentThread()).counters[key.ordinal()]++;
+				CountersHandler.increment(key);
 			}
 			return false;
 		}
@@ -99,6 +99,18 @@ public abstract class Selector {
 		public WrongFirstParentException(int exploredExtension, int foundFirstParent) {
 			this.firstParent = foundFirstParent;
 			this.extension = exploredExtension;
+		}
+	}
+
+	public boolean contains(Class<? extends Selector> cla) {
+		if (cla.isInstance(this)) {
+			return true;
+		} else {
+			if (this.next == null) {
+				return false;
+			} else {
+				return this.next.contains(cla);
+			}
 		}
 	}
 }

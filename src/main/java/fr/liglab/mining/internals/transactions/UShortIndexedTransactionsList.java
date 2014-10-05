@@ -12,11 +12,11 @@ public final class UShortIndexedTransactionsList extends IndexedTransactionsList
 	}
 
 	public static int getMaxTransId(Counters c) {
-		return c.distinctTransactionsCount - 1;
+		return c.getDistinctTransactionsCount() - 1;
 	}
 
 	public UShortIndexedTransactionsList(Counters c) {
-		this(c.distinctTransactionLengthSum, c.distinctTransactionsCount);
+		this(c.getDistinctTransactionLengthSum(), c.getDistinctTransactionsCount());
 	}
 
 	public UShortIndexedTransactionsList(int transactionsLength, int nbTransactions) {

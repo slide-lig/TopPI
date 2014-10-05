@@ -4,19 +4,21 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
+import javax.xml.ws.Holder;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.mapreduce.Counter;
+import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.internals.FrequentsIterator;
 import fr.liglab.mining.internals.FrequentsIteratorRenamer;
 import fr.liglab.mining.internals.Selector;
-import fr.liglab.mining.io.PatternSortCollector;
-import fr.liglab.mining.io.PatternsCollector;
+import fr.liglab.mining.io.PerItemTopKCollector;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
 /**
@@ -43,12 +45,13 @@ public final class LCMWrapper {
 	 * @param reverseRebasing
 	 * @param sideOutputs can be null
 	 * @param globalToInitial 
+	 * @param renaming 
 	 * @throws IOException 
 	 * @throws InterruptedException 
 	 */
 	static void mining(int gid, ExplorationStep initState,
 			org.apache.hadoop.mapreduce.Reducer<?,?,IntWritable, SupportAndTransactionWritable>.Context context,
-			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs, int[] globalToInitial) throws IOException, InterruptedException {
+			MultipleOutputs<IntWritable, SupportAndTransactionWritable> sideOutputs, int[] globalToInitial, Holder<int[]> renaming) throws IOException, InterruptedException {
 		
 		final Configuration conf = context.getConfiguration();
 
@@ -69,7 +72,7 @@ public final class LCMWrapper {
 		Grouper grouper = new Grouper(nbGroups, maxId);
 		FrequentsIterator collected;
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) == 1) {
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) == 1) {
 			// collect all
 			collected = initState.counters.getExtensionsIterator();
 			collected = new FrequentsIteratorRenamer(collected, initState.counters.getReverseRenaming());
@@ -88,20 +91,14 @@ public final class LCMWrapper {
 		
 		Selector chain = topKcoll.asSelector();
 		
-		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 0) > 0) { // start group
+		if (conf.getInt(TopLCMoverHadoop.KEY_METHOD, 2) > 0) { // start group
 			// startersSelector doesn't copy itself, so this only works if we call appendSelector only once
-			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState));
+			chain = grouper.getStartersSelector(chain, gid, buildRenamingToGlobal(initState, renaming));
 		}
 		
 		initState.appendSelector(chain);
 		
-		PatternsCollector collector = topKcoll;
-
-		if (conf.getBoolean(TopLCMoverHadoop.KEY_SORT_PATTERNS, false)) {
-			collector = new PatternSortCollector(collector);
-		}
-		
-		TopLCM miner = new TopLCM(collector, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
+		TopLCMinHadoop miner = new TopLCMinHadoop(topKcoll, conf.getInt(TopLCMoverHadoop.KEY_NB_THREADS, 1));
 		miner.setHadoopContext(context);
 
 		long chrono = System.currentTimeMillis();
@@ -109,7 +106,7 @@ public final class LCMWrapper {
 		chrono = (System.currentTimeMillis() - chrono) / 1000;
 		
 		context.progress();
-		long nbPatterns = collector.close();
+		long nbPatterns = topKcoll.close();
 		
 		if (sideOutputs != null) {
 			context.progress();
@@ -134,8 +131,8 @@ public final class LCMWrapper {
 		
 	}
 
-	private static int[] buildRenamingToGlobal(ExplorationStep initState) {
-		int[] toCurrent = initState.counters.getRenaming();
+	private static int[] buildRenamingToGlobal(ExplorationStep initState, Holder<int[]> renaming) {
+		int[] toCurrent = renaming.value;
 		int[] toGlobal = new int[initState.counters.getMaxFrequent()+1];
 		
 		for (int i = 0; i < toCurrent.length; i++) {
@@ -146,6 +143,21 @@ public final class LCMWrapper {
 		}
 		
 		return toGlobal;
+	}
+	
+	private static final class TopLCMinHadoop extends TopLCM {
+
+		public TopLCMinHadoop(PerItemTopKCollector patternsCollector, int nbThreads) {
+			super(patternsCollector, nbThreads);
+		}
+
+		@SuppressWarnings("rawtypes")
+		public void setHadoopContext(Context context) {
+			if (this.progressWatch != null) {
+				this.progressWatch.setHadoopContext(context);
+			}
+		}
+
 	}
 
 }

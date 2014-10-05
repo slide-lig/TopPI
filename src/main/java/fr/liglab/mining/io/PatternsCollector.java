@@ -17,4 +17,16 @@ public interface PatternsCollector {
 	 * @return average length among outputted patterns
 	 */
 	public int getAveragePatternLength();
+	
+	/**
+	 * It is safer to get this value once close() has been called.
+	 * @return how many patterns have been written so far
+	 */
+	public long getCollected();
+	
+	/**
+	 * It is safer to get this value once close() has been called.
+	 * @return sum of collected patterns' lengths
+	 */
+	public long getCollectedLength();
 }

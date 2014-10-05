@@ -15,7 +15,7 @@ public class BasicTransactionsList extends TransactionsList {
 	}
 
 	public static int getMaxTransId(Counters c) {
-		return c.distinctTransactionsCount - 1;
+		return c.getDistinctTransactionsCount() - 1;
 	}
 
 	private List<TIntList> transactions = new ArrayList<TIntList>();

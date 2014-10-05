@@ -28,4 +28,14 @@ public class PatternSortCollector implements PatternsCollector {
 		return this.decorated.getAveragePatternLength();
 	}
 
+	@Override
+	public long getCollected() {
+		return this.decorated.getCollected();
+	}
+
+	@Override
+	public long getCollectedLength() {
+		return this.decorated.getCollectedLength();
+	}
+
 }

@@ -13,16 +13,12 @@ public abstract class RandomItemsConcatenatedTidList extends TidList {
 	private TIntIntMap indexes;
 
 	public RandomItemsConcatenatedTidList(Counters c) {
-		this(c.distinctTransactionsCounts);
-	}
-
-	public RandomItemsConcatenatedTidList(final int[] lengths) {
 		int startPos = 0;
-		this.startPositions = new TIntIntHashMap(lengths.length, Constants.DEFAULT_LOAD_FACTOR, -1, -1);
-		this.indexes = new TIntIntHashMap(lengths.length);
-		for (int i = 0; i < lengths.length; i++) {
+		this.startPositions = new TIntIntHashMap(c.getMaxFrequent() + 1, Constants.DEFAULT_LOAD_FACTOR, -1, -1);
+		this.indexes = new TIntIntHashMap(c.getMaxFrequent() + 1);
+		for (int i = 0; i < c.getMaxFrequent() + 1; i++) {
 			this.startPositions.put(i, startPos);
-			startPos += (1 + lengths[i]);
+			startPos += (1 + c.getDistinctTransactionsCount(i));
 		}
 		this.allocateArray(startPos);
 	}

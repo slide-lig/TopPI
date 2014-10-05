@@ -18,7 +18,6 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
-import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 
@@ -38,13 +37,13 @@ public class TopLCMoverHadoop {
 	//////////////////// OPTIONS ////////////////////
 	public static final String KEY_VERBOSE       = "toplcm.verbose";
 	public static final String KEY_ULTRA_VERBOSE = "toplcm.verbose.ultra";
-	public static final String KEY_SORT_PATTERNS = "toplcm.patterns.sorted";
 	public static final String KEY_COMBINED_TRANS_SIZE = "toplcm.subdbs.combined-size";
 	public static final String KEY_SUB_DB_ONLY   = "toplcm.only.subdbs"; // only works fine with method 0 !
 	public static final String KEY_METHOD        = "toplcm.method"; // 2 implies builder=DistCache
 	public static final String KEY_SINGLE_GROUP  = "toplcm.only.group";
 	public static final String KEY_SUBDBS_BUILDER= "toplcm.subdbs.builder"; // DistCache or hdfs,
 	public static final String KEY_NB_THREADS    = "toplcm.reducer.threads"; // threads per reducer task - defaults to 1
+	public static final String KEY_BREADTH_WIDTH = "toplcm.lcm.breadth.width"; // defaults to 0, ie. no breadth-first exploration
 	
 	//////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 	
@@ -80,7 +79,7 @@ public class TopLCMoverHadoop {
 		if (genItemMap(rebasingMapPath)) {
 			DistCache.copyToCache(this.conf, rebasingMapPath);
 			
-			switch (this.conf.getInt(KEY_METHOD, 0)) {
+			switch (this.conf.getInt(KEY_METHOD, 2)) {
 			case 1:
 				// Algo 1: restrict starters to group's items, collect all item's top-Ks, aggregate
 				if (mineSinglePass(rawPatternsPath) && aggregate(topKperItemPath, rawPatternsPath)){
@@ -202,29 +201,17 @@ public class TopLCMoverHadoop {
 		Job job = new Job(this.conf, "Mining (single-pass) "+this.input);
 		job.setJarByClass(TopLCMoverHadoop.class);
 		
-		if (this.conf.get(KEY_SUBDBS_BUILDER, "").length() > 0) {
-			job.setInputFormatClass(SequenceFileInputFormat.class);
-			FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
-			
-			job.setMapperClass(AlternativeMiningMapper.class);
-			job.setMapOutputKeyClass(IntWritable.class);
-			job.setMapOutputValueClass(IntWritable.class);
-			
-			job.setReducerClass(AlternativeMiningReducer.class);
-			
-			if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("distcache")) {
-				DistCache.copyToCache(job.getConfiguration(), this.input);
-			}
-			
-		} else {
-			job.setInputFormatClass(TextInputFormat.class);
-			FileInputFormat.addInputPath(job, new Path(this.input) );
-			
-			job.setMapperClass(MiningMapper.class);
-			job.setMapOutputKeyClass(IntWritable.class);
-			job.setMapOutputValueClass(ConcatenatedTransactionsWritable.class);
-			
-			job.setReducerClass(MiningReducer.class);
+		job.setInputFormatClass(SequenceFileInputFormat.class);
+		FileInputFormat.addInputPath(job, new Path(this.outputPrefix + "/" + DistCache.REBASINGMAP_DIRNAME) );
+		
+		job.setMapperClass(AlternativeMiningMapper.class);
+		job.setMapOutputKeyClass(IntWritable.class);
+		job.setMapOutputValueClass(IntWritable.class);
+		
+		job.setReducerClass(AlternativeMiningReducer.class);
+		
+		if (conf.get(TopLCMoverHadoop.KEY_SUBDBS_BUILDER, "").toLowerCase().equals("distcache")) {
+			DistCache.copyToCache(job.getConfiguration(), this.input);
 		}
 		
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);

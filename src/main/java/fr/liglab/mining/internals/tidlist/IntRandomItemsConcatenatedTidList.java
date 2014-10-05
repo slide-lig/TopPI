@@ -38,8 +38,4 @@ public class IntRandomItemsConcatenatedTidList extends RandomItemsConcatenatedTi
 		super(c);
 	}
 
-	public IntRandomItemsConcatenatedTidList(int[] lengths) {
-		super(lengths);
-	}
-
 }

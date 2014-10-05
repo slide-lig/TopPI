@@ -2,12 +2,12 @@ package fr.liglab.mining.internals;
 
 import java.util.Iterator;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.tidlist.IntConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList;
-import fr.liglab.mining.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.tidlist.TidList.TIntIterable;
+import fr.liglab.mining.internals.tidlist.UShortConsecutiveItemsConcatenatedTidList;
 import fr.liglab.mining.internals.transactions.IntIndexedTransactionsList;
 import fr.liglab.mining.internals.transactions.ReusableTransactionIterator;
 import fr.liglab.mining.internals.transactions.TransactionsList;
@@ -28,19 +28,28 @@ public class Dataset implements Cloneable {
 	 */
 	protected final TidList tidLists;
 
-	protected Dataset(TransactionsList transactions, TidList occurrences) {
+	private final int minSup;
+	
+	/**
+	 * inclusive higher bound
+	 */
+	private final int maxItem;
+
+	protected Dataset(TransactionsList transactions, TidList occurrences, int minSup, int maxItem) {
 		// DO NOT COUNT NbDatasets here
 		this.transactions = transactions;
 		this.tidLists = occurrences;
+		this.minSup = minSup;
+		this.maxItem = maxItem;
 	}
 
 	@Override
 	protected Dataset clone() {
-		return new Dataset(this.transactions.clone(), this.tidLists.clone());
+		return new Dataset(this.transactions.clone(), this.tidLists.clone(), this.minSup, this.maxItem);
 	}
 
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions) {
-		this(counters, transactions, Integer.MAX_VALUE);
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int minSup, int maxItem) {
+		this(counters, transactions, Integer.MAX_VALUE, minSup, maxItem);
 	}
 
 	/**
@@ -51,13 +60,11 @@ public class Dataset implements Cloneable {
 	 *            - highest item (exclusive) which will have a tidList. set to
 	 *            MAX_VALUE when using predictive pptest.
 	 */
-	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound) {
-		try {
-			((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.NbDatasets.ordinal()]++;
-		} catch (ClassCastException e) {
-			// the initial dataset is not instanciated ina  TopLCMThread...
-		}
-		
+	Dataset(Counters counters, final Iterator<TransactionReader> transactions, int tidListBound, int minSup, int maxItem) {
+		CountersHandler.increment(TopLCMCounters.NbDatasets);
+		this.minSup = minSup;
+		this.maxItem = maxItem;
+
 		int maxTransId;
 
 		// if (UByteIndexedTransactionsList.compatible(counters)) {
@@ -92,9 +99,9 @@ public class Dataset implements Cloneable {
 				while (transaction.hasNext()) {
 					final int item = transaction.next();
 					writer.addItem(item);
-					
+
 					if (item < 0) {
-						System.err.println("WTF item "+item+" appearing in transaction "+transId);
+						System.err.println("WTF item " + item + " appearing in transaction " + transId);
 					}
 
 					if (item < tidListBound) {
@@ -108,7 +115,6 @@ public class Dataset implements Cloneable {
 	}
 
 	public void compress(int coreItem) {
-		((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.TransactionsCompressions.ordinal()]++;
 		this.transactions.compress(coreItem);
 	}
 
@@ -133,6 +139,10 @@ public class Dataset implements Cloneable {
 
 	public TransactionsIterable getSupport(int item) {
 		return new TransactionsIterable(this.tidLists.getIterable(item));
+	}
+	
+	public Iterator<TransactionReader> getTransactions() {
+		return new TransactionsIterator(this.transactions.getIdIterator());
 	}
 
 	public final class TransactionsIterable implements Iterable<TransactionReader> {
@@ -174,9 +184,17 @@ public class Dataset implements Cloneable {
 			return this.it.hasNext();
 		}
 	}
-	
+
 	@Override
 	public String toString() {
 		return this.transactions.toString();
+	}
+
+	public int getMinSup() {
+		return this.minSup;
+	}
+
+	public int getMaxItem() {
+		return this.maxItem;
 	}
 }

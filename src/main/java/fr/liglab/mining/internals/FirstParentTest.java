@@ -1,7 +1,7 @@
 package fr.liglab.mining.internals;
 
-import fr.liglab.mining.TopLCM;
-import fr.liglab.mining.TopLCM.TopLCMCounters;
+import fr.liglab.mining.CountersHandler;
+import fr.liglab.mining.CountersHandler.TopLCMCounters;
 import fr.liglab.mining.internals.tidlist.TidList;
 import gnu.trove.iterator.TIntIterator;
 
@@ -11,14 +11,17 @@ import gnu.trove.iterator.TIntIterator;
  * Allows to perform first-parent test BEFORE performing item counting for a
  * candidate extension
  */
-final class FirstParentTest extends Selector {
+public final class FirstParentTest extends Selector {
+
+	public static final FirstParentTest tailInstance = new FirstParentTest();
 
 	@Override
 	protected TopLCMCounters getCountersKey() {
-		return null; // YEP! this selector throws an exception so this method should never be called
+		return null; // YEP! this selector throws an exception so this method
+						// should never be called
 	}
 
-	FirstParentTest() {
+	public FirstParentTest() {
 		super();
 	}
 
@@ -26,9 +29,17 @@ final class FirstParentTest extends Selector {
 		super(follower);
 	}
 
+	static Selector getTailInstance() {
+		return tailInstance;
+	}
+
 	@Override
 	protected Selector copy(Selector newNext) {
-		return new FirstParentTest(newNext);
+		if (newNext == null) {
+			return tailInstance;
+		} else {
+			return new FirstParentTest(newNext);
+		}
 	}
 
 	private boolean isAincludedInB(final TIntIterator aIt, final TIntIterator bIt) {
@@ -65,18 +76,16 @@ final class FirstParentTest extends Selector {
 			throw new IllegalArgumentException("FPtest can only be done on Dataset");
 		}
 
-		final int[] supportCounts = state.counters.supportCounts;
 		final TidList occurrencesLists = state.dataset.tidLists;
 
-		final int candidateSupport = supportCounts[extension];
+		final int candidateSupport = state.counters.getSupportCount(extension);
 
-		for (int i = state.counters.maxFrequent; i > extension; i--) {
-			if (supportCounts[i] >= candidateSupport) {
+		for (int i = state.counters.getMaxFrequent(); i > extension; i--) {
+			if (state.counters.getSupportCount(i) >= candidateSupport) {
 				TIntIterator candidateOccurrences = occurrencesLists.get(extension);
 				final TIntIterator iOccurrences = occurrencesLists.get(i);
 				if (isAincludedInB(candidateOccurrences, iOccurrences)) {
-					((TopLCM.TopLCMThread) Thread.currentThread()).counters[TopLCMCounters.PreFPTestsRejections
-							.ordinal()]++;
+					CountersHandler.increment(TopLCMCounters.PreFPTestsRejections);
 					throw new WrongFirstParentException(extension, i);
 				}
 			}

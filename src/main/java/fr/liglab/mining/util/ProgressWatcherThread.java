@@ -4,8 +4,7 @@ import java.util.Calendar;
 
 import org.apache.hadoop.mapreduce.Reducer.Context;
 
-import fr.liglab.mining.internals.ExplorationStep;
-import fr.liglab.mining.internals.ExplorationStep.Progress;
+import fr.liglab.mining.internals.FrequentsIterator;
 
 /**
  * This thread will give some information about the progression on stderr every 5 minutes. 
@@ -21,13 +20,13 @@ public class ProgressWatcherThread extends Thread {
 	 */
 	private static final long PRINT_STATUS_EVERY = 5 * 60 * 1000;
 
-	private ExplorationStep step;
+	private FrequentsIterator startersIt;
 	
 	@SuppressWarnings("rawtypes")
 	private Context hadoopContext = null;
 
-	public void setInitState(ExplorationStep initial) {
-		this.step = initial;
+	public void setStartersIterator(FrequentsIterator starters) {
+		this.startersIt = starters;
 	}
 
 	@Override
@@ -35,9 +34,8 @@ public class ProgressWatcherThread extends Thread {
 		while (true) {
 			try {
 				Thread.sleep(PRINT_STATUS_EVERY);
-				Progress progress = this.step.getProgression();
 				System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - root iterator state : %2$d/%3$d\n",
-						Calendar.getInstance(), progress.current, progress.last);
+						Calendar.getInstance(), this.startersIt.peek(), this.startersIt.last());
 				
 				if (this.hadoopContext != null) {
 					this.hadoopContext.progress();

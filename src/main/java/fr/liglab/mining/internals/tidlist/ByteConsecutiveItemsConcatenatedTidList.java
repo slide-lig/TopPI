@@ -41,8 +41,4 @@ public class ByteConsecutiveItemsConcatenatedTidList extends ConsecutiveItemsCon
 		super(c, highestItem);
 	}
 
-	public ByteConsecutiveItemsConcatenatedTidList(int[] lengths, int highestItem) {
-		super(lengths, highestItem);
-	}
-
 }

@@ -13,7 +13,7 @@ public abstract class IndexedTransactionsList extends TransactionsList {
 	private int size = 0;
 
 	public IndexedTransactionsList(Counters c) {
-		this(c.distinctTransactionsCount);
+		this(c.getDistinctTransactionsCount());
 	}
 
 	public IndexedTransactionsList(int nbTransactions) {

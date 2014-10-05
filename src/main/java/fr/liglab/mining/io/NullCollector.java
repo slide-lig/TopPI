@@ -29,4 +29,14 @@ public class NullCollector implements PatternsCollector {
 			return (int) (this.collectedLength.get() / this.collectedCount.get());
 		}
 	}
+
+	@Override
+	public long getCollected() {
+		return this.collectedCount.get();
+	}
+
+	@Override
+	public long getCollectedLength() {
+		return this.collectedLength.get();
+	}
 }

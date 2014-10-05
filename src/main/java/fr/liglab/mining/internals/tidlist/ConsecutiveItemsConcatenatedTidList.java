@@ -9,19 +9,17 @@ public abstract class ConsecutiveItemsConcatenatedTidList extends TidList {
 
 	private int[] indexAndFreqs;
 
-	public ConsecutiveItemsConcatenatedTidList(Counters c, int highestTidList) {
-		this(c.distinctTransactionsCounts, highestTidList);
-	}
-
-	public ConsecutiveItemsConcatenatedTidList(final int[] lengths, int highestTidList) {
+	public ConsecutiveItemsConcatenatedTidList(final Counters c, int highestTidList) {
 		int startPos = 0;
-		int top = Math.min(highestTidList, lengths.length);
+		int top = Math.min(highestTidList, c.getMaxFrequent() + 1);
 		this.indexAndFreqs = new int[top * 2];
 		for (int i = 0; i < top; i++) {
 			int itemIndex = i << 1;
-			if (lengths[i] > 0) {
+			int count = c.getDistinctTransactionsCount(i);
+			if (count > 0) {
 				this.indexAndFreqs[itemIndex] = startPos;
-				startPos += lengths[i];
+				startPos += count;
+				;
 			} else {
 				this.indexAndFreqs[itemIndex] = -1;
 			}
