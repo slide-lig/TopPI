@@ -23,8 +23,6 @@ public class DenseCounters extends Counters {
 	 * if renaming happened, in which case such items no longer exists.
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
-	 * 
-	 * TODO private+accessor
 	 */
 	private int[] supportCounts;
 
@@ -34,8 +32,6 @@ public class DenseCounters extends Counters {
 	 * if all transactions have a weight equal to 1
 	 * 
 	 * Indexes above maxFrequent should be considered valid.
-	 * 
-	 * TODO private+accessor
 	 */
 	private int[] distinctTransactionsCounts;
 
