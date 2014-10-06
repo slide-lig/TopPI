@@ -23,6 +23,7 @@ import fr.liglab.mining.io.NullCollector;
 import fr.liglab.mining.io.PatternSortCollector;
 import fr.liglab.mining.io.PatternsCollector;
 import fr.liglab.mining.io.PerItemTopKCollector;
+import fr.liglab.mining.io.PerItemTopKtoJSONCollector;
 import fr.liglab.mining.io.StdOutCollector;
 import fr.liglab.mining.mapred.TopPIoverHadoop;
 import fr.liglab.mining.util.MemoryPeakWatcherThread;
@@ -51,6 +52,7 @@ public class TopPIcli {
 				"(only for standalone) Outputs a single pattern for each frequent item. "
 						+ "Given support is item's support count and pattern's items are "
 						+ "the item itself, its patterns count (max=K), its patterns' supports sum and its lowest pattern support.");
+		options.addOption("J", false, "(implies -S) outputs per-item top-K itemsets to standard output as JSON");
 		options.addOption("k", true, "The 'K' in top-K-per-item mining");
 		options.addOption(
 				"m",
@@ -114,10 +116,10 @@ public class TopPIcli {
 		}
 		
 		Holder<Map<String,Integer>> itemIDmap = null;
-		if (cmd.hasOption('S')) {
+		if (cmd.hasOption('S') || cmd.hasOption('J')) {
 			itemIDmap = new Holder<Map<String,Integer>>();
 		}
-
+		
 		ExplorationStep.LOG_EPSILONS = cmd.hasOption('e');
 		int k = Integer.parseInt(cmd.getOptionValue('k'));
 
@@ -181,18 +183,18 @@ public class TopPIcli {
 
 		PerItemTopKCollector topKcoll = null;
 		PatternsCollector collector = null;
-
+		
+		Map<Integer, String> itemIDmap = null;
+		if (itemIDmapHolder != null) {
+			itemIDmap = new HashMap<Integer, String>(itemIDmapHolder.value.size());
+			for (Entry<String, Integer> entry : itemIDmapHolder.value.entrySet()) {
+				itemIDmap.put(entry.getValue(), entry.getKey());
+			}
+		}
+		
 		if (cmd.hasOption('b')) { // BENCHMARK MODE !
 			collector = new NullCollector();
 		} else {
-			Map<Integer, String> itemIDmap = null;
-			if (itemIDmapHolder != null) {
-				itemIDmap = new HashMap<Integer, String>(itemIDmapHolder.value.size());
-				for (Entry<String, Integer> entry : itemIDmapHolder.value.entrySet()) {
-					itemIDmap.put(entry.getValue(), entry.getKey());
-				}
-			}
-			
 			if (outputPath != null) {
 				try {
 					if (itemIDmap == null) {
@@ -217,9 +219,12 @@ public class TopPIcli {
 
 		int k = Integer.parseInt(cmd.getOptionValue('k'));
 
-
-		topKcoll = new PerItemTopKCollector(collector, k, initState);
-
+		if (cmd.hasOption('J')) {
+			topKcoll = new PerItemTopKtoJSONCollector(k, initState, itemIDmap);
+		} else {
+			topKcoll = new PerItemTopKCollector(collector, k, initState);
+		}
+		
 		topKcoll.setInfoMode(cmd.hasOption('i'));
 		topKcoll.setOutputUniqueOnly(cmd.hasOption('u'));
 
