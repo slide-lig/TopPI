@@ -3,7 +3,11 @@ package fr.liglab.mining.mapred;
 import java.io.IOException;
 import java.util.logging.Logger;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.PosixParser;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -19,7 +23,9 @@ import org.apache.hadoop.mapreduce.lib.map.InverseMapper;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.util.Tool;
 
+import fr.liglab.mining.TopPIcli;
 import fr.liglab.mining.mapred.writables.ConcatenatedTransactionsWritable;
 import fr.liglab.mining.mapred.writables.ItemAndSupportWritable;
 import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
@@ -27,13 +33,12 @@ import fr.liglab.mining.mapred.writables.SupportAndTransactionWritable;
 /**
  * The Hadoop driver.
  */
-public class TopPIoverHadoop {
+public class TopPIoverHadoop extends Configured implements Tool {
 
 	public static final String FILTERED_DIRNAME = "topPI_internal_FilteredInput";
 
 	// //////////////////MANDATORY CONFIGURATION PROPERTIES ////////////////////
 	public static final String KEY_INPUT = "toppi.path.input";
-	public static final String KEY_OUTPUT = "toppi.path.output";
 	public static final String KEY_MINSUP = "toppi.minsup";
 	public static final String KEY_NBGROUPS = "toppi.nbGroups";
 	public static final String KEY_K = "toppi.topK";
@@ -58,32 +63,45 @@ public class TopPIoverHadoop {
 	 */
 	public static final String KEY_REBASING_MAX_ID = "toppi.items.maxId";
 
-	private Configuration conf;
 	private String input;
 	private String outputPrefix;
+	
+	@Override
+	public int run(String[] rawArgs) throws Exception {
 
-	public Configuration getConf() {
-		return this.conf;
-	}
+		CommandLineParser parser = new PosixParser();
+		CommandLine cmd = parser.parse(TopPIcli.getOptions(), rawArgs);
+		String[] args = cmd.getArgs();
+		
+		if (args.length != 3) {
+			throw new IllegalArgumentException("Output's prefix path must be provided when using Hadoop");
+		}
+		
+		if (cmd.hasOption('s')) {
+			System.err.println("Hadoop version does not support itemset sorting");
+			System.exit(1);
+		}
+		
+		this.input = args[0];
+		this.outputPrefix = args[2];
+		
+		Configuration conf = this.getConf();
+		conf.set(TopPIoverHadoop.KEY_INPUT, args[0]);
+		conf.setInt(TopPIoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
+		conf.setInt(TopPIoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
+		conf.setInt(TopPIoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
 
-	public void setConf(Configuration c) {
-		this.conf = c;
-		this.input = c.get(KEY_INPUT);
-		this.outputPrefix = c.get(KEY_OUTPUT);
-	}
-
-	public TopPIoverHadoop(Configuration conf) {
-		this.setConf(conf);
-	}
-
-	public int run() throws Exception {
+		conf.setBoolean(TopPIoverHadoop.KEY_VERBOSE, cmd.hasOption('v'));
+		conf.setBoolean(TopPIoverHadoop.KEY_ULTRA_VERBOSE, cmd.hasOption('V'));
+		conf.setBoolean(TopPIoverHadoop.KEY_MANY_ITEMS_MODE, cmd.hasOption('B'));
+		
 		String itemCountPath = this.outputPrefix + "/" + "itemCounts";
 		String filteredInputPath = this.outputPrefix + "/" + FILTERED_DIRNAME;
 		String rebasingMapPath = this.outputPrefix + "/" + "rebasing";
 		String topKperItemPath = this.outputPrefix + "/" + "topPatterns";
 		String rawPatternsPath = this.outputPrefix + "/" + "rawPatterns";
 		String boundsPath = this.outputPrefix + "/" + "perItemBounds";
-		if (this.conf.getBoolean(KEY_MANY_ITEMS_MODE, false)) {
+		if (conf.getBoolean(KEY_MANY_ITEMS_MODE, false)) {
 			if (!bigItemCount(itemCountPath) || !genBigItemMap(itemCountPath, rebasingMapPath)) {
 				return 1;
 			}
@@ -121,7 +139,7 @@ public class TopPIoverHadoop {
 	private boolean aggregate(String output, String... inputs) throws IOException, ClassNotFoundException,
 			InterruptedException {
 
-		Job job = Job.getInstance(conf, "Per-item top-k aggregation of itemsets from " + input);
+		Job job = Job.getInstance(this.getConf(), "Per-item top-k aggregation of itemsets from " + input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -142,7 +160,7 @@ public class TopPIoverHadoop {
 		job.setGroupingComparatorClass(ItemAndSupportWritable.ItemOnlyComparator.class);
 		job.setPartitionerClass(AggregationReducer.AggregationPartitioner.class);
 		job.setReducerClass(AggregationReducer.class);
-		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		job.setNumReduceTasks(this.getConf().getInt(KEY_NBGROUPS, 1));
 
 		return job.waitForCompletion(true);
 	}
@@ -158,7 +176,7 @@ public class TopPIoverHadoop {
 	 */
 	private boolean genItemMap(String output) throws IOException, ClassNotFoundException, InterruptedException {
 
-		Job job = Job.getInstance(conf, "Computing frequent items mapping to groups, from " + this.input);
+		Job job = Job.getInstance(this.getConf(), "Computing frequent items mapping to groups, from " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(TextInputFormat.class);
@@ -182,7 +200,7 @@ public class TopPIoverHadoop {
 			CounterGroup counters = job.getCounters().getGroup(ItemCountingReducer.COUNTERS_GROUP);
 			Counter rebasingMaxID = counters.findCounter(ItemCountingReducer.COUNTER_REBASING_MAX_ID);
 
-			this.conf.setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
+			this.getConf().setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
 		}
 
 		return success;
@@ -201,7 +219,9 @@ public class TopPIoverHadoop {
 	 */
 	private boolean mineFirstPass(String output, String bounds, String rebasingMapPath) throws IOException,
 			ClassNotFoundException, InterruptedException {
-		Job job = Job.getInstance(conf, "Mining (first pass) " + this.input);
+		Configuration config = this.getConf();
+		
+		Job job = Job.getInstance(config, "Mining (first pass) " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -212,7 +232,7 @@ public class TopPIoverHadoop {
 		job.setMapOutputValueClass(IntWritable.class);
 
 		job.setReducerClass(MiningReducer.class);
-		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		job.setNumReduceTasks(config.getInt(KEY_NBGROUPS, 1));
 
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -228,7 +248,7 @@ public class TopPIoverHadoop {
 		DistCache.copyToCache(job, this.input);
 
 		if (job.waitForCompletion(true)) {
-			FileSystem fs = FileSystem.get(conf);
+			FileSystem fs = FileSystem.get(config);
 
 			try {
 				fs.rename(new Path(output + "/tmp"), new Path(bounds));
@@ -258,7 +278,7 @@ public class TopPIoverHadoop {
 	 */
 	private boolean mineSecondPass(String output, String bounds, String rebasingMapPath) throws IOException,
 			ClassNotFoundException, InterruptedException {
-		Job job = Job.getInstance(conf, "Mining (second pass) " + this.input);
+		Job job = Job.getInstance(this.getConf(), "Mining (second pass) " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -269,7 +289,7 @@ public class TopPIoverHadoop {
 		job.setMapOutputValueClass(IntWritable.class);
 
 		job.setReducerClass(MiningReducer.class);
-		job.setNumReduceTasks(this.conf.getInt(KEY_NBGROUPS, 1));
+		job.setNumReduceTasks(this.getConf().getInt(KEY_NBGROUPS, 1));
 
 		FileOutputFormat.setOutputPath(job, new Path(output));
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
@@ -286,7 +306,7 @@ public class TopPIoverHadoop {
 	}
 
 	private boolean bigItemCount(String output) throws IOException, ClassNotFoundException, InterruptedException {
-		Job job = Job.getInstance(conf, "Counting items from " + this.input);
+		Job job = Job.getInstance(this.getConf(), "Counting items from " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(TextInputFormat.class);
@@ -304,7 +324,7 @@ public class TopPIoverHadoop {
 
 		if (success) {
 			Counter rebasingMaxID = job.getCounters().findCounter(TaskCounter.REDUCE_OUTPUT_RECORDS);
-			this.conf.setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
+			this.getConf().setInt(KEY_REBASING_MAX_ID, (int) rebasingMaxID.getValue());
 		}
 
 		return success;
@@ -312,7 +332,7 @@ public class TopPIoverHadoop {
 
 	private boolean genBigItemMap(String input, String output) throws IOException, ClassNotFoundException,
 			InterruptedException {
-		Job job = Job.getInstance(conf, "Computing items remapping for " + this.input);
+		Job job = Job.getInstance(this.getConf(), "Computing items remapping for " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(SequenceFileInputFormat.class);
@@ -332,7 +352,7 @@ public class TopPIoverHadoop {
 
 	private boolean filterInput(String output, String rebasingMapPath) throws IOException, ClassNotFoundException,
 			InterruptedException {
-		Job job = Job.getInstance(conf, "Computing items remapping for " + this.input);
+		Job job = Job.getInstance(this.getConf(), "Computing items remapping for " + this.input);
 		job.setJarByClass(TopPIoverHadoop.class);
 
 		job.setInputFormatClass(TextInputFormat.class);

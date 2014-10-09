@@ -13,8 +13,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.GenericOptionsParser;
+import org.apache.hadoop.util.ToolRunner;
 
 import fr.liglab.mining.internals.ExplorationStep;
 import fr.liglab.mining.io.FileCollector;
@@ -30,11 +30,9 @@ import fr.liglab.mining.util.MemoryPeakWatcherThread;
 
 public class TopPIcli {
 	protected static long chrono;
-
-	public static void main(String[] args) throws Exception {
-
+	
+	public static Options getOptions() {
 		Options options = new Options();
-		CommandLineParser parser = new PosixParser();
 
 		options.addOption(
 				"b",
@@ -70,8 +68,15 @@ public class TopPIcli {
 		options.addOption("v", false, "Enable verbose mode, which logs every extension of the empty pattern");
 		options.addOption("V", false,
 				"Enable ultra-verbose mode, which logs every pattern extension (use with care: it may produce a LOT of output)");
-
+		
+		return options;
+	}
+	
+	public static void main(String[] args) throws Exception {
+		Options options = getOptions();
+		
 		try {
+			CommandLineParser parser = new PosixParser();
 			GenericOptionsParser hadoopCmd = new GenericOptionsParser(args);
 			CommandLine cmd = parser.parse(options, hadoopCmd.getRemainingArgs());
 
@@ -81,7 +86,7 @@ public class TopPIcli {
 				System.err.println("-k parameter is mandatory");
 				System.exit(1);
 			} else if (cmd.hasOption('g')) {
-				hadoop(cmd, hadoopCmd.getConfiguration());
+				hadoop(args);
 			} else {
 				standalone(cmd);
 			}
@@ -235,29 +240,8 @@ public class TopPIcli {
 		return topKcoll;
 	}
 
-	public static void hadoop(CommandLine cmd, Configuration conf) throws Exception {
-		String[] args = cmd.getArgs();
-
-		if (args.length != 3) {
-			throw new IllegalArgumentException("Output's prefix path must be provided when using Hadoop");
-		}
-
-		conf.set(TopPIoverHadoop.KEY_INPUT, args[0]);
-		conf.setInt(TopPIoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
-		conf.set(TopPIoverHadoop.KEY_OUTPUT, args[2]);
-		conf.setInt(TopPIoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
-		conf.setInt(TopPIoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
-
-		if (cmd.hasOption('s')) {
-			System.err.println("Hadoop version does not support itemset sorting");
-			System.exit(1);
-		}
-		conf.setBoolean(TopPIoverHadoop.KEY_VERBOSE, cmd.hasOption('v'));
-		conf.setBoolean(TopPIoverHadoop.KEY_ULTRA_VERBOSE, cmd.hasOption('V'));
-		conf.setBoolean(TopPIoverHadoop.KEY_MANY_ITEMS_MODE, cmd.hasOption('B'));
-
-		TopPIoverHadoop driver = new TopPIoverHadoop(conf);
-		System.exit(driver.run());
+	public static void hadoop(String[] args) throws Exception {
+		System.exit(ToolRunner.run(new TopPIoverHadoop(), args));
 	}
 
 }
