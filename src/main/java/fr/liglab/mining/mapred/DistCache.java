@@ -6,6 +6,7 @@ import gnu.trove.map.hash.TIntIntHashMap;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -77,32 +78,38 @@ final class DistCache {
 
 	public static URI[] getCachedFiles(org.apache.hadoop.mapreduce.Mapper<?, ?, ?, ?>.Context context) {
 		try {
-			URI[] files = context.getCacheFiles();
-			if (files == null) {
-				Path[] pArray = context.getLocalCacheFiles();
-				files = new URI[pArray.length];
-				for (int i = 0; i < files.length; i++) {
-					files[i] = pArray[i].toUri();
+			Path[] pArray = context.getLocalCacheFiles();
+			URI[] files = new URI[pArray.length];
+			for (int i = 0; i < files.length; i++) {
+				files[i] = pArray[i].toUri();
+				if (!files[i].toASCIIString().startsWith("file")){
+					files[i] = new URI("file://" + files[i].toString());
 				}
 			}
 			return files;
 		} catch (IOException e) {
+			return null;
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
 			return null;
 		}
 	}
 
 	public static URI[] getCachedFiles(org.apache.hadoop.mapreduce.Reducer<?, ?, ?, ?>.Context context) {
 		try {
-			URI[] files = context.getCacheFiles();
-			if (files == null) {
-				Path[] pArray = context.getLocalCacheFiles();
-				files = new URI[pArray.length];
-				for (int i = 0; i < files.length; i++) {
-					files[i] = pArray[i].toUri();
+			Path[] pArray = context.getLocalCacheFiles();
+			URI[] files = new URI[pArray.length];
+			for (int i = 0; i < files.length; i++) {
+				files[i] = pArray[i].toUri();
+				if (!files[i].toASCIIString().startsWith("file")){
+					files[i] = new URI("file://" + files[i].toString());
 				}
 			}
 			return files;
 		} catch (IOException e) {
+			return null;
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
 			return null;
 		}
 	}
