@@ -130,6 +130,8 @@ public final class MinerWrapper {
 		}
 		context.getCounter(MyCounter.MINING_TIME).increment(chrono);
 		
+		coucou.interrupt();
+		coucou = null;
 		context.progress();
 		
 	}
