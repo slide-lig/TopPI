@@ -135,9 +135,11 @@ public final class MinerWrapper {
 			counter.increment(entry.getValue());
 		}
 		context.getCounter(MyCounter.MINING_TIME).increment(chrono);
-
+		
+		coucou.interrupt();
+		coucou = null;
+		
 		context.progress();
-
 	}
 
 	private static int[] buildRenamingToGlobal(ExplorationStep initState, Holder<int[]> renaming) {
