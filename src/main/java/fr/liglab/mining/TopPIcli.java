@@ -38,6 +38,7 @@ public class TopPIcli {
 				"b",
 				false,
 				"(only for standalone) Benchmark mode : show mining time and drop patterns to oblivion (in which case OUTPUT_PATH is ignored)");
+		options.addOption("c", true, "over-filter to get top-c-correlated per-item patterns");
 		// FIXME
 		//options.addOption("B", false, "Do a 3-passes preliminary jobs - an experiment for datasets with more than 2 million items");
 		options.addOption("e", false, "DEBUG ONLY - prints to stdout the raised threshold, for each starter item");

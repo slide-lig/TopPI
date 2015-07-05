@@ -20,7 +20,7 @@ public class ProgressWatcherThread extends Thread {
 	 */
 	private static final long PRINT_STATUS_EVERY = 5 * 60 * 1000;
 
-	private FrequentsIterator startersIt;
+	private FrequentsIterator startersIt = null;
 	
 	@SuppressWarnings("rawtypes")
 	private Context hadoopContext = null;
@@ -34,8 +34,10 @@ public class ProgressWatcherThread extends Thread {
 		while (true) {
 			try {
 				Thread.sleep(PRINT_STATUS_EVERY);
-				System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - root iterator state : %2$d/%3$d\n",
-						Calendar.getInstance(), this.startersIt.peek(), this.startersIt.last());
+				if (this.startersIt != null) {
+					System.err.format("%1$tY/%1$tm/%1$td %1$tk:%1$tM:%1$tS - root iterator state : %2$d/%3$d\n",
+							Calendar.getInstance(), this.startersIt.peek(), this.startersIt.last());
+				}
 				
 				if (this.hadoopContext != null) {
 					this.hadoopContext.progress();

@@ -55,6 +55,9 @@ public class TopPIoverHadoop extends Configured implements Tool {
 	// enables the 3-passes preliminary jobs - set to true if you have more than
 	// 2 million items
 	public static final String KEY_MANY_ITEMS_MODE = "toppi.items.many";
+	
+	// set it to k' < k if the final step should over-filter by correlation with the key item
+	public static final String KEY_CORRELATION_RESULTS = "toppi.pval.k";
 
 	// ////////////////// INTERNAL CONFIGURATION PROPERTIES ////////////////////
 
@@ -85,15 +88,25 @@ public class TopPIoverHadoop extends Configured implements Tool {
 		this.input = args[0];
 		this.outputPrefix = args[2];
 		
+		int k = Integer.parseInt(cmd.getOptionValue('k'));
+		
 		Configuration conf = this.getConf();
 		conf.set(TopPIoverHadoop.KEY_INPUT, args[0]);
 		conf.setInt(TopPIoverHadoop.KEY_MINSUP, Integer.parseInt(args[1]));
-		conf.setInt(TopPIoverHadoop.KEY_K, Integer.parseInt(cmd.getOptionValue('k')));
+		conf.setInt(TopPIoverHadoop.KEY_K, k);
 		conf.setInt(TopPIoverHadoop.KEY_NBGROUPS, Integer.parseInt(cmd.getOptionValue('g')));
 
 		conf.setBoolean(TopPIoverHadoop.KEY_VERBOSE, cmd.hasOption('v'));
 		conf.setBoolean(TopPIoverHadoop.KEY_ULTRA_VERBOSE, cmd.hasOption('V'));
 		conf.setBoolean(TopPIoverHadoop.KEY_MANY_ITEMS_MODE, cmd.hasOption('B'));
+		
+		if (cmd.hasOption('c')) {
+			int c = Integer.parseInt(cmd.getOptionValue('c'));
+			if (c > k){
+				throw new IllegalArgumentException("c must be smaller or equal to k");
+			}
+			conf.setInt(TopPIoverHadoop.KEY_CORRELATION_RESULTS, c);
+		}
 		
 		String itemCountPath = this.outputPrefix + "/" + "itemCounts";
 		String filteredInputPath = this.outputPrefix + "/" + FILTERED_DIRNAME;
@@ -146,7 +159,7 @@ public class TopPIoverHadoop extends Configured implements Tool {
 		job.setOutputFormatClass(SequenceFileOutputFormat.class);
 		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(SupportAndTransactionWritable.class);
-
+		
 		for (String input : inputs) {
 			FileInputFormat.addInputPath(job, new Path(input));
 		}
@@ -159,7 +172,14 @@ public class TopPIoverHadoop extends Configured implements Tool {
 		job.setSortComparatorClass(ItemAndSupportWritable.SortComparator.class);
 		job.setGroupingComparatorClass(ItemAndSupportWritable.ItemOnlyComparator.class);
 		job.setPartitionerClass(AggregationReducer.AggregationPartitioner.class);
-		job.setReducerClass(AggregationReducer.class);
+		
+		if (this.getConf().getInt(TopPIoverHadoop.KEY_CORRELATION_RESULTS, -1)>=0) {
+			job.setReducerClass(AggregationByCorrelationReducer.class);
+			DistCache.copyToCache(job, this.input);
+		} else {
+			job.setReducerClass(AggregationReducer.class);
+		}
+		
 		job.setNumReduceTasks(this.getConf().getInt(KEY_NBGROUPS, 1));
 
 		return job.waitForCompletion(true);
