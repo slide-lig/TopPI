@@ -16,3 +16,12 @@ In Proceedings of the International Conference on Data Science and Advanced Anal
 
 
 Please use [Maven](http://maven.apache.org/) to build the program. 
+
+## License and copyright owners
+
+This work is released under the Apache License 2.0 (see LICENSE).
+
+Copyright 2013,2014,2015,2016 Martin Kirchgessner, Vincent Leroy, Alexandre Termier, 
+Sihem Amer-Yahia, Marie-Christine Rousset, Université Grenoble Alpes, LIG, CNRS.
+
+
